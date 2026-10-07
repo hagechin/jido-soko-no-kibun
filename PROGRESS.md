@@ -18,7 +18,8 @@
 - Playwright（ヘッドレス Chromium）で PC 1280×800 とスマホ 390×844 を開き、コンソールエラー 0・外部通信 0・44px 未満のボタン 0 を確認。マウス／タッチのカメラ操作とタップ選択も自動確認
 
 ### デプロイ（ロリポップ！デプロイナウ）
-- このセッションでは `npx lolipop deploy` を実行できない（CLI はブラウザでのログインが必須で、トークン等の非対話ログイン手段がない）。
+- このセッションでは `npx lolipop deploy` を実行できない。理由は 2 つ: (1) CLI の `login` はブラウザでの認証が必須で、トークン等の非対話ログイン手段がない（CLI 同梱の `skills/lolipop-cli/SKILL.md` でも確認） (2) この実行環境のネットワーク設定で `deploy.lolipop.jp`（API・ドキュメント共通ホスト）への通信が拒否される（`lolipop health` も 403）。
+- GitHub 連携は CLI から設定できない（SKILL.md 明記）。ダッシュボード https://deploy.lolipop.jp/projects/new から接続する。
 - **お願い**: デプロイナウのダッシュボードでこのリポジトリを GitHub 連携してください。ビルド設定は次のとおり（framework プリセット「Astro」の既定値と同じはず）
   - Install: `npm ci`（または `npm install`）
   - Build: `npm run build`
