@@ -1079,3 +1079,131 @@ body.is-calm .mini-hud {
   gap: 4px;
   border-radius: 999px;
 }
+
+/* ---------- レイアウトエディタ ---------- */
+.btn.primary {
+  background: var(--accent);
+  color: #1b1b1b;
+  border-color: var(--accent);
+}
+.layout-editor {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.editor-stage {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+.layout-editor[hidden] {
+  display: none;
+}
+.editor-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.editor-tool {
+  flex-direction: column;
+  gap: 0;
+  padding: 2px 8px;
+  line-height: 1.1;
+  min-width: var(--tap);
+}
+.editor-tool .lbl {
+  font-size: 10px;
+}
+.editor-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--line);
+  margin: 0 4px;
+}
+.editor-canvas {
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+  position: absolute;
+  inset: 0;
+}
+.editor-status {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: rgba(20, 28, 38, 0.9);
+  border-top: 1px solid var(--line);
+}
+.editor-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.editor-line.is-problem {
+  color: var(--danger);
+}
+.editor-line.is-ok {
+  color: var(--ok);
+}
+.editor-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  background: var(--panel);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.editor-preview-bar {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 50;
+  gap: 10px;
+  align-items: center;
+  background: rgba(20, 28, 38, 0.9);
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  max-width: calc(100vw - 24px);
+}
+body.is-editing .hud,
+body.is-editing .orders,
+body.is-editing .bottombar,
+body.is-editing .sheet,
+body.is-editing .view-overlay,
+body.is-editing .banner,
+body.is-editing .popup,
+body.is-editing .calm-suggest {
+  display: none !important;
+}
+body.is-editing .app {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  grid-template-areas: 'view';
+}
+/* 3D プレビュー: エディタの中身を隠して下の 3D 画面を見せる */
+body.is-previewing .layout-editor {
+  background: transparent;
+  pointer-events: none;
+}
+body.is-previewing .layout-editor > :not(.editor-preview-bar) {
+  display: none;
+}
+body.is-previewing .editor-preview-bar {
+  display: flex;
+  pointer-events: auto;
+}
+.icon.flip {
+  transform: scaleX(-1);
+}

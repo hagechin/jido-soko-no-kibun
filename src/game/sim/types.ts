@@ -273,6 +273,8 @@ export interface WorldState {
   events: SimEvent[];
   flags: {
     buildMode: boolean;
+    /** レイアウトエディタで倉庫を止めている（ロボは倉庫の外） */
+    layoutEditor?: boolean;
   };
 }
 

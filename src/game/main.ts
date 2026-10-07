@@ -39,6 +39,8 @@ import { offlineReportNode } from './ui/offlineReport';
 import { CalmMode } from './ui/calmMode';
 import { AutoCamera } from './render/autoCamera';
 import { KeyboardCamera } from './render/keyboardCamera';
+import { LayoutEditor } from './ui/layoutEditor';
+import { beginEdit, finishEdit } from './sim/layoutEditor';
 import { registerServiceWorker } from './ui/pwa';
 import { Sound } from './audio/sound';
 import { renderDebug } from './ui/debugPanel';
@@ -85,6 +87,7 @@ class Game {
   sound = new Sound();
   private autoCam: AutoCamera;
   private keyCam: KeyboardCamera;
+  private editor = new LayoutEditor();
   private lastRender = 0;
   private hiddenAt: number | null = null;
   private catchUp = 0;
@@ -179,6 +182,7 @@ class Game {
           this.bar.refresh();
         },
         refresh: () => this.bar.refresh(),
+        onOpenEditor: () => this.openEditor(),
       }),
     );
     this.bar.registerPanel('port', (body) => {
@@ -254,7 +258,7 @@ class Game {
     $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
     $('btn-calm').addEventListener('click', () => this.calm.enter());
     this.renderer.controls.onTap = (x, y) => {
-      if (this.calm.active) return; // MANUAL 中のタップは視点操作の一部。ロボは選ばない
+      if (this.calm.active || this.editor.open) return; // MANUAL 中・プレビュー中のタップは視点操作の一部。ロボは選ばない
       this.onTap(x, y);
     };
 
@@ -286,6 +290,49 @@ class Game {
       this.modal.show('サイバーウィーク成績表', cyberReportNode(rec, this.world.stats.cyberWeekRecords));
       this.world.season.pendingReport = null;
     }
+  }
+
+  /** レイアウトエディタ（★）: 倉庫を止めてロボを外へ出し、俯瞰の 2D で編集。保存で再開、キャンセルで元に戻す */
+  openEditor(): void {
+    if (this.editor.open) return;
+    if (this.calm.active) this.calm.exit();
+    this.bar.close();
+    this.popup.hide();
+    this.select(null);
+    this.world.flags.buildMode = false;
+    beginEdit(this.world);
+    this.rt.dirty = true;
+    this.editor.show(this.world, {
+      onSave: () => {
+        const r = finishEdit(this.world);
+        if (!r.ok) {
+          showToast(r.reason, 4000, 'triangle-alert');
+          return;
+        }
+        this.closeEditor('新しいレイアウトで出荷を再開しました');
+      },
+      onCancel: () => {
+        const r = finishEdit(this.world);
+        if (!r.ok) showToast(r.reason, 4000, 'triangle-alert');
+        this.closeEditor('編集を取り消しました');
+      },
+      onPreview: (on) => {
+        this.renderer.controls.enabled = on;
+        if (on) this.renderer.resize();
+      },
+    });
+    this.renderer.controls.enabled = false;
+    this.save();
+  }
+
+  private closeEditor(message: string): void {
+    this.editor.hide();
+    this.renderer.controls.enabled = true;
+    this.rt.dirty = true;
+    this.renderer.resize();
+    this.save();
+    showToast(message, 3000, 'check');
+    this.bar.refresh();
   }
 
   /** アドバイザー（★）: 30 秒ごとに提案を確認し、新しい提案（または 3 分ぶり）ならトーストで知らせる */
@@ -353,6 +400,7 @@ class Game {
 
   /** 別の倉庫（プリセット・読み込んだセーブ）に差し替える */
   loadWorld(w: WorldState): void {
+    if (this.editor.open) this.editor.hide();
     this.world = w;
     this.rt = createRuntime();
     this.focusItem = null;
@@ -360,7 +408,39 @@ class Game {
     this.select(null);
     this.bar.close();
     this.catchUp = 0;
+    this.resumeInterruptedEdit();
     this.save();
+  }
+
+  /** エディタで止めたままセーブされていた倉庫: そのまま再開できれば再開、できなければエディタを開いて直してもらう */
+  private resumeInterruptedEdit(): void {
+    if (!this.world.flags.layoutEditor) return;
+    const r = finishEdit(this.world);
+    if (r.ok) {
+      this.rt.dirty = true;
+      return;
+    }
+    showToast(`レイアウトの編集が途中でした: ${r.reason}`, 5000, 'triangle-alert');
+    this.editor.show(this.world, {
+      onSave: () => {
+        const f = finishEdit(this.world);
+        if (!f.ok) {
+          showToast(f.reason, 4000, 'triangle-alert');
+          return;
+        }
+        this.closeEditor('新しいレイアウトで出荷を再開しました');
+      },
+      onCancel: () => {
+        const f = finishEdit(this.world);
+        if (!f.ok) showToast(f.reason, 4000, 'triangle-alert');
+        this.closeEditor('編集を取り消しました');
+      },
+      onPreview: (on) => {
+        this.renderer.controls.enabled = on;
+        if (on) this.renderer.resize();
+      },
+    });
+    this.renderer.controls.enabled = false;
   }
 
   save(): boolean {
@@ -608,12 +688,13 @@ class Game {
 
   // ------------------------------------------------------------ ループ
   start(): void {
+    this.resumeInterruptedEdit();
     const frame = (now: number) => {
       this.raf = requestAnimationFrame(frame);
       const dt = Math.min(250, now - this.last);
       this.last = now;
       if (document.hidden) return;
-      this.acc += this.world.flags.buildMode ? 0 : dt * this.world.speed;
+      this.acc += this.world.flags.buildMode || this.editor.open ? 0 : dt * this.world.speed;
       let guard = 0;
       const simStart = performance.now();
       let ticks = 0;
@@ -634,7 +715,7 @@ class Game {
         }
       }
       // 離席からの追いつき計算（1 フレームに少しずつ）
-      if (this.catchUp >= 1 && !this.world.flags.buildMode) {
+      if (this.catchUp >= 1 && !this.world.flags.buildMode && !this.editor.open) {
         const n = Math.min(OFFLINE.catchUpTicksPerFrame, Math.floor(this.catchUp));
         for (let i = 0; i < n; i++) stepSim(this.world, this.rt);
         this.catchUp -= n;

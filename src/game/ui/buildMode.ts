@@ -1,4 +1,4 @@
-import { icon, type IconName } from './icon';
+import { icon, iconText, type IconName } from './icon';
 /** 建設モード UI（§8）。ツールを選んで 3D ビューのセルをタップする */
 import { BUILD_COST, BUILD_LABEL, expansionCells, expansionCost, maxExpansionsForRank, type BuildKind, type ExpandDir } from '../sim/build';
 import type { WorldState } from '../sim/types';
@@ -18,6 +18,8 @@ export interface BuildContext {
   onToolChange: (tool: BuildTool) => void;
   onExpand: (dir: ExpandDir) => void;
   refresh: () => void;
+  /** レイアウトエディタ（倉庫を止めて俯瞰でまとめて配置換え）を開く */
+  onOpenEditor?: () => void;
 }
 
 const ICON: Record<BuildTool, IconName> = {
@@ -58,6 +60,11 @@ export function renderBuild(body: HTMLElement, ctx: BuildContext): void {
     tools.append(ex);
   }
   body.append(tools);
+  if (ctx.onOpenEditor) {
+    const open = el('button', { class: 'btn primary', type: 'button' }, iconText('layers', 'レイアウトエディタ（倉庫を停止して俯瞰で配置換え）', 16));
+    open.addEventListener('click', () => ctx.onOpenEditor!());
+    body.append(el('div', { class: 'settings-row' }, open));
+  }
   const hint = ctx.state.tool === 'erase' ? '撤去する設備をタップ（無料）' : ctx.state.tool === 'move' ? (ctx.state.held ? '移動先のセルをタップ' : '動かす設備をタップ') : `${BUILD_LABEL[ctx.state.tool]} を置くセルをタップ`;
   body.append(el('div', { class: 'build-hint' }, el('span', { text: hint }), el('span', { class: 'muted small', text: `　${w.width}×${w.height} マス / 建設中はシミュレーション停止` })));
 }
