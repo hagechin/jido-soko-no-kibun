@@ -596,3 +596,28 @@ button {
     display: none;
   }
 }
+
+/* ---------- ショップ ---------- */
+.sheet-body h4 {
+  margin: 10px 0 6px;
+  font-size: 13px;
+  color: var(--accent-2);
+}
+.shop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.shop-label {
+  min-width: 0;
+}
+.small {
+  font-size: 11px;
+}
+.buy-btn {
+  flex: 0 0 auto;
+  min-width: 88px;
+}

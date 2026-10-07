@@ -4,7 +4,7 @@
  * 複数マスを占有するロボは移動前後の占有マスすべてを予約表で確認する。
  */
 import { PATHING, ROBOT } from '../data/balance';
-import { DIR_VEC, footprint, opposite, poseKey, turnLeft, turnRight, turnSweep, type Shape } from './footprint';
+import { DIR_VEC, footprint, opposite, turnLeft, turnRight, turnSweep, type Shape } from './footprint';
 import type { ReservationTable } from './reservation';
 import type { Dir, Pose, Vec2 } from './types';
 
@@ -106,10 +106,11 @@ function heuristic(req: PlanRequest, p: Pose): number {
   return best === Infinity ? 0 : best * req.moveTicks;
 }
 
-function stateKey(req: PlanRequest, p: Pose, t: number): string {
+function stateKey(req: PlanRequest, p: Pose, t: number): number {
   // 1×1 と 2×2 は向きが経路に影響しないので無視する（状態数を減らす）
   const dirMatters = req.shape.w === 1 && req.shape.l === 2;
-  return dirMatters ? `${poseKey(p)}@${t}` : `${p.x},${p.z}@${t}`;
+  const cell = (p.z + 2) * (req.width + 4) + (p.x + 2); // 範囲外の座標も一意になるよう余白を持たせる
+  return ((cell * 4 + (dirMatters ? p.dir : 0)) * 4096 + (t - req.startTick)) >>> 0;
 }
 
 /**
@@ -118,9 +119,12 @@ function stateKey(req: PlanRequest, p: Pose, t: number): string {
  */
 export function findPath(req: PlanRequest): PlanStep[] | null {
   const maxExp = req.maxExpansions ?? PATHING.maxExpansions;
-  const horizon = req.startTick + (req.horizon ?? PATHING.horizonTicks);
+  const h0 = heuristic(req, req.start);
+  const horizon = req.startTick + (req.horizon ?? Math.max(PATHING.horizonTicks, h0 * 2 + PATHING.horizonTicks / 2));
+  // 静的に到達不能（通れないセルや無期限予約で囲まれている）なら探索しない
+  if (!staticallyReachable(req)) return null;
   const open = new Heap();
-  const closed = new Set<string>();
+  const closed = new Set<number>();
   const startNode: Node = { pose: req.start, t: req.startTick, g: 0, f: heuristic(req, req.start), parent: null, step: 'wait' };
   open.push(startNode);
   let expansions = 0;
@@ -170,6 +174,44 @@ export function findPath(req: PlanRequest): PlanStep[] | null {
     }
   }
   return null;
+}
+
+/** 時間を無視した BFS。無期限に予約されたセルは壁とみなす */
+function staticallyReachable(req: PlanRequest): boolean {
+  const W = req.width;
+  const is22 = req.shape.w === 2;
+  const blocked = (x: number, z: number) => !req.passable(x, z) || req.table.isReservedForever(z * W + x, req.startTick, req.robotId);
+  const okAt = (x: number, z: number) => {
+    if (!is22) return !blocked(x, z);
+    return !blocked(x, z) && !blocked(x + 1, z) && !blocked(x, z + 1) && !blocked(x + 1, z + 1);
+  };
+  const seen = new Set<number>();
+  const queue: number[] = [];
+  const key = (x: number, z: number) => (z + 2) * (W + 4) + (x + 2);
+  queue.push(req.start.x, req.start.z);
+  seen.add(key(req.start.x, req.start.z));
+  let head = 0;
+  let guard = 0;
+  while (head < queue.length && guard++ < 20000) {
+    const x = queue[head++];
+    const z = queue[head++];
+    const p: Pose = { x, z, dir: req.start.dir };
+    if (req.isGoal(p) || (req.shape.l === 2 && req.shape.w === 1 && isGoalAnyDir(req, x, z))) return true;
+    for (const v of DIR_VEC) {
+      const nx = x + v.x;
+      const nz = z + v.z;
+      const k = key(nx, nz);
+      if (seen.has(k) || !okAt(nx, nz)) continue;
+      seen.add(k);
+      queue.push(nx, nz);
+    }
+  }
+  return false;
+}
+
+function isGoalAnyDir(req: PlanRequest, x: number, z: number): boolean {
+  for (let d = 0; d < 4; d++) if (req.isGoal({ x, z, dir: d as Dir })) return true;
+  return false;
 }
 
 function push(open: Heap, parent: Node, pose: Pose, t: number, step: PlanStep['type'], req: PlanRequest): void {

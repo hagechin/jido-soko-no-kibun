@@ -16,6 +16,7 @@ import { Popup } from './ui/popup';
 import { binLabel, selectedInfoNode } from './ui/selection';
 import { iconImg } from './ui/icons';
 import { $, el, showToast } from './ui/layout';
+import { renderUpgrades } from './ui/upgrades';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 
@@ -47,6 +48,7 @@ class Game {
     this.orders = new OrderSheet();
     this.popup = new Popup();
     this.orders.onItemTap = (itemId) => this.onOrderItemTap(itemId);
+    this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh() }));
 
     $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
     $('btn-calm').addEventListener('click', () => showToast('眺めモードは M10 で実装予定'));

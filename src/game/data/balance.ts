@@ -136,10 +136,10 @@ export const ROBOT = {
 export const PATHING = {
   /** 予約テーブルの再計画周期 */
   replanIntervalTicks: 10,
-  /** 空間時間 A* の探索上限（tick） */
-  horizonTicks: 300,
+  /** 空間時間 A* の探索上限（tick）。目的地までの距離に応じて自動で伸ばす */
+  horizonTicks: 150,
   /** A* 展開ノード上限 */
-  maxExpansions: 6000,
+  maxExpansions: 2500,
   /** これ以上動けなければ「詰まり」とみなし優先度を上げて退避 */
   stuckTicks: sec(3),
   /** 退避先を探す BFS の最大距離 */
