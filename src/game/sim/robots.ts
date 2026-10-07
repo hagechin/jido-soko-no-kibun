@@ -3,7 +3,7 @@
  * step の意味は各 job ごとに定義（コメント参照）。
  */
 import { PORT, ROBOT } from '../data/balance';
-import { manhattan } from './grid';
+import { approachCells, manhattan } from './grid';
 import { visibleOrders } from './orders';
 import { atGoal, passableFor, sameGoal } from './goals';
 import { footprint, shapeFor, turnSweep } from './footprint';
@@ -141,6 +141,46 @@ export function destinationOf(w: WorldState, r: Robot, binId: number): number | 
     if (s) return s.id;
   }
   return nearestStation(w, r.pose.x, r.pose.z, 'pick')?.id ?? null;
+}
+
+/**
+ * 混雑制御: ステーション／ポートへ同時に向かえる搬送ロボの数は、隣接する床（横付けできる場所）の数まで。
+ * あふれた分は待機スポットで順番待ちする（通路でその場待ちして塞がないため）
+ */
+export function approachCapacity(w: WorldState, x: number, z: number): number {
+  return Math.max(1, approachCells(w, x, z).length);
+}
+
+function headingTo(w: WorldState, kind: 'station' | 'port', id: number, except: Robot): number {
+  let n = 0;
+  for (const o of w.robots) {
+    if (o === except || o.kind !== 'amr' || !o.job) continue;
+    const j = o.job;
+    if (kind === 'station' && j.type === 'deliver' && j.stationId === id && !j.staged) n++;
+    if (kind === 'port' && (j.type === 'fetch' || j.type === 'return') && j.portId === id && !(j.type === 'fetch' && j.staged)) n++;
+  }
+  return n;
+}
+
+/** 待機スポット（他が向かっていないもの）へ退避する目標。無ければ null */
+export function stagingGoal(w: WorldState, r: Robot): Goal | null {
+  const claimed = new Set<string>();
+  for (const o of w.robots) {
+    if (o === r) continue;
+    claimed.add(`${o.pose.x},${o.pose.z}`);
+    if (o.goal?.type === 'cell') claimed.add(`${o.goal.x},${o.goal.z}`);
+  }
+  let best: { x: number; z: number } | null = null;
+  let bd = Infinity;
+  for (const s of w.waitSpots) {
+    if (claimed.has(`${s.x},${s.z}`)) continue;
+    const d = manhattan(r.pose, s);
+    if (d < bd) {
+      bd = d;
+      best = s;
+    }
+  }
+  return best ? { type: 'cell', x: best.x, z: best.z } : null;
 }
 
 /** 積荷のうち、この便でまだ処理していないビン */
@@ -490,6 +530,17 @@ function amrFetch(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { t
   if (!port) return finishJob(w, rt, r);
   switch (r.step) {
     case 0: {
+      // 混雑制御: 横付けできる台数を超えていたら待機スポットで順番待ち
+      if (!atGoal(w, r) || job.staged) {
+        const busy = headingTo(w, 'port', port.id, r);
+        if (busy >= approachCapacity(w, port.x, port.z)) {
+          job.staged = true;
+          const g = stagingGoal(w, r);
+          if (g && !(r.goal?.type === 'cell' && w.waitSpots.some((s) => s.x === r.pose.x && s.z === r.pose.z))) setGoal(rt, r, g);
+          return;
+        }
+        job.staged = false;
+      }
       setGoal(rt, r, { type: 'adjacent', x: port.x, z: port.z });
       if (!atGoal(w, r)) return;
       const loadable = nextLoadableBin(w, r, port);
@@ -563,6 +614,18 @@ function amrDeliver(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, {
     st = w.stations.find((s) => s.id === next)!;
   }
   if (r.step === 0) {
+    // 混雑制御: 横付けできる台数を超えていたら待機スポットで順番待ち
+    if (!atGoal(w, r) || job.staged) {
+      const busy = headingTo(w, 'station', st.id, r);
+      if (busy >= approachCapacity(w, st.x, st.z)) {
+        job.staged = true;
+        const g = stagingGoal(w, r);
+        if (g && !w.waitSpots.some((s) => s.x === r.pose.x && s.z === r.pose.z)) setGoal(rt, r, g);
+        else if (!g) setGoal(rt, r, null);
+        return;
+      }
+      job.staged = false;
+    }
     setGoal(rt, r, { type: 'adjacent', x: st.x, z: st.z });
     if (!atGoal(w, r)) return;
     if (st.work && st.work.robotId !== r.id) return; // 他のロボを処理中 → 待つ
@@ -627,9 +690,10 @@ export function describeRobot(w: WorldState, r: Robot): string {
     case 'relocate':
       return '在庫を並べ替え中';
     case 'fetch':
-      return r.phase === 'loading' ? '積み込み中' : 'ポートへ';
+      return r.phase === 'loading' ? '積み込み中' : job.staged ? 'ポートの順番待ち' : 'ポートへ';
     case 'deliver': {
       const left = unprocessedCargo(w, r).length;
+      if (job.staged) return `ステーションの順番待ち（${left} ビン）`;
       return r.phase === 'working' ? '作業待ち' : `ステーションへ配送中（残り ${left} ビン）`;
     }
     case 'return':

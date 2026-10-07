@@ -83,9 +83,10 @@ export type ShelfJob =
 
 /** 搬送ロボの仕事 */
 export type AmrJob =
-  | { type: 'fetch'; portId: number; manual: boolean; stationId: number | null }
+  /** staged: 混んでいるので待機スポットで順番待ち中 */
+  | { type: 'fetch'; portId: number; manual: boolean; stationId: number | null; staged?: boolean }
   /** done: この便で処理済みのビン。巡回して全部処理したら返却へ */
-  | { type: 'deliver'; stationId: number; manual: boolean; done?: number[] }
+  | { type: 'deliver'; stationId: number; manual: boolean; done?: number[]; staged?: boolean }
   | { type: 'return'; portId: number | null; manual: boolean };
 
 /** 両方: 指定セルへ移動して待機（待機スポット・退避） */
@@ -129,6 +130,8 @@ export interface Robot {
   stuckTicks: number;
   /** 現在の目標（経路計画用）。null = 目標なし */
   goal: Goal | null;
+  /** 退避中: 本来の目標に再挑戦する tick（0 = 退避していない） */
+  retreatUntil?: number;
   /** 選択・指示の表示用 */
   name: string;
 }

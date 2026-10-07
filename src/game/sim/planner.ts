@@ -9,6 +9,7 @@ import { atGoal, makeGoalTest, passableFor } from './goals';
 import { findPath, moveTicksFor, reservePath, type PlanRequest, type PlanStep } from './pathfinding';
 import type { ReservationTable } from './reservation';
 import { rand } from './rng';
+import { stagingGoal } from './robots';
 import type { Runtime } from './runtime';
 import type { Robot, Vec2, WorldState } from './types';
 
@@ -57,6 +58,7 @@ export function updatePlanning(w: WorldState, rt: Runtime): void {
   const movers = w.robots.filter((r) => {
     if (!wantsToMove(w, r)) return false;
     if (rt.needsPlan.has(r.id)) return true;
+    if ((r.retreatUntil ?? 0) > now) return false; // 退避中: しばらくしてから再挑戦
     const plan = rt.plans.get(r.id);
     if (!plan || !plan.length) return periodic; // 経路が無い（詰まり）→ 周期的に再試行
     // 窓付き計画の続き: 残りが少なくなったら先を引く（止まらずに進める）
@@ -132,6 +134,18 @@ function planOne(w: WorldState, rt: Runtime, r: Robot): void {
   };
   let path = findPath(req);
   if (path) planStats.found++;
+  if (!path && r.kind === 'amr' && r.stuckTicks >= PATHING.retreatTicks) {
+    // 長く行けない: その場に居座らず待機スポットへ退避して通路を空ける（本来の目標には後で再挑戦）
+    const g = stagingGoal(w, r);
+    if (g && g.type === 'cell' && !(g.x === start.x && g.z === start.z)) {
+      const { isGoal, cells } = makeGoalTest(w, r, g);
+      path = findPath({ ...req, isGoal, goalCells: cells });
+      if (path) {
+        r.retreatUntil = now + PATHING.retryAfterRetreatTicks;
+        planStats.escapes++;
+      }
+    }
+  }
   if (!path && r.stuckTicks >= PATHING.stuckTicks) {
     path = findEscape(w, r, req);
     if (path) planStats.escapes++;

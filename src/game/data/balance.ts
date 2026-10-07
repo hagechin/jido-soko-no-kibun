@@ -171,6 +171,10 @@ export const PATHING = {
   waitPenalty: 0.5,
   /** これ以上動けなければ「詰まり」とみなし優先度を上げて退避 */
   stuckTicks: sec(3),
+  /** これ以上経路が無ければ、その場に居座らず待機スポットへ退避して通路を空ける */
+  retreatTicks: sec(9),
+  /** 退避後、目的地へ再挑戦するまでの tick */
+  retryAfterRetreatTicks: sec(5),
   /** 退避先を探す BFS の最大距離 */
   escapeRadius: 6,
   /** 作業中（ステーション待機など）の予約長 */

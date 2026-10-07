@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildPreset, PRESETS } from './presets';
 import { addRobot } from './world';
+import { addPallet } from './inbound';
+import { ITEMS } from '../data/items';
 import { railConnected } from './build';
 import { isAdjacentToStack, isFacingFloor, cellAt, isFloorWalkable, isRailWalkable } from './grid';
 import { freeBinSlots, reservedSlots } from './shop';
@@ -132,5 +134,25 @@ describe('many robots (windowed planning)', () => {
     expect(msPerTick).toBeLessThan(12);
     expect(w.stats.totalShipped - 1000).toBeGreaterThan(5);
     expect(stuck).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('inbound surge on the mega preset (crowding control)', () => {
+  it('a big delivery does not gridlock the AMRs around the inbound stations', () => {
+    const w = buildPreset('mega');
+    for (const it of ITEMS) addPallet(w, it.id, 40);
+    const rt = createRuntime();
+    const backlog0 = w.pallets.reduce((a, p) => a + p.qty, 0);
+    let maxStuck = 0;
+    for (let t = 0; t < 3000; t++) {
+      stepSim(w, rt);
+      for (const r of w.robots) maxStuck = Math.max(maxStuck, r.stuckTicks);
+    }
+    const backlog1 = w.pallets.reduce((a, p) => a + p.qty, 0);
+    const staged = w.robots.filter((r) => r.job && (r.job.type === 'deliver' || r.job.type === 'fetch') && r.job.staged).length;
+    console.log('surge: backlog', backlog0, '->', backlog1, 'maxStuck', maxStuck, 'staged now', staged, 'shipped', w.stats.totalShipped - 1000);
+    expect(backlog1).toBeLessThan(backlog0 * 0.7);
+    expect(maxStuck).toBeLessThan(600); // 誰も 1 分以上動けないままにならない
+    expect(w.stats.totalShipped - 1000).toBeGreaterThan(3); // 入荷ラッシュ中も出荷は続く
   });
 });
