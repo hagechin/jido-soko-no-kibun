@@ -18,4 +18,23 @@ npm run check    # tsc --noEmit
 
 ## デプロイ
 
-ロリポップ！デプロイナウに GitHub 連携でデプロイする（Build: `npm run build` / Output: `dist`）。CLI の場合は `npx lolipop deploy`。
+ロリポップ！デプロイナウに GitHub 連携でデプロイする。
+
+| 項目 | 値 |
+|---|---|
+| Framework | Astro |
+| Install | `npm ci` |
+| Build | `npm run build` |
+| Output | `dist` |
+| Node.js | 22（`.nvmrc`） |
+
+CLI の場合は `npx lolipop deploy`（ブラウザでのログインが必要）。
+
+## 構成
+
+- `src/game/sim/` — シミュレーション（純粋な TypeScript。固定 10 tick/秒。Vitest でテスト）
+- `src/game/render/` — Three.js（ボクセル描画・カメラ・演出）
+- `src/game/ui/` — 素の DOM（HUD・オーダーシート・建設・ショップ・設定）
+- `src/game/audio/` — WebAudio 合成サウンド
+- `src/game/data/` — 数値（`balance.ts`）、商品、ドット絵、季節
+- `scripts/` — PWA アイコン生成、Service Worker テンプレート

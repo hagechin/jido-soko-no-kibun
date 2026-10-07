@@ -159,10 +159,22 @@ export function upgradeCargo(w: WorldState, robotId: number): ShopResult {
   return { ok: true };
 }
 
-/** 空ビンを買って、空きのあるスタックの頂上に置く（★） */
+/** 全スタックのスロット数 − 全ビン数（運搬中・ポート上も含む）。これが正なら買い足せる */
+export function freeBinSlots(w: WorldState): number {
+  const slots = w.stacks.length * w.levels;
+  return slots - Object.keys(w.bins).length;
+}
+
+/** 掘り出し（退避）のために空けておくスロット数: 段数 + 棚ロボ台数（★） */
+export function reservedSlots(w: WorldState): number {
+  return w.levels + w.robots.filter((r) => r.kind === 'shelf').length;
+}
+
+/** 空ビンを買って、空きのあるスタックの頂上に置く（★）。掘り出し用の空きスロットは必ず残す（棚が満杯だと掘り出しが止まる） */
 export function buyEmptyBin(w: WorldState): ShopResult {
+  if (freeBinSlots(w) <= reservedSlots(w)) return { ok: false, reason: `掘り出し用に空きスロットを ${reservedSlots(w)} 個残す必要があります。段数を増やすかスタックを置いてください` };
   const stack = w.stacks.find((s) => s.bins.length < w.levels);
-  if (!stack) return { ok: false, reason: '空きのあるスタックがありません（段数を増やすかスタックを置く）' };
+  if (!stack) return { ok: false, reason: '今は空いているスタックがありません（運搬中のビンが戻るまで待つ）' };
   const p = pay(w, BIN.emptyBinCost);
   if (!p.ok) return p;
   stack.bins.push(createBin(w, null, 0).id);

@@ -4,6 +4,8 @@ import {
   binCapacityUpgradeCost,
   buyAmr,
   buyEmptyBin,
+  freeBinSlots,
+  reservedSlots,
   buyShelfRobot,
   cargoUpgradeCost,
   levelUpgradeCost,
@@ -52,8 +54,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const lvLocked = w.levels >= maxLevelsForRank(w) && w.levels < LEVELS.max ? `ランク${w.rank + 2}で解放` : undefined;
   body.append(row(`棚の段数 ${w.levels} → ${Math.min(LEVELS.max, w.levels + 1)}`, lvCost, () => upgradeLevels(w), ctx, '全スタックに +1 段。保管量が増える代わりに掘り出しが発生する', lvLocked));
   body.append(row(`ビン容量 ${w.binCapacity} → ${w.binCapacity + 10}`, binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, '1 ビンに入る個数'));
-  const freeSlots = w.stacks.reduce((a, s) => a + Math.max(0, w.levels - s.bins.length), 0);
-  body.append(row('空ビン 1 個', BIN.emptyBinCost, () => buyEmptyBin(w), ctx, `空きのあるスタックの頂上に置く（空きスロット ${freeSlots}）`));
+  body.append(row('空ビン 1 個', BIN.emptyBinCost, () => buyEmptyBin(w), ctx, `空きのあるスタックの頂上に置く（買えるのはあと ${Math.max(0, freeBinSlots(w) - reservedSlots(w))} 個。掘り出し用に ${reservedSlots(w)} スロットは空けておく）`));
   body.append(row('面積拡張（+4 マス幅）', null, null, ctx, 'M7 の建設モードで行います', '建設'));
   body.append(el('p', { class: 'muted small', text: `スタック ${BUILD.stackCost}🪙 / ポート ${BUILD.portCost}🪙 / ステーション ${BUILD.pickStationCost}🪙 は「建設」で配置します` }));
 

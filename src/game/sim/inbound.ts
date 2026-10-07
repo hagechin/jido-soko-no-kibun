@@ -10,12 +10,20 @@ import type { Truck, WorldState } from './types';
 /** トラック到着までの遅れ（演出）★ */
 const TRUCK_DELAY_TICKS = 3 * TICKS_PER_SECOND;
 
-export function forecastRestock(w: WorldState): { item: string; qty: number }[] {
+export function stockOf(w: WorldState, item: string): number {
+  let n = 0;
+  for (const b of Object.values(w.bins)) if (b.item === item) n += b.qty;
+  return n;
+}
+
+/** 定期入荷の内容（§6.2）。在庫が十分ある商品は来ない。ignoreStock = true で事前入荷（サイバーウィーク）用 */
+export function forecastRestock(w: WorldState, ignoreStock = false): { item: string; qty: number }[] {
   const nextMonth = (w.calendar.month % 12) + 1;
   const out: { item: string; qty: number }[] = [];
   for (const item of availableItemIds(w)) {
+    if (!ignoreStock && stockOf(w, item) >= w.binCapacity * INBOUND_WORKER.skipRestockStockBins) continue;
     const shipped = w.stats.shippedLastWeek[item] ?? 0;
-    const forecast = demandFor(item, nextMonth) * INBOUND_WORKER.minRestockPerItem;
+    const forecast = demandFor(item, nextMonth) * INBOUND_WORKER.forecastBase;
     const qty = Math.round(Math.max(INBOUND_WORKER.minRestockPerItem, Math.min(INBOUND_WORKER.maxRestockPerItem, shipped * INBOUND_WORKER.restockFactor + forecast)));
     out.push({ item, qty });
   }
@@ -30,7 +38,10 @@ export function scheduleTruck(w: WorldState, pallets: { item: string; qty: numbe
 export function onNewWeek(w: WorldState): void {
   w.stats.shippedLastWeek = { ...w.stats.shippedThisWeek };
   w.stats.shippedThisWeek = {};
-  for (let i = 0; i < INBOUND_WORKER.trucksPerWeek; i++) scheduleTruck(w, forecastRestock(w));
+  for (let i = 0; i < INBOUND_WORKER.trucksPerWeek; i++) {
+    const pallets = forecastRestock(w);
+    if (pallets.length) scheduleTruck(w, pallets);
+  }
 }
 
 /** 毎 tick: 到着したトラックの荷を入荷口に積む */

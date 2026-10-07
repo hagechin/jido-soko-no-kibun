@@ -46,7 +46,7 @@ export function updateEvents(w: WorldState): void {
     w.season.cyberNoticeYear = w.calendar.year;
     w.events.push({ type: 'notice', text: `📣 サイバーウィークまで あと${weeks}週。大型トラックが順次到着します` });
     for (let i = 0; i < CYBER_WEEK_PRESTOCK.trucks; i++) {
-      const pallets = forecastRestock(w).map((p) => ({ item: p.item, qty: Math.round(p.qty * CYBER_WEEK_PRESTOCK.factor) }));
+      const pallets = forecastRestock(w, true).map((p) => ({ item: p.item, qty: Math.round(p.qty * CYBER_WEEK_PRESTOCK.factor) }));
       scheduleTruck(w, pallets, 'prestock', Math.round(((i + 0.3) * CALENDAR.ticksPerWeek) / CYBER_WEEK_PRESTOCK.trucks) + 1);
     }
   }

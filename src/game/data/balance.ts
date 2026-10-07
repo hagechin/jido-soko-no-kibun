@@ -174,10 +174,13 @@ export const INBOUND_WORKER = {
   stationCost: 250,
   /** 定期入荷: 週1回（§6.2） */
   trucksPerWeek: 1,
-  /** 入荷量 = 直近の出荷実績 × 係数 + 需要予測 */
-  restockFactor: 1.2,
-  minRestockPerItem: 4,
+  /** 入荷量 = 先週の出荷実績 × 係数 + 来月の需要係数 × forecastBase。在庫が十分ある商品は入荷しない */
+  restockFactor: 1.3,
+  forecastBase: 2,
+  minRestockPerItem: 2,
   maxRestockPerItem: 40,
+  /** この在庫数以上ある商品は定期入荷をスキップ（ビン容量の倍数） */
+  skipRestockStockBins: 2,
   /** 入荷口に積める山の上限（これを超えた分は数だけ表示して滞留）★ */
   dockDisplayMax: 6,
 };
@@ -191,28 +194,28 @@ export const ORDERS = {
   sheetRows: 6,
   maxLinesPerOrder: 24,
   /** 到着間隔（tick）。ランクごと */
-  intervalByRank: [sec(25), sec(20), sec(16), sec(12), sec(9)],
+  intervalByRank: [sec(25), sec(22), sec(19), sec(16), sec(13)],
   /** 商品種類数（ランクごと） */
   itemKindsByRank: [6, 10, 14, 19, 24],
-  /** 1オーダーの行数 min/max（ランクごと） */
+  /** 1オーダーの行数 min/max（ランクごと）。24 行はイベントの倍率で到達する */
   linesByRank: [
     [1, 3],
+    [1, 4],
     [2, 5],
     [3, 8],
-    [4, 14],
-    [6, 24],
+    [4, 12],
   ],
   /** 1行の数量 min/max（ランクごと） */
   qtyByRank: [
     [1, 2],
+    [1, 2],
     [1, 3],
     [1, 4],
     [1, 5],
-    [1, 6],
   ],
   /** キューがこの件数を超えると評判が下がり続ける */
   queuePenaltyThreshold: 10,
-  queuePenaltyIntervalTicks: sec(10),
+  queuePenaltyIntervalTicks: sec(20),
   /** 出荷までの時間がこれを超えると評判 -1 */
   latePenaltyTicks: sec(180),
   latePenaltyRep: 1,
@@ -233,7 +236,7 @@ export const REWARD = {
   repMultiplierMin: 0.6,
   repMultiplierMax: 1.4,
   /** 出荷 1件ごとの評判回復 */
-  repGainPerShipment: 0.5,
+  repGainPerShipment: 1.0,
 };
 
 export const REPUTATION = {

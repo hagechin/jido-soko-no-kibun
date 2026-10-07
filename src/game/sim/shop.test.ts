@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
-import { buyAmr, buyShelfRobot, upgradeSpeed } from './shop';
+import { buyAmr, buyEmptyBin, buyShelfRobot, freeBinSlots, upgradeLevels, upgradeSpeed } from './shop';
 import { ROBOT } from '../data/balance';
 
 describe('shop', () => {
@@ -26,5 +26,26 @@ describe('shop', () => {
     for (let i = 0; i < ROBOT.maxSpeedLevel; i++) expect(upgradeSpeed(w, r.id).ok).toBe(true);
     expect(upgradeSpeed(w, r.id).ok).toBe(false);
     expect(w.robots[1].speedLevel).toBe(0);
+  });
+});
+
+describe('empty bins never exceed stack slots', () => {
+  it('refuses to buy a bin into a slot that a bin in transit will need', () => {
+    const w = createWorld({ seed: 1 });
+    w.coins = 1e6;
+    expect(freeBinSlots(w)).toBe(0);
+    // ビンを 1 つ棚から出して運搬中にする
+    const s = w.stacks[0];
+    const id = s.bins.pop()!;
+    w.robots[0].carrying = [id];
+    expect(s.bins).toHaveLength(0);
+    expect(buyEmptyBin(w).ok).toBe(false);
+    upgradeLevels(w);
+    expect(freeBinSlots(w)).toBe(12);
+    expect(buyEmptyBin(w).ok).toBe(true);
+    expect(freeBinSlots(w)).toBe(11);
+    // 掘り出し用の空き（段数 2 + 棚ロボ 1 = 3 スロット）は残す
+    while (buyEmptyBin(w).ok) {}
+    expect(freeBinSlots(w)).toBe(3);
   });
 });

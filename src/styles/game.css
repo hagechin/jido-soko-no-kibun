@@ -918,3 +918,21 @@ body.is-calm .mini-hud {
   padding-left: 18px;
   line-height: 1.7;
 }
+
+/* ---------- 演出 ---------- */
+.fx-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.fx-pop {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 900;
+  font-size: 16px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  will-change: transform, opacity;
+}

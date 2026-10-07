@@ -28,6 +28,8 @@ import {
 } from 'three';
 import { RENDER, BIN, INBOUND_WORKER } from '../data/balance';
 import { itemDef } from '../data/items';
+import { ICONS, ICON_SIZE, PALETTE } from '../data/icons';
+import { Effects, groundColorForMonth } from './effects';
 import type { Robot, WorldState } from '../sim/types';
 import { BoxBatch, shade } from './voxel';
 import { CameraController } from './camera';
@@ -94,12 +96,17 @@ export class WarehouseRenderer {
   private gridLines: LineSegments | null = null;
   /** 建設モード: グリッド表示 */
   showGrid = false;
+  private iconBatch = new BoxBatch(1);
+  private groundMonth = 0;
+  readonly effects: Effects;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
     quality: QualitySettings,
+    fxOverlay: HTMLElement,
   ) {
     this.quality = quality;
+    this.effects = new Effects(canvas, fxOverlay);
     this.renderer = new WebGLRenderer({ canvas, antialias: quality.antialias, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(quality.pixelRatio);
     this.renderer.shadowMap.enabled = quality.shadows;
@@ -137,6 +144,7 @@ export class WarehouseRenderer {
 
     this.scene.add(this.staticGroup, this.dynamicGroup);
     this.dynamicGroup.add(this.highlightBatch.mesh);
+    for (const o of this.effects.objects) this.scene.add(o);
     this.resize();
   }
 
@@ -285,11 +293,14 @@ export class WarehouseRenderer {
     // 動的バッチの容量を確保
     this.binBatch.dispose();
     this.robotBatch.dispose();
+    this.iconBatch.dispose();
     const maxBins = w.stacks.length * Math.max(w.levels, 1) + 64 + INBOUND_WORKER.dockDisplayMax * w.inboundDock.length * 2;
     this.binBatch = new BoxBatch(maxBins, { castShadow: sh });
     this.robotBatch = new BoxBatch(w.robots.length * 12 + 64, { castShadow: sh });
+    this.iconBatch = new BoxBatch((w.stacks.length + w.ports.length * 8 + w.robots.length * 4) * ICON_VOXELS_MAX);
     this.dynamicGroup.clear();
-    this.dynamicGroup.add(this.binBatch.mesh, this.robotBatch.mesh, this.highlightBatch.mesh);
+    this.dynamicGroup.add(this.binBatch.mesh, this.robotBatch.mesh, this.iconBatch.mesh, this.highlightBatch.mesh);
+    this.effects.placeFixtures(w);
   }
 
   // ---------------------------------------------------------------- dynamic
@@ -307,6 +318,10 @@ export class WarehouseRenderer {
       this.lastTick = w.tick;
       this.drawBins(w);
     }
+    if (this.groundMonth !== w.calendar.month) {
+      this.groundMonth = w.calendar.month;
+      (this.ground.material as MeshLambertMaterial).color.set(groundColorForMonth(w.calendar.month));
+    }
     if (this.gridLines) this.gridLines.visible = this.showGrid;
     this.drawRobots(w, alpha);
     this.drawHighlights(w);
@@ -323,14 +338,28 @@ export class WarehouseRenderer {
     return itemDef(b.item).color;
   }
 
+  /** ビンの上に商品アイコンを押し出したボクセルを載せる（§10）。見える（頂上の）ビンだけ */
+  private drawIcon(w: WorldState, binId: number, cx: number, topY: number, cz: number, scale = 1): void {
+    const b = w.bins[binId];
+    if (!b?.item || b.qty <= 0) return;
+    const vox = iconVoxels(b.item);
+    const cell = (RENDER.binSize * 0.7 * scale) / ICON_RES;
+    const h = 0.06;
+    for (const v of vox) {
+      this.iconBatch.add(cx + (v.x - ICON_RES / 2 + 0.5) * cell, topY + h / 2, cz + (v.z - ICON_RES / 2 + 0.5) * cell, cell, h, cell, v.color);
+    }
+  }
+
   private drawBins(w: WorldState): void {
     const bh = RENDER.binHeight;
     const bs = RENDER.binSize;
     this.binBatch.begin();
+    this.iconBatch.begin();
     for (const s of w.stacks) {
       s.bins.forEach((id, level) => {
         this.binBatch.add(s.x + 0.5, RENDER.railBaseHeight + level * bh + bh / 2, s.z + 0.5, bs, bh * 0.92, bs, this.binColor(w, id));
       });
+      if (s.bins.length) this.drawIcon(w, s.bins[s.bins.length - 1], s.x + 0.5, RENDER.railBaseHeight + s.bins.length * bh - bh * 0.04, s.z + 0.5);
     }
     // 入荷口のパレット（商品の山）。表示は dockDisplayMax 個まで
     const docks = w.inboundDock;
@@ -347,8 +376,11 @@ export class WarehouseRenderer {
       // ポートのビンは床面近くに並べる（出庫側は前、返却側は後ろ）
       p.outbound.forEach((id, i) => this.binBatch.add(p.x + 0.5, 0.15 + i * bh * 0.5, p.z + 0.5, bs * 0.8, bh * 0.5, bs * 0.8, this.binColor(w, id)));
       p.returns.forEach((id, i) => this.binBatch.add(p.x + 0.5, 0.15 + (i + p.outbound.length) * bh * 0.5, p.z + 0.5, bs * 0.7, bh * 0.5, bs * 0.7, this.binColor(w, id)));
+      const top = p.returns.length ? p.returns[p.returns.length - 1] : p.outbound[p.outbound.length - 1];
+      if (top !== undefined) this.drawIcon(w, top, p.x + 0.5, 0.15 + (p.outbound.length + p.returns.length) * bh * 0.5 - bh * 0.25, p.z + 0.5, 0.8);
     }
     this.binBatch.end();
+    this.iconBatch.end();
   }
 
   private robotWorldPos(r: Robot, alpha: number, out: Vector3): void {
@@ -518,3 +550,33 @@ export class WarehouseRenderer {
 
 // 参照を保つ（tree-shaking で消えないように）
 void BoxGeometry;
+
+/** アイコンを 8×8 に落としたボクセル（商品ごとにキャッシュ） */
+const ICON_RES = 8;
+const ICON_VOXELS_MAX = ICON_RES * ICON_RES;
+const iconCache = new Map<string, { x: number; z: number; color: Color }[]>();
+function iconVoxels(item: string): { x: number; z: number; color: Color }[] {
+  const hit = iconCache.get(item);
+  if (hit) return hit;
+  const rows = ICONS[item];
+  const out: { x: number; z: number; color: Color }[] = [];
+  const step = ICON_SIZE / ICON_RES;
+  if (rows) {
+    for (let z = 0; z < ICON_RES; z++) {
+      for (let x = 0; x < ICON_RES; x++) {
+        // 2×2 ブロックの中で一番多い色（透明は数えない）
+        const counts = new Map<string, number>();
+        for (let dz = 0; dz < step; dz++) for (let dx = 0; dx < step; dx++) {
+          const ch = rows[z * step + dz][x * step + dx];
+          if (ch !== '.') counts.set(ch, (counts.get(ch) ?? 0) + 1);
+        }
+        let best: string | null = null;
+        let bn = 0;
+        for (const [ch, n] of counts) if (n > bn) { bn = n; best = ch; }
+        if (best && bn >= 2) out.push({ x, z, color: new Color(PALETTE[best] ?? '#f0f') });
+      }
+    }
+  }
+  iconCache.set(item, out);
+  return out;
+}

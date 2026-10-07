@@ -5,7 +5,8 @@
 import { PORT, ROBOT } from '../data/balance';
 import { manhattan } from './grid';
 import { visibleOrders } from './orders';
-import { atGoal, sameGoal } from './goals';
+import { atGoal, passableFor, sameGoal } from './goals';
+import { footprint, shapeFor, turnSweep } from './footprint';
 import { moveTicksFor } from './pathfinding';
 import type { Runtime } from './runtime';
 import type { AmrJob, Goal, Robot, RobotJob, ShelfJob, Stack, WorldState } from './types';
@@ -122,6 +123,16 @@ export function executeMovement(w: WorldState, rt: Runtime, r: Robot): void {
   if (!plan || !plan.length) return;
   const next = plan[0];
   if (next.start > w.tick) return;
+  // レイアウトが変わって通れなくなっていたら計画を捨てて引き直す
+  if (next.type !== 'wait') {
+    const pass = passableFor(w, r);
+    const cells = next.type === 'turn' ? turnSweep(next.from, next.to.dir) : footprint(next.to, shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel), []);
+    if (!cells.every((c) => pass(c.x, c.z))) {
+      rt.plans.delete(r.id);
+      rt.dirty = true;
+      return;
+    }
+  }
   plan.shift();
   const remaining = Math.max(1, next.end - w.tick);
   if (next.type === 'wait') {

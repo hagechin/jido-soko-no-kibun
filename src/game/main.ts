@@ -32,6 +32,8 @@ import { offlineReportNode } from './ui/offlineReport';
 import { CalmMode } from './ui/calmMode';
 import { AutoCamera } from './render/autoCamera';
 import { registerServiceWorker } from './ui/pwa';
+import { Sound } from './audio/sound';
+import { isCyberWeek } from './sim/events';
 import { exportSaveFile, importSaveFile } from './ui/storage';
 import type { QualityLevel } from './render/quality';
 
@@ -60,6 +62,7 @@ class Game {
   private quality: QualityLevel;
   private build: BuildUiState = { tool: 'stack', held: null };
   calm = new CalmMode();
+  sound = new Sound();
   private autoCam: AutoCamera;
   private lastRender = 0;
   private hiddenAt: number | null = null;
@@ -84,7 +87,15 @@ class Game {
     const canvas = $<HTMLCanvasElement>('game-canvas');
     const q = detectQuality();
     this.quality = q.level;
-    this.renderer = new WarehouseRenderer(canvas, q);
+    this.renderer = new WarehouseRenderer(canvas, q, $('fx-overlay'));
+    // 初回のタップで音声を有効化（スマホのブラウザ制限 §10）
+    const unlock = () => {
+      this.sound.unlock();
+      document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
+    };
+    document.addEventListener('pointerdown', unlock);
+    document.addEventListener('keydown', unlock);
     this.autoCam = new AutoCamera(this.renderer.controls);
     this.calm.onEnter = () => {
       this.bar.close();
@@ -142,7 +153,16 @@ class Game {
         lastSavedAt: this.lastSavedAt,
         exportSave: () => exportSaveFile(this.world),
         importSave: (file) => this.importSave(file),
-        extra: (body) => this.calm.renderSettings(body),
+        extra: (body) => {
+          body.append(el('h4', { text: 'サウンド' }));
+          const b = el('button', { class: `btn${this.sound.enabled ? ' is-active' : ''}`, type: 'button', text: this.sound.enabled ? '🔊 オン' : '🔇 オフ' });
+          b.addEventListener('click', () => {
+            this.sound.setEnabled(!this.sound.enabled);
+            this.bar.refresh();
+          });
+          body.append(el('div', { class: 'settings-row' }, b, el('span', { class: 'muted small', text: 'ロボの駆動音・ピック音・出荷音・BGM（すべて合成音）' })));
+          this.calm.renderSettings(body);
+        },
         saveNow: () => this.save(),
         newGame: () => this.newGame(),
         setQuality: (lv) => {
@@ -416,7 +436,16 @@ class Game {
     for (const e of events) {
       switch (e.type) {
         case 'shipped':
-          showToast(`📦 出荷！ +${e.coins} コイン${e.bonus > 1 ? `（×${e.bonus} ボーナス）` : ''}`);
+          this.renderer.effects.ship(this.world, e.stationId, e.coins, e.bonus);
+          this.sound.ship(e.bonus);
+          if (!this.calm.active) showToast(`📦 出荷！ +${e.coins} コイン${e.bonus > 1 ? `（×${e.bonus} ボーナス）` : ''}`);
+          break;
+        case 'pick':
+          this.renderer.effects.pickFlash(this.world, e.stationId);
+          this.sound.pick();
+          break;
+        case 'coinChange':
+          this.sound.coin();
           break;
         case 'repChange':
           if (e.delta < 0) showToast(`評判が下がった（${e.reason}）`);
@@ -425,10 +454,13 @@ class Game {
           showToast(e.text, 3500);
           break;
         case 'truckArrived':
+          this.renderer.effects.truckArrive(this.world);
+          this.sound.truck();
           if (this.bar.open === 'inventory') this.bar.refresh();
           break;
         case 'eventStart':
           showToast(e.banner, 4000);
+          this.sound.notice();
           break;
         case 'rankUp': {
           const list = el('ul');
@@ -472,6 +504,14 @@ class Game {
       }
       this.alpha = this.world.speed > 0 ? this.acc / TICK_MS : 0;
       this.calm.update(this.world, now);
+      // 演出・サウンドの毎フレーム更新
+      const fx = this.renderer.effects;
+      fx.setMonth(this.world.calendar.month);
+      const cyber = isCyberWeek(this.world);
+      fx.setCyber(cyber);
+      fx.update(this.world, Math.min(0.1, dt / 1000) * (this.world.speed === 0 ? 0.0001 : 1), this.renderer.camera, now);
+      this.sound.setTempo(this.calm.active ? 'calm' : cyber ? 'cyber' : 'normal');
+      this.sound.setActivity(this.world.speed === 0 ? 0 : this.world.robots.filter((r) => r.phase === 'moving').length);
       if (this.calm.active) {
         // 眺めモード: 描画を 30/15fps に落とす（§10.1）
         const minInterval = 1000 / this.calm.settings.fps;

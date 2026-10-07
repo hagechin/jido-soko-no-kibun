@@ -8,11 +8,13 @@
  *  在庫再配置AI: 暇なときに人気商品を上段へ
  * 手動指示（manual）が入っているロボには割り当てない。
  */
-import { AUTOMATION, PORT } from '../data/balance';
+import { AUTOMATION, PATHING, PORT } from '../data/balance';
 import { demandFor } from '../data/seasons';
-import { manhattan } from './grid';
+import { cellAt, isFloorWalkable, isRailWalkable, manhattan, neighbors4 } from './grid';
+import { rand } from './rng';
 import { visibleOrders } from './orders';
 import { nearestPort, setGoal } from './robots';
+import { goalTargetCells } from './goals';
 import type { Runtime } from './runtime';
 import type { Robot, Stack, WorldState } from './types';
 
@@ -61,16 +63,22 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
 
   // Lv2/3: オーダーに必要なビンを取り出す
   if (auto.dispatch >= 2) {
-    // 商品ごとの未ピック数と最古オーダーの到着時刻
-    const need = new Map<string, { qty: number; oldest: number; orders: number }>();
+    // 商品ごとの未ピック数と最古オーダーの到着時刻。在庫で完了できるオーダーを優先する（欠品待ちのオーダーのために走らない）
+    const inStock = new Set<string>();
+    for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) inStock.add(b.item);
+    const need = new Map<string, { qty: number; oldest: number; orders: number; completable: boolean }>();
     for (const o of visibleOrders(w)) {
+      const completable = o.lines.every((l) => l.picked >= l.qty || inStock.has(l.item));
       for (const l of o.lines) {
         const left = l.qty - l.picked;
         if (left <= 0) continue;
-        const e = need.get(l.item) ?? { qty: 0, oldest: o.arrivedTick, orders: 0 };
+        const e = need.get(l.item) ?? { qty: 0, oldest: o.arrivedTick, orders: 0, completable: false };
         e.qty += left;
         e.orders++;
-        e.oldest = Math.min(e.oldest, o.arrivedTick);
+        if (completable) {
+          e.oldest = e.completable ? Math.min(e.oldest, o.arrivedTick) : o.arrivedTick;
+          e.completable = true;
+        } else if (!e.completable) e.oldest = Math.min(e.oldest, o.arrivedTick);
         need.set(l.item, e);
       }
     }
@@ -84,6 +92,7 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
     }
     const candidates = [...need.entries()].filter(([, e]) => e.qty > 0);
     candidates.sort((a, b) => {
+      if (a[1].completable !== b[1].completable) return a[1].completable ? -1 : 1; // 完了できるオーダーの商品を先に
       if (auto.dispatch >= 3 && a[1].orders !== b[1].orders) return b[1].orders - a[1].orders; // バッチ: 複数オーダーに跨る商品を先に
       return a[1].oldest - b[1].oldest; // 古いオーダー優先
     });
@@ -167,6 +176,53 @@ export function findRelocation(w: WorldState, inFlight: Set<number>): { stack: S
   return best;
 }
 
+/** ポートに隣接しない、空いているスタックのうち一番近いもの */
+function freeParkingStack(w: WorldState, r: Robot): Stack | null {
+  let best: Stack | null = null;
+  let bd = Infinity;
+  for (const s of w.stacks) {
+    if (w.ports.some((p) => manhattan(p, s) === 1)) continue;
+    const occupied = w.robots.some((o) => o !== r && o.kind === 'shelf' && ((o.pose.x === s.x && o.pose.z === s.z) || (o.moveTo?.x === s.x && o.moveTo?.z === s.z) || (o.job?.type === 'park' && o.job.x === s.x && o.job.z === s.z)));
+    if (occupied) continue;
+    const d = manhattan(r.pose, s);
+    if (d < bd) {
+      bd = d;
+      best = s;
+    }
+  }
+  return best;
+}
+
+/** 詰まっているロボの近く（本人か目的地から 2 マス以内）で暇にしているロボを、離れたランダムなセルへ移動させる */
+function unblockStuck(w: WorldState, rt: Runtime): void {
+  for (const stuck of w.robots) {
+    if (!stuck.goal || stuck.stuckTicks < PATHING.stuckTicks || stuck.stuckTicks % PATHING.replanIntervalTicks !== 0) continue;
+    const targets = goalTargetCells(w, stuck.goal);
+    for (const o of w.robots) {
+      if (o === stuck || o.kind !== stuck.kind || o.job || o.queue.length || o.actRemaining > 0) continue;
+      const near = manhattan(o.pose, stuck.pose) <= 2 || targets.some((c) => manhattan(o.pose, c) <= 2);
+      if (!near) continue;
+      // 暇なロボをランダムな通行可能セル（今の場所から 2 マス以上離れた所）へ
+      const cells: { x: number; z: number }[] = [];
+      for (let z = 0; z < w.height; z++) {
+        for (let x = 0; x < w.width; x++) {
+          const k = cellAt(w, x, z);
+          const ok = o.kind === 'shelf' ? isRailWalkable(k) : isFloorWalkable(k);
+          if (!ok || manhattan({ x, z }, o.pose) < 2) continue;
+          if (w.ports.some((p) => manhattan(p, { x, z }) <= 1)) continue;
+          cells.push({ x, z });
+        }
+      }
+      if (!cells.length) continue;
+      const c = cells[Math.floor(rand(w.rng) * cells.length)];
+      o.job = { type: 'park', x: c.x, z: c.z, manual: false };
+      o.step = 0;
+      setGoal(rt, o, null);
+    }
+  }
+  void neighbors4;
+}
+
 // ------------------------------------------------------------------ 搬送ロボ
 function assignAmrJob(w: WorldState, r: Robot): boolean {
   if (w.automation.dispatch < 1) return false;
@@ -194,21 +250,16 @@ export function updateAutomation(w: WorldState, rt: Runtime): void {
       continue;
     }
     if (assignShelfJob(w, r)) continue;
-    if (w.ports.some((p) => p.x === r.pose.x && p.z === r.pose.z)) {
-      let best = null as { x: number; z: number } | null;
-      let bd = Infinity;
-      for (const s of w.stacks) {
-        const occupied = w.robots.some((o) => o !== r && o.kind === 'shelf' && ((o.pose.x === s.x && o.pose.z === s.z) || (o.moveTo?.x === s.x && o.moveTo?.z === s.z)));
-        if (occupied) continue;
-        const d = manhattan(r.pose, s);
-        if (d < bd) {
-          bd = d;
-          best = s;
-        }
-      }
+    // ポートの上や、ポートへの通り道（ポートに隣接するセル）で暇にしていると他のロボを塞ぐので退く
+    const onPort = w.ports.some((p) => p.x === r.pose.x && p.z === r.pose.z);
+    const nearPort = w.ports.some((p) => manhattan(p, r.pose) === 1);
+    if (onPort || nearPort) {
+      const best = freeParkingStack(w, r);
       if (best) r.job = { type: 'park', x: best.x, z: best.z, manual: false };
     }
   }
+
+
 
   // 搬送ロボ: AI の仕事 → 暇なら待機スポットへ
   const claimed = new Set<string>();
@@ -244,4 +295,6 @@ export function updateAutomation(w: WorldState, rt: Runtime): void {
     if (r.kind !== 'amr' || !idle(r)) continue;
     assignAmrJob(w, r);
   }
+  // 詰まっているロボがいたら、その近くで暇にしている同じ層のロボをどかす（§4.3 デッドロック解消）
+  unblockStuck(w, rt);
 }
