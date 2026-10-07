@@ -365,9 +365,23 @@ export class WarehouseRenderer {
     this.iconBatch.begin();
     for (const s of w.stacks) {
       s.bins.forEach((id, level) => {
-        this.binBatch.add(s.x + 0.5, RENDER.railBaseHeight + level * bh + bh / 2, s.z + 0.5, bs, bh * 0.92, bs, this.binColor(w, id));
+        const b = w.bins[id];
+        const empty = !b || b.item === null || b.qty <= 0;
+        // 空ビンは小さく描いて、下の在庫が見えるようにする
+        const size = empty ? bs * 0.55 : bs;
+        const h = empty ? bh * 0.5 : bh * 0.92;
+        this.binBatch.add(s.x + 0.5, RENDER.railBaseHeight + level * bh + (empty ? bh * 0.25 : bh / 2), s.z + 0.5, size, h, size, this.binColor(w, id));
       });
-      if (s.bins.length) this.drawIcon(w, s.bins[s.bins.length - 1], s.x + 0.5, RENDER.railBaseHeight + s.bins.length * bh - bh * 0.04, s.z + 0.5);
+      if (s.bins.length) {
+        const top = s.bins[s.bins.length - 1];
+        const topBin = w.bins[top];
+        if (topBin?.item && topBin.qty > 0) this.drawIcon(w, top, s.x + 0.5, RENDER.railBaseHeight + s.bins.length * bh - bh * 0.04, s.z + 0.5);
+        else {
+          // 頂上が空ビンなら、その下にある一番上の在庫のアイコンを小さく出す（見た目と在庫の差を減らす）
+          const stocked = [...s.bins].reverse().find((id) => w.bins[id]?.item && w.bins[id].qty > 0);
+          if (stocked !== undefined) this.drawIcon(w, stocked, s.x + 0.5, RENDER.railBaseHeight + s.bins.length * bh - bh * 0.45, s.z + 0.5, 0.6);
+        }
+      }
     }
     // 入荷口のパレット（商品の山）。表示は dockDisplayMax 個まで
     const docks = w.inboundDock;

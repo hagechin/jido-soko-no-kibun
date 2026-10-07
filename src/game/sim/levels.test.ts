@@ -214,3 +214,44 @@ describe('full port re-routing', () => {
 function require_build() {
   return { place: (w: WorldState, kind: 'port', x: number, z: number) => placeImpl(w, kind, x, z) };
 }
+
+describe('empty bins gather near the inbound station and never bury stock', () => {
+  it('an empty bin returned to the port is stored near the inbound station on a stack whose top is not stock', () => {
+    const w = createWorld({ seed: 14 });
+    w.coins = 1e6;
+    w.rank = 4;
+    w.nextOrderTick = 1e9;
+    upgradeLevels(w);
+    upgradeLevels(w);
+    const inbound = w.stations.find((s) => s.kind === 'inbound')!;
+    // 空ビンを 1 つポートの返却に置く
+    const empty = Object.values(w.bins).find((b) => b.item === null)!;
+    const from = w.stacks.find((s) => s.bins.includes(empty.id))!;
+    from.bins.splice(from.bins.indexOf(empty.id), 1);
+    w.ports[0].returns.push(empty.id);
+    const rt = createRuntime();
+    until(w, rt, () => w.stacks.some((s) => s.bins.includes(empty.id)), 1500);
+    const dest = w.stacks.find((s) => s.bins.includes(empty.id))!;
+    const below = dest.bins[dest.bins.indexOf(empty.id) - 1];
+    if (below !== undefined) expect(w.bins[below].item).toBeNull(); // 在庫の上には置かない
+    // 入荷ステーションに近いスタック群（距離 4 以内）に置かれる
+    expect(Math.abs(dest.x - inbound.x) + Math.abs(dest.z - inbound.z)).toBeLessThanOrEqual(5);
+  });
+
+  it('a stocked bin is not stored on top of an empty bin when another stack is available', () => {
+    const w = createWorld({ seed: 15 });
+    w.coins = 1e6;
+    w.rank = 4;
+    w.nextOrderTick = 1e9;
+    upgradeLevels(w);
+    const apple = Object.values(w.bins).find((b) => b.item === 'apple')!;
+    const from = w.stacks.find((s) => s.bins.includes(apple.id))!;
+    from.bins.splice(from.bins.indexOf(apple.id), 1);
+    w.ports[0].returns.push(apple.id);
+    const rt = createRuntime();
+    until(w, rt, () => w.stacks.some((s) => s.bins.includes(apple.id)), 1500);
+    const dest = w.stacks.find((s) => s.bins.includes(apple.id))!;
+    const below = dest.bins[dest.bins.indexOf(apple.id) - 1];
+    if (below !== undefined) expect(w.bins[below].item).not.toBeNull();
+  });
+});

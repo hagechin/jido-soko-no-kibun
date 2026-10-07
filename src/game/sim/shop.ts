@@ -170,7 +170,14 @@ export function reservedSlots(w: WorldState): number {
 /** 空ビンを買って、空きのあるスタックの頂上に置く（★）。掘り出し用の空きスロットは必ず残す（棚が満杯だと掘り出しが止まる） */
 export function buyEmptyBin(w: WorldState): ShopResult {
   if (freeBinSlots(w) <= reservedSlots(w)) return { ok: false, reason: `掘り出し用に空きスロットを ${reservedSlots(w)} 個残す必要があります。段数を増やすかスタックを置いてください` };
-  const stack = w.stacks.find((s) => s.bins.length < w.levels);
+  const inbound = w.stations.find((s) => s.kind === 'inbound') ?? w.stacks[0];
+  // 入荷ステーションに近く、頂上が在庫でないスタックへ
+  const candidates = w.stacks.filter((s) => s.bins.length < w.levels);
+  candidates.sort((a, b) => {
+    const topStocked = (s: typeof a) => (s.bins.length ? (w.bins[s.bins[s.bins.length - 1]]?.item ? 1 : 0) : 0);
+    return topStocked(a) - topStocked(b) || Math.abs(a.x - inbound.x) + Math.abs(a.z - inbound.z) - (Math.abs(b.x - inbound.x) + Math.abs(b.z - inbound.z));
+  });
+  const stack = candidates[0];
   if (!stack) return { ok: false, reason: '今は空いているスタックがありません（運搬中のビンが戻るまで待つ）' };
   const p = pay(w, BIN.emptyBinCost);
   if (!p.ok) return p;

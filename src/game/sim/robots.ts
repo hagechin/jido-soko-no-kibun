@@ -84,16 +84,29 @@ export function lockedStacks(w: WorldState): Set<number> {
 
 /**
  * ビンを置けるスタック（空きがあり、掘り出し中でない）を選ぶ。
- * 低いスタックを優先して高さを平準化し、同じ高さなら近い方（levelWeight で重み付け）
+ * 低いスタックを優先して高さを平準化し、同じ高さなら近い方（levelWeight で重み付け）。
+ * 置くビンが分かっていれば（binId）:
+ *  - 空ビンは入荷ステーションの近くに集め、在庫ビンの上には置かない（在庫が見えなくなる・掘り出しが増える）
+ *  - 在庫ビンは空ビンの上に置かない（空ビンが埋まって補充で掘ることになる）
  */
-export function pickStackWithRoom(w: WorldState, near: { x: number; z: number }, exclude?: number, levelWeight = ROBOT.storeLevelWeight): Stack | null {
+export function pickStackWithRoom(w: WorldState, near: { x: number; z: number }, exclude?: number, levelWeight = ROBOT.storeLevelWeight, binId?: number): Stack | null {
   const locked = lockedStacks(w);
+  const bin = binId !== undefined ? w.bins[binId] : undefined;
+  const isEmpty = bin ? bin.item === null || bin.qty <= 0 : null;
+  const inbound = isEmpty ? nearestStation(w, near.x, near.z, 'inbound') : null;
   let best: Stack | null = null;
   let bs = Infinity;
   for (const s of w.stacks) {
     if (s.id === exclude || locked.has(s.id)) continue;
     if (s.bins.length >= w.levels) continue;
-    const score = s.bins.length * levelWeight + manhattan(near, s);
+    let score = s.bins.length * levelWeight + manhattan(near, s);
+    if (isEmpty !== null && s.bins.length) {
+      const top = w.bins[s.bins[s.bins.length - 1]];
+      const topEmpty = !top || top.item === null || top.qty <= 0;
+      if (isEmpty && !topEmpty) score += ROBOT.burialPenalty; // 在庫の上に空ビンを置かない
+      if (!isEmpty && topEmpty) score += ROBOT.burialPenalty; // 空ビンを在庫で埋めない
+    }
+    if (isEmpty && inbound) score += manhattan(inbound, s) * ROBOT.emptyNearInboundWeight; // 空ビンは入荷の近くへ
     if (score < bs) {
       bs = score;
       best = s;
@@ -280,7 +293,7 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
         beginAction(r, 'lifting', lt, 10);
       } else {
         // 掘り出し: 退避先が必要
-        const temp = pickStackWithRoom(w, stack, stack.id, ROBOT.digLevelWeight);
+        const temp = pickStackWithRoom(w, stack, stack.id, ROBOT.digLevelWeight, stack.bins[stack.bins.length - 1]);
         if (!temp) return; // 空きが無い → 待つ
         r.digging = { targetStackId: stack.id, movedBins: r.digging?.movedBins ?? [], tempStackId: temp.id };
         beginAction(r, 'lifting', lt, 11);
@@ -310,7 +323,7 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
       const temp = w.stacks.find((s) => s.id === r.digging?.tempStackId);
       if (!temp || temp.bins.length >= w.levels) {
         // 退避先が埋まった → 別を探す
-        const alt = pickStackWithRoom(w, r.pose, stack.id, ROBOT.digLevelWeight);
+        const alt = pickStackWithRoom(w, r.pose, stack.id, ROBOT.digLevelWeight, r.carrying[0]);
         if (!alt) return;
         r.digging!.tempStackId = alt.id;
         setGoal(rt, r, { type: 'cell', x: alt.x, z: alt.z });
@@ -371,7 +384,7 @@ function shelfRelocate(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
       if (stack.bins[stack.bins.length - 1] === job.binId) return finishJob(w, rt, r);
       setGoal(rt, r, { type: 'cell', x: stack.x, z: stack.z });
       if (!atGoal(w, r)) return;
-      const temp = pickStackWithRoom(w, stack, stack.id, ROBOT.digLevelWeight);
+      const temp = pickStackWithRoom(w, stack, stack.id, ROBOT.digLevelWeight, stack.bins[stack.bins.length - 1]);
       if (!temp) return finishJob(w, rt, r);
       r.digging = { targetStackId: stack.id, movedBins: r.digging?.movedBins ?? [], tempStackId: temp.id };
       beginAction(r, 'lifting', lt, 11);
@@ -388,7 +401,7 @@ function shelfRelocate(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
     case 12: {
       let temp = w.stacks.find((s) => s.id === r.digging?.tempStackId) ?? null;
       if (!temp || temp.bins.length >= w.levels) {
-        temp = pickStackWithRoom(w, r.pose, stack.id, ROBOT.digLevelWeight);
+        temp = pickStackWithRoom(w, r.pose, stack.id, ROBOT.digLevelWeight, r.carrying[0]);
         if (!temp) return;
         r.digging!.tempStackId = temp.id;
       }
@@ -439,7 +452,7 @@ function shelfStore(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob,
     }
     case 2: {
       let stack = job.stackId !== null ? w.stacks.find((s) => s.id === job.stackId) ?? null : null;
-      if (!stack || stack.bins.length >= w.levels || lockedStacks(w).has(stack.id)) stack = pickStackWithRoom(w, r.pose);
+      if (!stack || stack.bins.length >= w.levels || lockedStacks(w).has(stack.id)) stack = pickStackWithRoom(w, r.pose, undefined, ROBOT.storeLevelWeight, r.carrying[0]);
       if (!stack) {
         setGoal(rt, r, null);
         return; // 置き場が無い → 持ったまま待つ
