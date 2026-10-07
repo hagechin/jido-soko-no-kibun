@@ -1,4 +1,5 @@
 /** 報酬・評判（§9.2 / §9.3） */
+import { difficultyOf } from './orders';
 import { REPUTATION, REWARD, TICKS_PER_SECOND } from '../data/balance';
 import { activeEvents } from '../data/seasons';
 import type { Order, WorldState } from './types';
@@ -41,7 +42,7 @@ export function rewardFor(w: WorldState, o: Order, eventMult = 1): RewardBreakdo
   const base = items * coinPerItem(w);
   const repMult = reputationMultiplier(w.reputation);
   const bonus = speedBonus(leadSeconds);
-  const total = Math.round(base * repMult * bonus * eventMult);
+  const total = Math.round(base * repMult * bonus * eventMult * difficultyOf(w).coinFactor);
   return { items, base, repMult, bonus, eventMult, total, leadSeconds };
 }
 

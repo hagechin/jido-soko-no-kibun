@@ -2,7 +2,7 @@
  * ゲーム状態の型。state は丸ごと JSON 化できること（§11.3）。
  * 描画や DOM に依存する値は入れない。
  */
-import type { CellKind } from '../data/balance';
+import type { CellKind, DifficultyId } from '../data/balance';
 import type { RngState } from './rng';
 
 export type { CellKind };
@@ -238,6 +238,8 @@ export interface WorldState {
   rng: RngState;
   tick: number;
   speed: number;
+  /** 難易度（受注まわりだけに効く。途中で変更できる） */
+  difficulty: DifficultyId;
   width: number;
   height: number;
   cells: CellKind[];

@@ -145,38 +145,52 @@ function placeStack(w: WorldState): boolean {
   return false;
 }
 
+interface RunResult { fullAt: number; earnedPer10: number[]; shipped: number; rep: number; queue: number; log: string[] }
+
+/** 自動プレイヤーで ticks ぶん遊ぶ */
+function run(difficulty: WorldState['difficulty'], ticks: number): RunResult {
+  const w = createWorld({ seed: 42 });
+  w.difficulty = difficulty;
+  const rt = createRuntime();
+  const events: string[] = [];
+  const log = (s: string) => events.push(`${(w.tick / 600).toFixed(1)}min ${s} (coins ${w.coins}, shipped ${w.stats.totalShipped}, rank ${w.rank + 1})`);
+  let lastRank = w.rank;
+  let fullAt = -1;
+  let coinsEarned = 0;
+  const earnedPer10: number[] = [];
+  for (let t = 0; t < ticks; t++) {
+    stepSim(w, rt);
+    for (const e of w.events) if (e.type === 'shipped') coinsEarned += e.coins;
+    w.events.length = 0;
+    if (w.tick % 20 === 0) manualPlay(w, rt);
+    if (w.tick % 50 === 0) shop(w, log);
+    if (w.rank !== lastRank) { lastRank = w.rank; log(`RANK UP → ${w.rank + 1}`); }
+    const a = w.automation;
+    if (fullAt < 0 && a.dispatch >= 3 && a.restock && a.relocate) { fullAt = w.tick; log('FULL AUTOMATION'); }
+    if (w.tick % 6000 === 0) { earnedPer10.push(coinsEarned); events.push(`${w.tick / 600}min: earned ${coinsEarned} shipped ${w.stats.totalShipped} rep ${w.reputation.toFixed(0)} rank ${w.rank + 1} robots ${w.robots.length} queue ${Math.max(0, w.orders.length - 5)}`); coinsEarned = 0; }
+  }
+  return { fullAt, earnedPer10, shipped: w.stats.totalShipped, rep: w.reputation, queue: Math.max(0, w.orders.length - 5), log: events };
+}
+
 describe('balance: a diligent player reaches full automation within a year and income keeps growing', () => {
-  it('autoplay for one year', () => {
-    const w = createWorld({ seed: 42 });
-    const rt = createRuntime();
-    const events: string[] = [];
-    const log = (s: string) => events.push(`${(w.tick / 600).toFixed(1)}min ${s} (coins ${w.coins}, shipped ${w.stats.totalShipped}, rank ${w.rank + 1})`);
-    let lastRank = w.rank;
-    let fullAt = -1;
-    const minutes: string[] = [];
-    let coinsEarned = 0;
-    const earnedPer10: number[] = [];
-    for (let t = 0; t < CALENDAR.ticksPerYear; t++) {
-      const before = w.coins;
-      stepSim(w, rt);
-      for (const e of w.events) if (e.type === 'shipped') coinsEarned += e.coins;
-      w.events.length = 0;
-      if (w.tick % 20 === 0) manualPlay(w, rt);
-      if (w.tick % 50 === 0) shop(w, log);
-      if (w.rank !== lastRank) { lastRank = w.rank; log(`RANK UP → ${w.rank + 1}`); }
-      const a = w.automation;
-      if (fullAt < 0 && a.dispatch >= 3 && a.restock && a.relocate) { fullAt = w.tick; log('FULL AUTOMATION'); }
-      if (w.tick % 6000 === 0) { earnedPer10.push(coinsEarned); minutes.push(`${w.tick / 600}min: earned ${coinsEarned} shipped ${w.stats.totalShipped} rep ${w.reputation.toFixed(0)} rank ${w.rank + 1} robots ${w.robots.length} queue ${Math.max(0, w.orders.length - 5)}`); coinsEarned = 0; }
-      void before;
-    }
-    console.log(events.join('\n'));
-    console.log(minutes.join('\n'));
-    console.log(`full automation at ${fullAt < 0 ? 'never' : (fullAt / 600).toFixed(1) + ' min'} (1 year = ${CALENDAR.ticksPerYear / 600} min)`);
-    expect(fullAt).toBeGreaterThan(0);
-    expect(fullAt).toBeLessThan(CALENDAR.ticksPerYear * 0.75); // 1 年の 3/4 以内（余裕を持って）
+  it('autoplay for one year (normal)', () => {
+    const r = run('normal', CALENDAR.ticksPerYear);
+    console.log(r.log.filter((l) => /min:|FULL|RANK/.test(l)).join('\n'));
+    console.log(`full automation at ${r.fullAt < 0 ? 'never' : (r.fullAt / 600).toFixed(1) + ' min'} (1 year = ${CALENDAR.ticksPerYear / 600} min)`);
+    expect(r.fullAt).toBeGreaterThan(0);
+    expect(r.fullAt).toBeLessThan(CALENDAR.ticksPerYear * 0.75); // 1 年の 3/4 以内（余裕を持って）
     // インフレ: 30〜40 分の収入は最初の 10 分の 3 倍以上、1 時間後も最初の 10 分の 3 倍以上
-    expect(earnedPer10[3]).toBeGreaterThan(earnedPer10[0] * 3);
-    expect(earnedPer10[6]).toBeGreaterThan(earnedPer10[0] * 3);
-    expect(w.reputation).toBeGreaterThan(30);
+    expect(r.earnedPer10[3]).toBeGreaterThan(r.earnedPer10[0] * 3);
+    expect(r.earnedPer10[6]).toBeGreaterThan(r.earnedPer10[0] * 3);
+    expect(r.rep).toBeGreaterThan(30);
+  });
+
+  it('difficulty bites: the same player under superhard ends with a worse reputation / longer queue than under easy', () => {
+    const ticks = 24000; // 40 分
+    const rows = (['easy', 'normal', 'hard', 'superhard'] as const).map((d) => ({ d, ...run(d, ticks) }));
+    for (const r of rows) console.log(`${r.d.padEnd(9)} full=${r.fullAt < 0 ? 'never' : (r.fullAt / 600).toFixed(1) + 'min'} shipped=${r.shipped} rep=${r.rep.toFixed(0)} queue=${r.queue} earned10=${r.earnedPer10.join('/')}`);
+    const easy = rows[0], superhard = rows[3];
+    expect(superhard.rep < easy.rep || superhard.queue > easy.queue).toBe(true);
+    for (const r of rows) expect(r.fullAt).toBeGreaterThan(0); // どの難易度でも 40 分以内に自動化はできる
   });
 });

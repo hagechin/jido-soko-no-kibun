@@ -35,6 +35,7 @@ export function createWorld(opts: WorldOptions = {}): WorldState {
     rng: createRng(opts.seed ?? 12345),
     tick: 0,
     speed: 1,
+    difficulty: 'normal',
     width,
     height,
     cells: new Array<CellKind>(width * height).fill('floor'),

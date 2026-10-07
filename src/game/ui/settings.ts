@@ -1,5 +1,6 @@
 /** 設定パネル: セーブ・新規開始・画質（書き出し／読み込みは M10、眺めモードの fps は M10） */
 import { saveQuality, settingsFor, type QualityLevel } from '../render/quality';
+import { DIFFICULTY, DIFFICULTY_ORDER, type DifficultyId } from '../data/balance';
 import { el, showToast } from './layout';
 
 export interface SettingsContext {
@@ -12,9 +13,28 @@ export interface SettingsContext {
   exportSave?: () => void;
   importSave?: (file: File) => void;
   lastSavedAt: number | null;
+  /** 難易度（受注まわりだけに効く。途中で変更できる） */
+  difficulty?: DifficultyId;
+  setDifficulty?: (d: DifficultyId) => void;
 }
 
 export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
+  if (ctx.setDifficulty) {
+    body.append(el('h4', { text: '難易度（いつでも変更できます）' }));
+    const cur = ctx.difficulty ?? 'normal';
+    const row = el('div', { class: 'settings-row' });
+    for (const id of DIFFICULTY_ORDER) {
+      const b = el('button', { class: `btn${cur === id ? ' is-active' : ''}`, type: 'button', text: DIFFICULTY[id].name });
+      b.addEventListener('click', () => {
+        ctx.setDifficulty!(id);
+        showToast(`難易度: ${DIFFICULTY[id].name}`);
+      });
+      row.append(b);
+    }
+    body.append(row);
+    body.append(el('p', { class: 'muted small', text: DIFFICULTY[cur].desc }));
+    body.append(el('p', { class: 'muted small', text: '変わるのは受注まわり（客の多さ・溜まったときの受注抑制・遅延の猶予とペナルティ・報酬倍率）だけ。倉庫やロボはそのまま' }));
+  }
   body.append(el('h4', { text: 'セーブ' }));
   const saveBtn = el('button', { class: 'btn', type: 'button', text: '💾 今すぐセーブ' });
   saveBtn.addEventListener('click', () => showToast(ctx.saveNow() ? 'セーブしました' : 'セーブできませんでした'));

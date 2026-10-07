@@ -1,5 +1,5 @@
 /** オーダー生成・表示・キュー（§2.4 / §9.1） */
-import { ORDERS, TICKS_PER_SECOND } from '../data/balance';
+import { DIFFICULTY, ORDERS, TICKS_PER_SECOND } from '../data/balance';
 import { ITEMS } from '../data/items';
 import { activeEvents, demandFor, type SeasonEvent } from '../data/seasons';
 import { changeReputation } from './economy';
@@ -18,9 +18,14 @@ export function currentEvents(w: WorldState): SeasonEvent[] {
 /** 現在の到着間隔（tick）。ランクとイベントで変わる */
 export function orderInterval(w: WorldState): number {
   const base = ORDERS.intervalByRank[Math.min(w.rank, ORDERS.intervalByRank.length - 1)];
-  let f = 1;
+  let f = difficultyOf(w).intervalFactor;
   for (const e of currentEvents(w)) f *= e.intervalFactor;
   return Math.max(TICKS_PER_SECOND, Math.round(base * f * reputationDemandFactor(w) * backpressureFactor(w)));
+}
+
+/** 難易度の設定（古いセーブや不正値はノーマル） */
+export function difficultyOf(w: WorldState) {
+  return DIFFICULTY[w.difficulty] ?? DIFFICULTY.normal;
 }
 
 /** 評判による客の増減（★）: 評判 100 で 0.7 倍の間隔（客が多い）、評判 0 で 1.3 倍、50 で 1 倍 */
@@ -32,7 +37,7 @@ export function reputationDemandFactor(w: WorldState): number {
 
 /** 受注の抑制（★）: キューが長いほど次のオーダーが来るまでの間隔が伸びる（1 = 抑制なし） */
 export function backpressureFactor(w: WorldState): number {
-  const bp = ORDERS.backpressure;
+  const bp = difficultyOf(w).backpressure;
   const over = Math.max(0, queuedCount(w) - bp.startAt);
   return Math.min(bp.maxFactor, 1 + over * bp.perOrder);
 }
@@ -43,8 +48,9 @@ export function lateClockStart(o: Order): number {
 }
 
 /** このオーダーが「遅れ」になるまでの猶予（tick）。行数が多いほど長い */
-export function lateLimitTicks(o: Order): number {
-  return ORDERS.latePenaltyTicks + ORDERS.latePenaltyPerLineTicks * o.lines.length;
+export function lateLimitTicks(o: Order, w?: WorldState): number {
+  const grace = w ? difficultyOf(w).lateGraceFactor : 1;
+  return Math.round((ORDERS.latePenaltyTicks + ORDERS.latePenaltyPerLineTicks * o.lines.length) * grace);
 }
 
 /** 商品の重み（季節需要 × イベント強調） */
@@ -107,12 +113,12 @@ export function updateOrders(w: WorldState): void {
   }
   for (const o of visibleOrders(w)) {
     if (o.shownTick === null) o.shownTick = w.tick;
-    if (!o.penalized && w.tick - lateClockStart(o) > lateLimitTicks(o)) {
+    if (!o.penalized && w.tick - lateClockStart(o) > lateLimitTicks(o, w)) {
       o.penalized = true;
-      changeReputation(w, -ORDERS.latePenaltyRep, '出荷が遅れた');
+      changeReputation(w, -difficultyOf(w).latePenaltyRep, '出荷が遅れた');
     }
   }
-  if (queuedCount(w) > ORDERS.queuePenaltyThreshold && w.tick % ORDERS.queuePenaltyIntervalTicks === 0) {
+  if (queuedCount(w) > difficultyOf(w).queuePenaltyThreshold && w.tick % ORDERS.queuePenaltyIntervalTicks === 0) {
     changeReputation(w, -1, 'オーダーが溜まりすぎ');
   }
   if (w.tick % ORDERS.unblockCheckTicks === 0) unblockVisible(w);

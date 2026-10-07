@@ -1,4 +1,4 @@
-import { RANKS } from '../data/balance';
+import { DIFFICULTY, RANKS } from '../data/balance';
 import { formatDate, SEASON_ICON } from '../sim/calendar';
 import { dockBacklog } from '../sim/inbound';
 import type { WorldState } from '../sim/types';
@@ -13,7 +13,7 @@ export class Hud {
   private dock = $('hud-dock');
   private dockN = this.dock.querySelector('b')!;
   private speedBtns = Array.from($('speed').querySelectorAll<HTMLButtonElement>('.speed-btn'));
-  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN };
+  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN, difficulty: '' };
 
   private cycleBtn = $('speed-cycle');
   private lastNonZeroSpeed = 1;
@@ -37,9 +37,12 @@ export class Hud {
       this.last.coins = w.coins;
       this.coins.textContent = Math.floor(w.coins).toLocaleString('ja-JP');
     }
-    if (this.last.rank !== w.rank) {
+    if (this.last.rank !== w.rank || this.last.difficulty !== w.difficulty) {
       this.last.rank = w.rank;
-      this.rank.textContent = RANKS[w.rank]?.name ?? '—';
+      this.last.difficulty = w.difficulty;
+      const d = DIFFICULTY[w.difficulty] ?? DIFFICULTY.normal;
+      this.rank.textContent = `${RANKS[w.rank]?.name ?? '—'}・${d.name}`;
+      this.rank.title = `難易度: ${d.name} — ${d.desc}（設定で変更できます）`;
     }
     const rep = Math.round(w.reputation);
     if (this.last.rep !== rep) {

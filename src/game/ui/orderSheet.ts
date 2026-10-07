@@ -90,7 +90,7 @@ export class OrderSheet {
 
   private updateTime(w: WorldState, o: Order, c: CardRefs): void {
     const sec = (w.tick - lateClockStart(o)) / TICKS_PER_SECOND;
-    const limit = lateLimitTicks(o) / TICKS_PER_SECOND;
+    const limit = lateLimitTicks(o, w) / TICKS_PER_SECOND;
     const pct = Math.min(100, (sec / limit) * 100);
     c.bar.style.width = `${pct}%`;
     let cls = 'tier-0';

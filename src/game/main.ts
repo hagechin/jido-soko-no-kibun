@@ -202,6 +202,11 @@ class Game {
     }
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {
+        difficulty: this.world.difficulty,
+        setDifficulty: (d) => {
+          this.world.difficulty = d;
+          this.bar.refresh();
+        },
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
         exportSave: () => exportSaveFile(this.world),
