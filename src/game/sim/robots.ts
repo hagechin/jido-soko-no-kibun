@@ -22,7 +22,8 @@ export function cargoCapacity(r: Robot): number {
 export function setGoal(rt: Runtime, r: Robot, goal: Goal | null): void {
   if (sameGoal(r.goal, goal)) return;
   r.goal = goal;
-  rt.dirty = true;
+  rt.needsPlan.add(r.id);
+  if (!goal) rt.plans.delete(r.id);
 }
 
 function beginAction(r: Robot, phase: Robot['phase'], ticks: number, step: number): void {
@@ -108,15 +109,17 @@ export function defaultPurpose(w: WorldState, bin: { item: string | null; qty: n
 export function executeMovement(w: WorldState, rt: Runtime, r: Robot): void {
   if (r.actRemaining > 0) {
     r.actRemaining--;
-    if (r.actRemaining === 0) {
-      if (r.phase === 'moving' || r.phase === 'turning') {
-        if (r.moveTo) r.pose = { ...r.moveTo };
-        r.moveTo = null;
-      }
-      if (r.phase === 'moving' || r.phase === 'turning' || r.phase === 'waiting') r.phase = 'idle';
-      // lifting / loading / working は job 側で phase を戻す
+    if (r.actRemaining > 0) return;
+    if (r.phase === 'moving' || r.phase === 'turning') {
+      if (r.moveTo) r.pose = { ...r.moveTo };
+      r.moveTo = null;
+      r.phase = 'idle';
+    } else if (r.phase === 'waiting') {
+      r.phase = 'idle';
+    } else {
+      return; // lifting / loading / working は job 側で phase を戻す
     }
-    return;
+    // 動作が終わった tick 内で次のステップを始める（予約した時刻どおりに動くため）
   }
   if (r.phase !== 'idle') return;
   const plan = rt.plans.get(r.id);
@@ -129,7 +132,7 @@ export function executeMovement(w: WorldState, rt: Runtime, r: Robot): void {
     const cells = next.type === 'turn' ? turnSweep(next.from, next.to.dir) : footprint(next.to, shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel), []);
     if (!cells.every((c) => pass(c.x, c.z))) {
       rt.plans.delete(r.id);
-      rt.dirty = true;
+      rt.needsPlan.add(r.id);
       return;
     }
   }

@@ -99,9 +99,10 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
     for (const [item] of candidates) {
       const options = stackedBinsOf(w, (b) => b.item === item && b.qty > 0).filter((o) => !inFlight.has(o.binId));
       if (!options.length) continue;
-      const port = nearestPort(w, options[0].stack.x, options[0].stack.z, (p) => outboundLoad(w, p.id) < PORT.outboundCapacity) ?? null;
-      if (!port) return false; // ポートが詰まっている
       const pick = options[0];
+      const station = w.stations.find((s) => s.kind === 'pick' && s.assignedItems.includes(item)) ?? w.stations.find((s) => s.kind === 'pick') ?? null;
+      const port = bestPort(w, pick.stack, station, (p) => outboundLoad(w, p.id) < PORT.outboundCapacity);
+      if (!port) return false; // ポートが詰まっている
       w.bins[pick.binId].purpose = 'pick';
       r.job = { type: 'retrieve', stackId: pick.stack.id, binId: pick.binId, portId: port.id, manual: false };
       r.step = 0;
@@ -130,8 +131,9 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
       if (!options.length) options = urgent ? partial() : empties();
       if (options.length) {
         const pick = options[0];
-        // ポートにはピッカー向けの出庫ぶんの空きを残す
-        const port = nearestPort(w, pick.stack.x, pick.stack.z, (p) => outboundLoad(w, p.id) <= PORT.outboundCapacity - AUTOMATION.restockPortHeadroom);
+        // ポートにはピッカー向けの出庫ぶんの空きを残す。入荷ステーションに近いポートを選ぶ
+        const inboundSt = w.stations.find((s) => s.kind === 'inbound') ?? null;
+        const port = bestPort(w, pick.stack, inboundSt, (p) => outboundLoad(w, p.id) <= PORT.outboundCapacity - AUTOMATION.restockPortHeadroom);
         if (port) {
           w.bins[pick.binId].purpose = 'inbound';
           r.job = { type: 'retrieve', stackId: pick.stack.id, binId: pick.binId, portId: port.id, manual: false };
@@ -143,7 +145,8 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
   }
 
   // 在庫再配置: 暇なときに人気商品を上へ
-  if (auto.relocate && w.levels >= 2 && w.tick - auto.lastRetrieveTick >= AUTOMATION.relocateIdleTicks) {
+  const relocating = w.robots.filter((o) => o.job?.type === 'relocate').length;
+  if (auto.relocate && w.levels >= 2 && relocating < AUTOMATION.maxRelocating && w.tick - auto.lastRetrieveTick >= AUTOMATION.relocateIdleTicks) {
     const target = findRelocation(w, inFlight);
     if (target) {
       r.job = { type: 'relocate', stackId: target.stack.id, binId: target.binId, manual: false };
@@ -177,6 +180,21 @@ export function findRelocation(w: WorldState, inFlight: Set<number>): { stack: S
       for (let j = i + 1; j < s.bins.length; j++) maxAbove = Math.max(maxAbove, popularity(w, w.bins[s.bins[j]]?.item ?? null));
       const gain = mine - maxAbove;
       if (gain > AUTOMATION.relocateMinGain && (!best || gain > best.gain)) best = { stack: s, binId: id, gain };
+    }
+  }
+  return best;
+}
+
+/** スタック→ポート→ステーションの合計距離が最短のポート（搬送ロボの往復を短くする） */
+function bestPort(w: WorldState, stack: { x: number; z: number }, station: { x: number; z: number } | null, ok: (p: WorldState['ports'][number]) => boolean) {
+  let best = null as WorldState['ports'][number] | null;
+  let bd = Infinity;
+  for (const p of w.ports) {
+    if (!ok(p)) continue;
+    const d = manhattan(stack, p) + (station ? manhattan(p, station) : 0);
+    if (d < bd) {
+      bd = d;
+      best = p;
     }
   }
   return best;
@@ -232,9 +250,10 @@ function unblockStuck(w: WorldState, rt: Runtime): void {
 // ------------------------------------------------------------------ 搬送ロボ
 function assignAmrJob(w: WorldState, r: Robot): boolean {
   if (w.automation.dispatch < 1) return false;
-  const targeted = new Set<number>();
-  for (const o of w.robots) for (const j of [o.job, ...o.queue]) if (j?.type === 'fetch') targeted.add(j.portId);
-  const port = nearestPort(w, r.pose.x, r.pose.z, (p) => p.outbound.length > 0 && !targeted.has(p.id));
+  // ポートごとに「向かっている搬送ロボの数」を数え、出庫ビンがそれより多いポートへ
+  const targeting = new Map<number, number>();
+  for (const o of w.robots) for (const j of [o.job, ...o.queue]) if (j?.type === 'fetch') targeting.set(j.portId, (targeting.get(j.portId) ?? 0) + 1);
+  const port = nearestPort(w, r.pose.x, r.pose.z, (p) => p.outbound.length > (targeting.get(p.id) ?? 0));
   if (!port) return false;
   r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false };
   r.step = 0;

@@ -33,6 +33,7 @@ import { CalmMode } from './ui/calmMode';
 import { AutoCamera } from './render/autoCamera';
 import { registerServiceWorker } from './ui/pwa';
 import { Sound } from './audio/sound';
+import { renderDebug } from './ui/debugPanel';
 import { isCyberWeek } from './sim/events';
 import { visibleOrders } from './sim/orders';
 import { exportSaveFile, importSaveFile } from './ui/storage';
@@ -60,6 +61,9 @@ class Game {
   private highlightTimer = 0;
   private infoSig = '';
   private lastStockoutHint = 0;
+  /** デバッグ: 計測 */
+  private debug = { enabled: false, showStats: false, simMs: 0, fps: 0, frames: 0, fpsAt: 0 };
+  private statsEl: HTMLElement | null = null;
   private lastSavedAt: number | null = null;
   private quality: QualityLevel;
   private build: BuildUiState = { tool: 'stack', held: null };
@@ -149,6 +153,26 @@ class Game {
         else this.rt.dirty = true; // レイアウトが変わったかもしれないので再計画
       }
     };
+    // デバッグ画面（?debug）
+    this.debug.enabled = /[?&]debug/.test(location.search);
+    if (this.debug.enabled) {
+      this.bar.addButton('debug', '🐞', 'デバッグ');
+      this.bar.registerPanel('debug', (body) =>
+        renderDebug(body, {
+          world: this.world,
+          loadWorld: (w) => this.loadWorld(w),
+          refresh: () => this.bar.refresh(),
+          stats: { simMs: this.debug.simMs, fps: this.debug.fps, robots: this.world.robots.length },
+          showStats: this.debug.showStats,
+          setShowStats: (on) => {
+            this.debug.showStats = on;
+            if (this.statsEl) this.statsEl.hidden = !on;
+          },
+        }),
+      );
+      this.statsEl = el('div', { class: 'debug-stats', hidden: true });
+      $('view').append(this.statsEl);
+    }
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {
         quality: this.quality,
@@ -246,12 +270,20 @@ class Game {
       showToast(`読み込めませんでした: ${res.reason}`);
       return;
     }
-    this.world = res.world;
+    this.loadWorld(res.world);
+    showToast('セーブデータを読み込みました');
+  }
+
+  /** 別の倉庫（プリセット・読み込んだセーブ）に差し替える */
+  loadWorld(w: WorldState): void {
+    this.world = w;
     this.rt = createRuntime();
+    this.focusItem = null;
+    this.renderer.highlightCells = [];
     this.select(null);
     this.bar.close();
+    this.catchUp = 0;
     this.save();
-    showToast('セーブデータを読み込みました');
   }
 
   save(): boolean {
@@ -506,9 +538,22 @@ class Game {
       if (document.hidden) return;
       this.acc += this.world.flags.buildMode ? 0 : dt * this.world.speed;
       let guard = 0;
+      const simStart = performance.now();
+      let ticks = 0;
       while (this.acc >= TICK_MS && guard++ < 40) {
         stepSim(this.world, this.rt);
         this.acc -= TICK_MS;
+        ticks++;
+      }
+      if (this.debug.enabled) {
+        if (ticks) this.debug.simMs = this.debug.simMs * 0.9 + ((performance.now() - simStart) / ticks) * 0.1;
+        this.debug.frames++;
+        if (now - this.debug.fpsAt >= 1000) {
+          this.debug.fps = (this.debug.frames * 1000) / (now - this.debug.fpsAt);
+          this.debug.frames = 0;
+          this.debug.fpsAt = now;
+          if (this.statsEl && this.debug.showStats) this.statsEl.textContent = `${this.debug.fps.toFixed(0)} fps / sim ${this.debug.simMs.toFixed(2)} ms/tick / ロボ ${this.world.robots.length} / ${this.world.width}×${this.world.height} / tick ${this.world.tick}`;
+        }
       }
       // 離席からの追いつき計算（1 フレームに少しずつ）
       if (this.catchUp >= 1 && !this.world.flags.buildMode) {

@@ -6,7 +6,8 @@
 import { PATHING, ROBOT } from '../data/balance';
 import { footprint, shapeFor } from './footprint';
 import { atGoal, makeGoalTest, passableFor } from './goals';
-import { findPath, moveTicksFor, reservePath, type PlanRequest } from './pathfinding';
+import { findPath, moveTicksFor, reservePath, type PlanRequest, type PlanStep } from './pathfinding';
+import type { ReservationTable } from './reservation';
 import { rand } from './rng';
 import type { Runtime } from './runtime';
 import type { Robot, Vec2, WorldState } from './types';
@@ -32,11 +33,120 @@ function wantsToMove(w: WorldState, r: Robot): boolean {
   return !!r.goal && !atGoal(w, r) && (r.phase === 'idle' || r.phase === 'moving' || r.phase === 'waiting' || r.phase === 'turning');
 }
 
+/**
+ * 毎 tick 呼ぶ。dirty なら丸ごと作り直し、そうでなければ
+ * 目標が変わった／計画が無い／詰まっているロボだけ引き直す（他ロボの予約はそのまま使う）。
+ */
+export function updatePlanning(w: WorldState, rt: Runtime): void {
+  if (rt.dirty) {
+    replanAll(w, rt);
+    return;
+  }
+  const now = w.tick;
+  if (now % PATHING.pruneIntervalTicks === 0) {
+    rt.floor.prune(now);
+    rt.rail.prune(now);
+  }
+  // 新しく現れたロボ（購入など）は現在位置を無期限予約しておく
+  for (const r of w.robots) {
+    if (rt.known.has(r.id)) continue;
+    rt.known.add(r.id);
+    reserveCells(rt, w, r, occupancyNow(r), now, Infinity);
+  }
+  const periodic = now - rt.lastPlanTick >= PATHING.replanIntervalTicks;
+  const movers = w.robots.filter((r) => {
+    if (!wantsToMove(w, r)) return false;
+    if (rt.needsPlan.has(r.id)) return true;
+    const plan = rt.plans.get(r.id);
+    if (!plan || !plan.length) return periodic; // 経路が無い（詰まり）→ 周期的に再試行
+    return false;
+  });
+  if (!movers.length) return;
+  if (periodic) rt.lastPlanTick = now;
+  sortMovers(movers);
+  for (const r of movers) planOne(w, rt, r);
+}
+
+function sortMovers(movers: Robot[]): void {
+  movers.sort((a, b) => {
+    if (b.stuckTicks !== a.stuckTicks) return b.stuckTicks - a.stuckTicks;
+    const am = a.job?.manual ? 1 : 0;
+    const bm = b.job?.manual ? 1 : 0;
+    if (am !== bm) return bm - am;
+    return a.id - b.id;
+  });
+}
+
+/** 計測用カウンタ */
+export const planStats = { calls: 0, found: 0, escapes: 0, ms: 0 };
+
+/** 1 台ぶんの経路を引き直す（自分の予約だけ消して、他ロボの予約を避ける） */
+function planOne(w: WorldState, rt: Runtime, r: Robot): void {
+  const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+  planStats.calls++;
+  const now = w.tick;
+  const table = layerOf(rt, r);
+  rt.needsPlan.delete(r.id);
+  rt.plans.delete(r.id);
+  if (r.phase === 'waiting') {
+    r.phase = 'idle';
+    r.actRemaining = 0;
+    r.actTotal = 0;
+  }
+  table.release(r.id);
+  const startTick = now + r.actRemaining;
+  const start = r.moveTo ?? r.pose;
+  if (r.actRemaining > 0) reserveCells(rt, w, r, occupancyNow(r), now, startTick);
+  const goal = r.goal!;
+  const { isGoal, cells } = makeGoalTest(w, r, goal);
+  const req: PlanRequest = {
+    robotId: r.id,
+    start,
+    startTick,
+    shape: shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel),
+    moveTicks: moveTicksFor(r.speedLevel),
+    turnTicks: ROBOT.turnTicks,
+    passable: passableFor(w, r),
+    isGoal,
+    goalCells: cells,
+    width: w.width,
+    table,
+    holdTicks: PATHING.dwellReserveTicks,
+  };
+  let path = findPath(req);
+  if (path) planStats.found++;
+  if (!path && r.stuckTicks >= PATHING.stuckTicks) {
+    path = findEscape(w, r, req);
+    if (path) planStats.escapes++;
+  }
+  // 無期限に居座るセル（到着後 or 動けない現在地）。そこを後で通る予定だった他ロボには経路を引き直させる
+  let foreverCells: Vec2[];
+  let foreverFrom: number;
+  if (path) {
+    reservePath(req, path, true);
+    rt.plans.set(r.id, path);
+    const last = path.length ? path[path.length - 1] : null;
+    foreverCells = footprint(last ? last.to : start, req.shape, []);
+    foreverFrom = last ? last.end : startTick;
+  } else {
+    foreverCells = footprint(start, req.shape, []);
+    foreverFrom = startTick;
+    reserveCells(rt, w, r, foreverCells, startTick, Infinity);
+  }
+  const others = new Set<number>();
+  for (const c of foreverCells) table.othersAfter(c.z * w.width + c.x, foreverFrom, r.id, others);
+  for (const id of others) rt.needsPlan.add(id);
+  if ((globalThis as { __planDebug?: (r: Robot, path: PlanStep[] | null, table: ReservationTable, now: number) => void }).__planDebug) (globalThis as { __planDebug?: (r: Robot, path: PlanStep[] | null, table: ReservationTable, now: number) => void }).__planDebug!(r, path, table, now);
+  if (t0) planStats.ms += performance.now() - t0;
+}
+
 export function replanAll(w: WorldState, rt: Runtime): void {
   const now = w.tick;
   rt.floor.clear();
   rt.rail.clear();
   rt.plans.clear();
+  rt.needsPlan.clear();
+  rt.known = new Set(w.robots.map((r) => r.id));
   rt.lastPlanTick = now;
   rt.dirty = false;
 
@@ -54,53 +164,8 @@ export function replanAll(w: WorldState, rt: Runtime): void {
 
   // 2. 動くロボを優先度順に計画
   const movers = w.robots.filter((r) => wantsToMove(w, r));
-  for (const r of movers) r.stuckTicks += 0; // no-op（型の都合）
-  movers.sort((a, b) => {
-    if (b.stuckTicks !== a.stuckTicks) return b.stuckTicks - a.stuckTicks;
-    const am = a.job?.manual ? 1 : 0;
-    const bm = b.job?.manual ? 1 : 0;
-    if (am !== bm) return bm - am;
-    return a.id - b.id;
-  });
-
-  for (const r of movers) {
-    const table = layerOf(rt, r);
-    table.release(r.id);
-    // 進行中の動作（移動・旋回）はそのまま完了させる
-    const startTick = now + r.actRemaining;
-    const start = r.moveTo ?? r.pose;
-    if (r.actRemaining > 0) reserveCells(rt, w, r, occupancyNow(r), now, startTick);
-
-    const goal = r.goal!;
-    const { isGoal, cells } = makeGoalTest(w, r, goal);
-    const req: PlanRequest = {
-      robotId: r.id,
-      start,
-      startTick,
-      shape: shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel),
-      moveTicks: moveTicksFor(r.speedLevel),
-      turnTicks: ROBOT.turnTicks,
-      passable: passableFor(w, r),
-      isGoal,
-      goalCells: cells,
-      width: w.width,
-      table,
-      holdTicks: PATHING.dwellReserveTicks,
-    };
-    let path = findPath(req);
-    if (!path && r.stuckTicks >= PATHING.stuckTicks) {
-      // 退避: 近くの空きセルへ逃げて膠着を崩す（§4.3 デッドロック検出）
-      path = findEscape(w, r, req);
-    }
-    if (path) {
-      reservePath(req, path, true);
-      rt.plans.set(r.id, path);
-    } else {
-      // 動けない: その場に留まる
-      const cells2 = footprint(start, req.shape, []);
-      reserveCells(rt, w, r, cells2, startTick, Infinity);
-    }
-  }
+  sortMovers(movers);
+  for (const r of movers) planOne(w, rt, r);
 }
 
 /** 半径内のランダムな通行可能セルへ逃げる経路 */
@@ -124,7 +189,7 @@ function findEscape(w: WorldState, r: Robot, req: PlanRequest): ReturnType<typeo
       ...req,
       isGoal: (p) => p.x === c.x && p.z === c.z,
       goalCells: [c],
-      holdTicks: 1,
+      holdTicks: PATHING.dwellReserveTicks,
       maxExpansions: 1500,
       horizon: 80,
     });

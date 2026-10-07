@@ -136,12 +136,17 @@ export const ROBOT = {
 
 /** 衝突回避（§4.3） */
 export const PATHING = {
-  /** 予約テーブルの再計画周期 */
+  /** 経路が無いロボの再試行周期 */
   replanIntervalTicks: 10,
+  /** 古い予約を捨てる周期 */
+  pruneIntervalTicks: 50,
   /** 空間時間 A* の探索上限（tick）。目的地までの距離に応じて自動で伸ばす */
   horizonTicks: 150,
-  /** A* 展開ノード上限 */
+  /** A* 展開ノード上限（グリッド幅の二乗 × expansionsPerCellSq と大きいほう） */
   maxExpansions: 2500,
+  expansionsPerCellSq: 4,
+  /** 探索の順位付けで待機に付けるペナルティ（tick 相当。動ける経路を先に試す） */
+  waitPenalty: 0.5,
   /** これ以上動けなければ「詰まり」とみなし優先度を上げて退避 */
   stuckTicks: sec(3),
   /** 退避先を探す BFS の最大距離 */
@@ -271,6 +276,8 @@ export const AUTOMATION = {
   relocateIdleTicks: sec(8),
   /** 再配置する最小の人気差 */
   relocateMinGain: 3,
+  /** 同時に再配置する棚ロボの台数 */
+  maxRelocating: 1,
   /** 自動補充で同時に入荷ステーションへ向かわせるビン数の上限（ピック待ちがあるときは 1） */
   maxInboundInFlight: 2,
   /** 自動補充がポートに残しておく出庫枠 */
