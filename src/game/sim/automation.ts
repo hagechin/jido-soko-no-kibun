@@ -49,7 +49,7 @@ function stackedBinsOf(w: WorldState, pred: (b: { item: string | null; qty: numb
   return out;
 }
 
-function outboundLoad(w: WorldState, portId: number): number {
+export function outboundLoad(w: WorldState, portId: number): number {
   const p = w.ports.find((p) => p.id === portId)!;
   let n = p.outbound.length;
   for (const r of w.robots) for (const j of [r.job, ...r.queue]) if (j?.type === 'retrieve' && j.portId === portId) n++;
@@ -186,15 +186,18 @@ export function findRelocation(w: WorldState, inFlight: Set<number>): { stack: S
   return best;
 }
 
-/** スタック→ポート→ステーションの合計距離が最短のポート（搬送ロボの往復を短くする） */
-function bestPort(w: WorldState, stack: { x: number; z: number }, station: { x: number; z: number } | null, ok: (p: WorldState['ports'][number]) => boolean) {
+/**
+ * 取り出し先のポート: 「待っているビンの少なさ」を最優先に全ポートへ分散し、次に近さ。
+ * ピッカーまでの距離は軽くしか見ない（最短にこだわると 1 つのポートに集中して詰まる）
+ */
+export function bestPort(w: WorldState, stack: { x: number; z: number }, station: { x: number; z: number } | null, ok: (p: WorldState['ports'][number]) => boolean) {
   let best = null as WorldState['ports'][number] | null;
-  let bd = Infinity;
+  let bs = Infinity;
   for (const p of w.ports) {
     if (p.closed || !ok(p)) continue;
-    const d = manhattan(stack, p) + (station ? manhattan(p, station) : 0);
-    if (d < bd) {
-      bd = d;
+    const score = outboundLoad(w, p.id) * PORT.loadWeight + manhattan(stack, p) + (station ? manhattan(p, station) * PORT.stationDistanceWeight : 0);
+    if (score < bs) {
+      bs = score;
       best = p;
     }
   }

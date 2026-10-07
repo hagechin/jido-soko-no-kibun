@@ -102,6 +102,22 @@ export function pickStackWithRoom(w: WorldState, near: { x: number; z: number },
   return best;
 }
 
+/** 待っているビンが少ないポート（同じなら近い方）。使用停止中は除く */
+export function leastLoadedPort(w: WorldState, near: { x: number; z: number }, filter?: (p: WorldState['ports'][number]) => boolean, load: (p: WorldState['ports'][number]) => number = (p) => p.outbound.length) {
+  let best = null as WorldState['ports'][number] | null;
+  let bs = Infinity;
+  for (const p of w.ports) {
+    if (p.closed) continue;
+    if (filter && !filter(p)) continue;
+    const score = load(p) * PORT.loadWeight + manhattan(near, p);
+    if (score < bs) {
+      bs = score;
+      best = p;
+    }
+  }
+  return best;
+}
+
 /** ビンの行き先ステーション（§7.1）: 入荷行きなら入荷ST、それ以外は担当ピッカー、担当が無ければ一番近いピッキングST */
 export function destinationOf(w: WorldState, r: Robot, binId: number): number | null {
   const b = w.bins[binId];
@@ -315,9 +331,19 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
       return;
     }
     case 20: {
+      if (port.outbound.length >= PORT.outboundCapacity || port.closed) {
+        // 満杯（または停止）なら、空いている別のポートへ回る。無ければその場で待つ
+        const alt = leastLoadedPort(w, r.pose, (p) => p.id !== port.id && p.outbound.length < PORT.outboundCapacity);
+        if (alt) {
+          job.portId = alt.id;
+          setGoal(rt, r, { type: 'cell', x: alt.x, z: alt.z });
+          return;
+        }
+        setGoal(rt, r, { type: 'cell', x: port.x, z: port.z });
+        return;
+      }
       setGoal(rt, r, { type: 'cell', x: port.x, z: port.z });
       if (!atGoal(w, r)) return;
-      if (port.outbound.length >= PORT.outboundCapacity) return; // 満杯 → 待つ
       beginAction(r, 'lifting', lt, 21);
       return;
     }
@@ -544,8 +570,8 @@ function amrDeliver(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, {
 function amrReturn(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { type: 'return' }>): void {
   if (!r.carrying.length) return finishJob(w, rt, r);
   let port = job.portId !== null ? w.ports.find((p) => p.id === job.portId) ?? null : null;
-  if (!port || port.returns.length >= PORT.returnCapacity) {
-    port = nearestPort(w, r.pose.x, r.pose.z, (p) => p.returns.length < PORT.returnCapacity) ?? nearestPort(w, r.pose.x, r.pose.z);
+  if (!port || port.returns.length >= PORT.returnCapacity || port.closed) {
+    port = leastLoadedPort(w, r.pose, (p) => p.returns.length < PORT.returnCapacity, (p) => p.returns.length) ?? nearestPort(w, r.pose.x, r.pose.z);
     if (!port) return finishJob(w, rt, r);
     job.portId = port.id;
   }

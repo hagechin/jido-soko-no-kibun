@@ -1,6 +1,6 @@
 /** 手動指示（§7.1 / §7.2）。1台につき最大3件まで予約 */
 import { ROBOT } from '../data/balance';
-import { nearestPort, setGoal } from './robots';
+import { leastLoadedPort, setGoal } from './robots';
 import type { Runtime } from './runtime';
 import type { Robot, RobotJob, WorldState } from './types';
 
@@ -38,7 +38,7 @@ export function commandRetrieve(w: WorldState, rt: Runtime, robotId: number, sta
   const stack = w.stacks.find((s) => s.id === stackId);
   if (!r || r.kind !== 'shelf') return { ok: false, reason: '棚ロボを選んでください' };
   if (!stack || !stack.bins.includes(binId)) return { ok: false, reason: 'そのビンは棚にありません' };
-  const port = nearestPort(w, stack.x, stack.z);
+  const port = leastLoadedPort(w, stack);
   if (!port) return { ok: false, reason: 'ポートがありません' };
   // 同じビンへの重複指示は無視
   const dup = [r.job, ...r.queue].some((j) => j?.type === 'retrieve' && j.binId === binId);

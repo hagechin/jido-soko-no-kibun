@@ -63,3 +63,36 @@ describe('presets', () => {
     for (const r of w.robots) expect(r.stuckTicks).toBeLessThan(300);
   });
 });
+
+describe('port load balancing (no pile-up at the port nearest the pickers)', () => {
+  it('medium preset: retrievals spread over both ports, AMRs stay busy, no stall over 10 minutes', () => {
+    const w = buildPreset('medium');
+    const rt = createRuntime();
+    const used = new Map<number, number>();
+    let idleSamples = 0;
+    let samples = 0;
+    let lastShipped = w.stats.totalShipped;
+    let maxGap = 0;
+    let gap = 0;
+    for (let t = 0; t < 6000; t++) {
+      stepSim(w, rt);
+      for (const r of w.robots) for (const j of [r.job]) if (j?.type === 'retrieve') used.set(j.portId, (used.get(j.portId) ?? 0) + 1);
+      if (t % 10 === 0) {
+        samples++;
+        const amrs = w.robots.filter((r) => r.kind === 'amr');
+        idleSamples += amrs.filter((r) => !r.job || r.job.type === 'park').length / amrs.length;
+      }
+      if (w.stats.totalShipped !== lastShipped) {
+        lastShipped = w.stats.totalShipped;
+        gap = 0;
+      } else gap++;
+      maxGap = Math.max(maxGap, gap);
+    }
+    const shipped = w.stats.totalShipped - 150;
+    console.log('medium: shipped', shipped, 'ports used', JSON.stringify([...used.entries()]), 'amr idle ratio', (idleSamples / samples).toFixed(2), 'max gap', maxGap);
+    expect(used.size).toBe(w.ports.length); // 両方のポートを使う
+    expect(shipped).toBeGreaterThan(20);
+    expect(maxGap).toBeLessThan(2400); // 4 分以上出荷が止まらない
+    for (const r of w.robots) expect(r.stuckTicks).toBeLessThan(300);
+  });
+});

@@ -4,6 +4,7 @@ import { createRuntime, stepSim } from './sim';
 import { commandRetrieve } from './commands';
 import { addRobot } from './world';
 import { lockedStacks, pickStackWithRoom } from './robots';
+import { place as placeImpl } from './build';
 import { upgradeLevels, upgradeBinCapacity, upgradeCargo } from './shop';
 import { deserialize, serialize } from './save';
 import { LEVELS, SAVE } from '../data/balance';
@@ -183,3 +184,33 @@ describe('stack locking while digging (§3.2 livelock fix)', () => {
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(2);
   });
 });
+
+describe('full port re-routing', () => {
+  it('a shelf robot arriving at a full port moves on to a port with room instead of waiting', () => {
+    const w = createWorld({ seed: 13 });
+    w.coins = 1e5;
+    w.nextOrderTick = 1e9;
+    const { place } = require_build();
+    expect(place(w, 'port', 7, 4)).toEqual({ ok: true });
+    const [p1, p2] = w.ports;
+    // p1 を満杯にする
+    const spare = Object.values(w.bins).filter((b) => b.item === null).slice(0, 4);
+    for (const b of spare) { const s = w.stacks.find((s) => s.bins.includes(b.id))!; s.bins.splice(s.bins.indexOf(b.id), 1); p1.outbound.push(b.id); }
+    const rt = createRuntime();
+    const shelf = w.robots.find((r) => r.kind === 'shelf')!;
+    const stack = w.stacks.find((s) => s.bins.some((id) => w.bins[id].item === 'apple'))!;
+    const apple = stack.bins.find((id) => w.bins[id].item === 'apple')!;
+    commandRetrieve(w, rt, shelf.id, stack.id, apple);
+    expect((shelf.job as { portId: number }).portId).toBe(p2.id); // 最初から空いている方へ
+    // 途中で p2 も満杯にして、p1 を空ける → 乗り換える
+    (shelf.job as { portId: number }).portId = p1.id;
+    until(w, rt, () => shelf.step === 20, 600);
+    p1.outbound.length = 4;
+    until(w, rt, () => p2.outbound.includes(apple), 1500);
+    expect(p2.outbound).toContain(apple);
+  });
+});
+
+function require_build() {
+  return { place: (w: WorldState, kind: 'port', x: number, z: number) => placeImpl(w, kind, x, z) };
+}
