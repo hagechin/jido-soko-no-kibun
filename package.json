@@ -1,0 +1,27 @@
+{
+  "name": "jido-soko-no-kibun",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "自動倉庫の気分 — 物流倉庫オートメーション・シミュレーション（ブラウザゲーム）",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "astro": "^7.3.6",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.3"
+  }
+}

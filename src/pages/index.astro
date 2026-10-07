@@ -1,0 +1,78 @@
+---
+// 1ページ構成。ゲーム本体は src/game/main.ts（クライアント側）で動く。
+import '../styles/game.css';
+---
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#1d2733" />
+    <meta name="description" content="自動倉庫の気分 — 物流倉庫を自動化して眺めるシミュレーションゲーム" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>自動倉庫の気分</title>
+  </head>
+  <body>
+    <div id="app" class="app">
+      <header id="hud" class="hud" aria-label="状況">
+        <div class="hud-group">
+          <span class="hud-item" id="hud-coins" title="コイン">🪙 <b>0</b></span>
+          <span class="hud-item rank-name" id="hud-rank" title="倉庫ランク">🏭 <b>—</b></span>
+          <span class="hud-item" id="hud-rep" title="評判">⭐ <b>0</b></span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-item" id="hud-date" title="日付">📅 <b>—</b></span>
+          <span class="hud-item" id="hud-season">🌸</span>
+        </div>
+        <div class="hud-group speed" id="speed" role="group" aria-label="速度">
+          <button class="btn speed-btn" data-speed="0" aria-label="一時停止">⏸</button>
+          <button class="btn speed-btn is-active" data-speed="1">1x</button>
+          <button class="btn speed-btn" data-speed="2">2x</button>
+          <button class="btn speed-btn" data-speed="4">4x</button>
+          <button class="btn speed-btn" id="speed-cycle" aria-label="速度を切り替え">1x</button>
+        </div>
+      </header>
+
+      <aside id="orders" class="orders" aria-label="オーダー">
+        <div class="orders-head">
+          <span>オーダー</span>
+          <span class="badge" id="orders-queue" hidden>+0</span>
+        </div>
+        <div class="orders-list" id="orders-list"></div>
+      </aside>
+
+      <main id="view" class="view">
+        <canvas id="game-canvas" class="game-canvas"></canvas>
+        <div class="view-overlay">
+          <button class="btn icon-btn" id="btn-camera-reset" title="カメラをリセット" aria-label="カメラをリセット">🎯</button>
+        </div>
+        <div class="banner" id="banner" hidden></div>
+        <div class="toasts" id="toasts" aria-live="polite"></div>
+      </main>
+
+      <nav id="bottombar" class="bottombar" aria-label="操作">
+        <div class="selected" id="selected-info"><span class="muted">ロボをタップして選択</span></div>
+        <div class="bottom-actions">
+          <button class="btn bar-btn" data-panel="build"><span class="ico">🧱</span><span class="lbl">建設</span></button>
+          <button class="btn bar-btn" data-panel="upgrades"><span class="ico">⬆️</span><span class="lbl">強化</span></button>
+          <button class="btn bar-btn" data-panel="inventory"><span class="ico">📦</span><span class="lbl">在庫</span></button>
+          <button class="btn bar-btn" data-panel="settings"><span class="ico">⚙️</span><span class="lbl">設定</span></button>
+          <button class="btn bar-btn" id="btn-calm"><span class="ico">🔥</span><span class="lbl">眺める</span></button>
+        </div>
+      </nav>
+
+      <div id="sheet" class="sheet" hidden>
+        <div class="sheet-head">
+          <span id="sheet-title">パネル</span>
+          <button class="btn icon-btn" id="sheet-close" aria-label="閉じる">✕</button>
+        </div>
+        <div class="sheet-body" id="sheet-body"></div>
+      </div>
+      <div id="popup" class="popup" hidden></div>
+    </div>
+    <script>
+      import '../game/main.ts';
+    </script>
+  </body>
+</html>
