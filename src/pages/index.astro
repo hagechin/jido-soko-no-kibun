@@ -69,6 +69,12 @@ import '../styles/game.css';
         <div class="sheet-body" id="sheet-body"></div>
       </div>
       <div id="popup" class="popup" hidden></div>
+      <div id="modal" class="modal" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true">
+          <div class="modal-head"><span id="modal-title">お知らせ</span><button class="btn icon-btn" id="modal-close" aria-label="閉じる">✕</button></div>
+          <div class="modal-body" id="modal-body"></div>
+        </div>
+      </div>
     </div>
     <script>
       import '../game/main.ts';

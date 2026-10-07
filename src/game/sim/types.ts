@@ -194,6 +194,25 @@ export interface CyberWeekRecord {
   coins: number;
 }
 
+/** 季節イベントの進行状態（§6.3 / §6.4） */
+export interface SeasonState {
+  /** 今アクティブなイベント ID */
+  active: string[];
+  /** サイバーウィークの予告・事前入荷を出した年 */
+  cyberNoticeYear: number;
+  /** サイバーウィーク中の集計 */
+  cyber: {
+    year: number;
+    startShipped: number;
+    startCoins: number;
+    startStockouts: number;
+    leadSum: number;
+    leadCount: number;
+  } | null;
+  /** 直近の成績表（UI が表示したら消す） */
+  pendingReport: CyberWeekRecord | null;
+}
+
 export interface Automation {
   dispatch: number; // 0-3
   restock: boolean;
@@ -228,6 +247,7 @@ export interface WorldState {
   rank: number;
   expansions: number;
   automation: Automation;
+  season: SeasonState;
   calendar: Calendar;
   stats: Stats;
   /** 直近のイベント（UI 通知用）。描画側が読んで消す */
@@ -245,4 +265,7 @@ export type SimEvent =
   | { type: 'truckArrived'; kind: 'inbound' | 'outbound' }
   | { type: 'rankUp'; rank: number }
   | { type: 'notice'; text: string }
+  | { type: 'eventStart'; id: string; banner: string }
+  | { type: 'eventEnd'; id: string }
+  | { type: 'cyberWeekReport'; record: CyberWeekRecord }
   | { type: 'pick'; stationId: number; item: string; count: number };

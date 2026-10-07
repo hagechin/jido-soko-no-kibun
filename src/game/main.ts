@@ -21,6 +21,7 @@ import { renderInventory } from './ui/inventory';
 import { renderSettings } from './ui/settings';
 import { renderBuild, type BuildUiState } from './ui/buildMode';
 import { renderStationPanel } from './ui/stationPanel';
+import { EventBanner, Modal, cyberReportNode } from './ui/eventBanner';
 import { expand, move as moveObject, place, remove } from './sim/build';
 import { clearStorage, loadFromStorage, saveToStorage } from './ui/storage';
 import { SAVE } from './data/balance';
@@ -36,6 +37,8 @@ class Game {
   bar: BottomBar;
   orders: OrderSheet;
   popup: Popup;
+  banner = new EventBanner();
+  modal = new Modal();
   private acc = 0;
   private last = performance.now();
   private raf = 0;
@@ -134,6 +137,11 @@ class Game {
     });
     this.renderer.resize();
     this.refreshSelectedInfo(true);
+    if (this.world.season.pendingReport) {
+      const rec = this.world.season.pendingReport;
+      this.modal.show('サイバーウィーク成績表', cyberReportNode(rec, this.world.stats.cyberWeekRecords));
+      this.world.season.pendingReport = null;
+    }
   }
 
   save(): boolean {
@@ -347,6 +355,13 @@ class Game {
         case 'truckArrived':
           if (this.bar.open === 'inventory') this.bar.refresh();
           break;
+        case 'eventStart':
+          showToast(e.banner, 4000);
+          break;
+        case 'cyberWeekReport':
+          this.modal.show('サイバーウィーク成績表', cyberReportNode(e.record, this.world.stats.cyberWeekRecords));
+          this.world.season.pendingReport = null;
+          break;
         default:
           break;
       }
@@ -372,6 +387,7 @@ class Game {
       }
       this.alpha = this.world.speed > 0 ? this.acc / TICK_MS : 0;
       this.hud.update(this.world);
+      this.banner.update(this.world);
       this.orders.update(this.world);
       this.refreshSelectedInfo();
       this.renderer.render(this.world, this.alpha);

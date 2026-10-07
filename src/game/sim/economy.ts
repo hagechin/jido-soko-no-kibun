@@ -65,6 +65,10 @@ export function shipOrder(w: WorldState, o: Order, stationId: number): void {
   changeReputation(w, REWARD.repGainPerShipment, '出荷');
   w.stats.totalShipped++;
   w.stats.recentShipments.push({ tick: w.tick, coins: r.total, items: r.items });
+  if (w.season.cyber) {
+    w.season.cyber.leadSum += r.leadSeconds;
+    w.season.cyber.leadCount++;
+  }
   while (w.stats.recentShipments.length > 200) w.stats.recentShipments.shift();
   for (const l of o.lines) {
     w.stats.shippedByItem[l.item] = (w.stats.shippedByItem[l.item] ?? 0) + l.qty;

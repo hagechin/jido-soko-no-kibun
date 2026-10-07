@@ -51,6 +51,7 @@ export function migrate(world: WorldState, _from: number): WorldState {
   const out = { ...fresh, ...world } as WorldState;
   out.stats = { ...fresh.stats, ...(world.stats ?? {}) };
   out.automation = { ...fresh.automation, ...(world.automation ?? {}) };
+  out.season = { ...fresh.season, ...(world.season ?? {}) };
   out.nextIds = { ...fresh.nextIds, ...(world.nextIds ?? {}) };
   out.trucks = world.trucks ?? [];
   out.pallets = world.pallets ?? [];

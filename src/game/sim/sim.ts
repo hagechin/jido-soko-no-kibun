@@ -6,6 +6,7 @@ import { PATHING } from '../data/balance';
 import { updateAutomation } from './automation';
 import { updateCalendar } from './calendar';
 import { onNewWeek, updateInbound } from './inbound';
+import { updateEvents } from './events';
 import { updateOrders } from './orders';
 import { updateStations } from './pickers';
 import { replanAll } from './planner';
@@ -19,6 +20,7 @@ export type { Runtime };
 export function stepSim(w: WorldState, rt: Runtime): void {
   w.tick++;
   const { newWeek } = updateCalendar(w);
+  if (newWeek || w.tick === 1) updateEvents(w);
   if (newWeek) onNewWeek(w);
   updateInbound(w);
   updateOrders(w);
