@@ -429,6 +429,11 @@ export const CAMERA = {
   initialAzimuth: -0.6,
   /** 全体表示のときの余白（1.0 でぴったり） */
   fitMargin: 0.95,
+  /** キーボード操作（眺めモード MANUAL）: 移動は距離 × この値 / 秒、回転・見下ろしは rad / 秒、ズームは倍率の対数 / 秒 */
+  keyPanSpeed: 0.8,
+  keyRotateSpeed: 1.0,
+  keyTiltSpeed: 0.8,
+  keyZoomSpeed: 0.9,
 };
 
 export const RENDER = {

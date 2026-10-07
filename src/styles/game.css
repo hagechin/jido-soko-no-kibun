@@ -1055,3 +1055,27 @@ body.is-calm .mini-hud {
   color: #ffd666;
   margin-top: 2px;
 }
+
+/* 眺めモードのミニ HUD: テキスト + AUTO/MANUAL + 終了 */
+.mini-hud {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+}
+body.is-calm .mini-hud {
+  display: flex;
+  pointer-events: none;
+}
+.mini-hud .mini-text {
+  display: inline-flex;
+  align-items: center;
+}
+.mini-hud .mini-btn {
+  pointer-events: auto;
+  min-height: var(--tap);
+  padding: 0 10px;
+  font-size: 12px;
+  gap: 4px;
+  border-radius: 999px;
+}

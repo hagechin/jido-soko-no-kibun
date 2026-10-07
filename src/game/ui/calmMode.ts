@@ -5,9 +5,13 @@ import { formatDate } from '../sim/calendar';
 import type { WorldState } from '../sim/types';
 import { $, el, showToast } from './layout';
 
+export type CalmCamera = 'auto' | 'manual';
+
 export interface CalmSettings {
   fps: number; // 30 | 15
   wakeLock: boolean;
+  /** AUTO: 自動カメラ / MANUAL: キーボード（WASD・矢印）とドラッグで視点を動かす */
+  camera: CalmCamera;
 }
 
 const KEY = 'jido-soko-no-kibun:calm';
@@ -17,12 +21,12 @@ export function loadCalmSettings(): CalmSettings {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const v = JSON.parse(raw) as Partial<CalmSettings>;
-      return { fps: v.fps === RENDER.calmFpsLow ? RENDER.calmFpsLow : RENDER.calmFps, wakeLock: !!v.wakeLock };
+      return { fps: v.fps === RENDER.calmFpsLow ? RENDER.calmFpsLow : RENDER.calmFps, wakeLock: !!v.wakeLock, camera: v.camera === 'manual' ? 'manual' : 'auto' };
     }
   } catch {
     /* ignore */
   }
-  return { fps: RENDER.calmFps, wakeLock: false };
+  return { fps: RENDER.calmFps, wakeLock: false, camera: 'auto' };
 }
 
 export function saveCalmSettings(s: CalmSettings): void {
@@ -41,8 +45,13 @@ export class CalmMode {
   private lastInteraction = performance.now();
   private suggested = false;
   private wakeLock: { release: () => Promise<void> } | null = null;
+  private miniText = el('span', { class: 'mini-text' });
+  private miniMode = el('button', { class: 'btn mini-btn', type: 'button', title: 'カメラ: AUTO（自動）／ MANUAL（WASD・矢印キー・ドラッグ）。M キーでも切替' });
+  private miniExit = el('button', { class: 'btn mini-btn', type: 'button', title: '眺めモードを終了（Esc）' }, icon('x', 14));
   onEnter: (() => void) | null = null;
   onExit: (() => void) | null = null;
+  /** カメラモードが変わったとき */
+  onCameraChange: ((mode: CalmCamera) => void) | null = null;
 
   constructor() {
     this.suggest.addEventListener('click', () => this.enter());
@@ -52,6 +61,35 @@ export class CalmMode {
       this.suggest.hidden = true;
     };
     for (const t of ['pointerdown', 'keydown', 'wheel'] as const) document.addEventListener(t, touch, { passive: true });
+    this.mini.replaceChildren(this.miniText, this.miniMode, this.miniExit);
+    this.miniMode.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.setCamera(this.settings.camera === 'auto' ? 'manual' : 'auto');
+    });
+    this.miniExit.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.exit();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (!this.active) return;
+      if (e.code === 'Escape') this.exit();
+      else if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) this.setCamera(this.settings.camera === 'auto' ? 'manual' : 'auto');
+    });
+    this.renderMiniMode();
+  }
+
+  /** カメラモードを切り替える（設定にも保存） */
+  setCamera(mode: CalmCamera): void {
+    if (this.settings.camera === mode) return;
+    this.settings.camera = mode;
+    saveCalmSettings(this.settings);
+    this.renderMiniMode();
+    this.onCameraChange?.(mode);
+    if (this.active) showToast(mode === 'manual' ? 'カメラ MANUAL: WASD・矢印で移動、Q/E 回転、R/F 角度、Z/X ズーム。ドラッグも可' : 'カメラ AUTO: 自動で見て回ります', 3000);
+  }
+
+  private renderMiniMode(): void {
+    this.miniMode.replaceChildren(icon(this.settings.camera === 'auto' ? 'refresh-cw' : 'move', 14), document.createTextNode(this.settings.camera === 'auto' ? ' AUTO' : ' MANUAL'));
   }
 
   enter(): void {
@@ -61,7 +99,7 @@ export class CalmMode {
     this.suggest.hidden = true;
     this.requestWakeLock();
     this.onEnter?.();
-    showToast('眺めモード。画面をタップで戻ります', 2500);
+    showToast(this.settings.camera === 'manual' ? '眺めモード（MANUAL）。WASD・矢印で視点移動、Esc か右下の × で戻ります' : '眺めモード。画面をタップで戻ります', 3000);
   }
 
   exit(): void {
@@ -78,7 +116,7 @@ export class CalmMode {
       const txt = `${formatDate(w.calendar)}　${Math.floor(w.coins).toLocaleString('ja-JP')}`;
       if (this.mini.dataset.txt !== txt) {
         this.mini.dataset.txt = txt;
-        this.mini.replaceChildren(el('span', { text: formatDate(w.calendar) + '　' }), icon('coins', 14), el('span', { text: ' ' + Math.floor(w.coins).toLocaleString('ja-JP') }));
+        this.miniText.replaceChildren(el('span', { text: formatDate(w.calendar) + '　' }), icon('coins', 14), el('span', { text: ' ' + Math.floor(w.coins).toLocaleString('ja-JP') + '　' }));
       }
       return;
     }
@@ -127,6 +165,17 @@ export class CalmMode {
     });
     row.append(wl);
     body.append(row);
+    const cam = el('div', { class: 'settings-row' });
+    for (const [mode, label] of [['auto', 'AUTO（自動カメラ）'], ['manual', 'MANUAL（キーボード）']] as [CalmCamera, string][]) {
+      const b = el('button', { class: `btn${this.settings.camera === mode ? ' is-active' : ''}`, type: 'button', text: label });
+      b.addEventListener('click', () => {
+        this.setCamera(mode);
+        this.renderSettingsInto(body);
+      });
+      cam.append(b);
+    }
+    body.append(cam);
+    body.append(el('p', { class: 'muted small', text: 'MANUAL: W/A/S/D・矢印キーで移動、Q/E で回転、R/F で見下ろし角、Z/X でズーム。ドラッグ・ホイールも使えます。眺めモード中は M キーで AUTO/MANUAL 切替、Esc で終了' }));
     body.append(el('p', { class: 'muted small', text: '眺めモード中は描画を落として省電力にします。90 秒操作が無いと提案が出ます。' }));
   }
 

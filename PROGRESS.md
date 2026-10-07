@@ -495,3 +495,15 @@ npm run preview   # http://localhost:4321 で確認
 - 季節アイコン: `SEASON_ICON` は絵文字から Lucide のアイコン名（1 月 sparkles、2 月 snowflake、3〜4 月 flower、5 月 leaf、6 月 umbrella、7 月 sun、8 月 thermometer-sun、9 月 leaf、10 月 ghost、11 月 wind、12 月 tree-pine）に
 - sim 側のお知らせ（`notice` イベント）に `icon` 種別（truck / party / alert / megaphone / bulb / package / info）を追加し、文中の絵文字は削除。UI がアイコンに変換する（sim は DOM を知らない）
 - 確認: ビルド後の DOM を PC／スマホ幅で走査して、HUD・下部バー・各パネルに絵文字のテキストが残っていないこと（0 件）、SVG アイコンが描かれていること（20 個）、コンソールエラー 0。商品アイコンは従来どおりドット絵（`icons.ts`）。`items.ts` の `emoji` フィールドは未使用のまま残してある
+
+---
+
+## 眺めモードのカメラ: AUTO / MANUAL（WASD・矢印キー）
+
+- 要望: 眺めモードで WASD と矢印キーで視点を変えたい。AUTO は今までの自動カメラ、MANUAL がキーボード操作
+- 実装:
+  - `KeyboardCamera`（render/keyboardCamera.ts）: 押している間だけ動く。W/A/S/D と矢印 = カメラの向き基準で前後左右に移動（速さは距離に比例）、Q/E = 回転、R/F = 見下ろし角、Z/X（+/−）= ズーム。入力欄にフォーカスがあるときや修飾キー付きは無視。定数は `CAMERA.key*`
+  - 眺めモードの設定に `camera: 'auto' | 'manual'` を追加（localStorage に保存）。ミニ HUD に「AUTO / MANUAL」ボタンと「×（終了）」を置いた（44px）。M キーで切替、Esc で終了
+  - AUTO: 従来どおり自動カメラ、画面タップで終了。MANUAL: 自動カメラを止め、キーボードに加えてドラッグ・ホイールも使える（タップ／ドラッグでは終了しない。ロボの選択もしない）。モードは眺めモード中に切り替えてもすぐ反映
+  - 設定パネルの「眺めモード」に AUTO / MANUAL の選択とキー一覧
+- 確認（ヘッドレスブラウザ）: 眺めモード突入 → M で MANUAL → D・↑・Q・Z を押すとターゲット・回転・距離が変わる → ドラッグしても眺めモードのまま → Esc で終了 → AUTO に戻してクリックで終了。コンソールエラー 0、テスト 114 件通過

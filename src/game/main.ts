@@ -38,6 +38,7 @@ import { applyOffline } from './sim/offline';
 import { offlineReportNode } from './ui/offlineReport';
 import { CalmMode } from './ui/calmMode';
 import { AutoCamera } from './render/autoCamera';
+import { KeyboardCamera } from './render/keyboardCamera';
 import { registerServiceWorker } from './ui/pwa';
 import { Sound } from './audio/sound';
 import { renderDebug } from './ui/debugPanel';
@@ -83,6 +84,7 @@ class Game {
   calm = new CalmMode();
   sound = new Sound();
   private autoCam: AutoCamera;
+  private keyCam: KeyboardCamera;
   private lastRender = 0;
   private hiddenAt: number | null = null;
   private catchUp = 0;
@@ -117,17 +119,28 @@ class Game {
     document.addEventListener('pointerdown', unlock);
     document.addEventListener('keydown', unlock);
     this.autoCam = new AutoCamera(this.renderer.controls);
+    this.keyCam = new KeyboardCamera(this.renderer.controls);
+    // 眺めモードのカメラ: AUTO は自動カメラ（タップで解除）、MANUAL はキーボードとドラッグ（Esc／× で解除）
+    const applyCalmCamera = () => {
+      const manual = this.calm.settings.camera === 'manual';
+      this.renderer.controls.enabled = manual;
+      this.keyCam.enabled = manual;
+      if (!manual) this.autoCam.start(this.world);
+    };
     this.calm.onEnter = () => {
       this.bar.close();
       this.popup.hide();
-      this.renderer.controls.enabled = false;
-      this.autoCam.start(this.world);
+      applyCalmCamera();
     };
     this.calm.onExit = () => {
       this.renderer.controls.enabled = true;
+      this.keyCam.enabled = false;
+    };
+    this.calm.onCameraChange = () => {
+      if (this.calm.active) applyCalmCamera();
     };
     this.renderer.controls.onInteract = () => {
-      if (this.calm.active) this.calm.exit();
+      if (this.calm.active && this.calm.settings.camera === 'auto') this.calm.exit();
     };
     this.hud = new Hud((s) => this.setSpeed(s));
     this.bar = new BottomBar();
@@ -187,6 +200,7 @@ class Game {
     };
     // デバッグ画面（?debug）
     this.debug.enabled = /[?&]debug/.test(location.search);
+    if (this.debug.enabled) (globalThis as unknown as { __game?: Game }).__game = this;
     if (this.debug.enabled) {
       this.bar.addButton('debug', 'bug', 'デバッグ');
       this.bar.registerPanel('debug', (body) =>
@@ -239,8 +253,10 @@ class Game {
 
     $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
     $('btn-calm').addEventListener('click', () => this.calm.enter());
-    $('mini-hud').addEventListener('click', () => this.calm.exit());
-    this.renderer.controls.onTap = (x, y) => this.onTap(x, y);
+    this.renderer.controls.onTap = (x, y) => {
+      if (this.calm.active) return; // MANUAL 中のタップは視点操作の一部。ロボは選ばない
+      this.onTap(x, y);
+    };
 
     window.addEventListener('resize', () => this.renderer.resize());
     // オートセーブ: 30 秒ごと＋タブを閉じる／隠すとき（§11.2）
@@ -641,7 +657,9 @@ class Game {
         // 眺めモード: 描画を 30/15fps に落とす（§10.1）
         const minInterval = 1000 / this.calm.settings.fps;
         if (now - this.lastRender < minInterval) return;
-        this.autoCam.update(this.world, Math.min(0.25, (now - this.lastRender) / 1000));
+        const cdt = Math.min(0.25, (now - this.lastRender) / 1000);
+        if (this.calm.settings.camera === 'manual') this.keyCam.update(cdt);
+        else this.autoCam.update(this.world, cdt);
         this.lastRender = now;
         this.renderer.render(this.world, this.alpha);
         return;
