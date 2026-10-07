@@ -84,7 +84,7 @@ export type ShelfJob =
 /** 搬送ロボの仕事 */
 export type AmrJob =
   /** staged: 混んでいるので待機スポットで順番待ち中 */
-  | { type: 'fetch'; portId: number; manual: boolean; stationId: number | null; staged?: boolean }
+  | { type: 'fetch'; portId: number; manual: boolean; stationId: number | null; staged?: boolean; only?: 'pick' | 'inbound' }
   /** done: この便で処理済みのビン。巡回して全部処理したら返却へ */
   | { type: 'deliver'; stationId: number; manual: boolean; done?: number[]; staged?: boolean }
   | { type: 'return'; portId: number | null; manual: boolean };

@@ -77,12 +77,88 @@ export function outboundLoad(w: WorldState, portId: number): number {
   return n;
 }
 
+// ------------------------------------------------------------------ 入荷作業の配分
+/** 倉庫の容量に対する在庫の割合（0〜1） */
+export function stockFill(w: WorldState): number {
+  const cap = w.stacks.length * w.levels * w.binCapacity;
+  if (!cap) return 0;
+  let qty = 0;
+  for (const b of Object.values(w.bins)) if (b.item) qty += b.qty;
+  return Math.min(1, qty / cap);
+}
+
+/** 入荷モード: 入荷口にビン 1 杯ぶん以上の山があり、在庫が薄い（容量比）か、滞留が棚の在庫より多い */
+export function restockMode(w: WorldState): boolean {
+  if (!w.pallets.length) return false;
+  const dock = w.pallets.reduce((a, p) => a + p.qty, 0);
+  if (dock < w.binCapacity) return false;
+  let stocked = 0;
+  for (const b of Object.values(w.bins)) if (b.item) stocked += b.qty;
+  return stockFill(w) < AUTOMATION.lowStockFill || dock > stocked;
+}
+
+/** 表示中のオーダーが待っている欠品商品が入荷口にある */
+export function urgentRestock(w: WorldState): boolean {
+  if (!w.pallets.length) return false;
+  const stockNow = new Set<string>();
+  for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) stockNow.add(b.item);
+  const palletItems = new Set(w.pallets.map((p) => p.item));
+  return visibleOrders(w).some((o) => o.lines.some((l) => l.picked < l.qty && !stockNow.has(l.item) && palletItems.has(l.item)));
+}
+
+/** 入荷作業に回す割合（優先設定 → 入荷モードで引き上げ）。入荷口に山が無ければ 0 */
+export function restockShare(w: WorldState): number {
+  if (!w.pallets.length) return 0;
+  const base = AUTOMATION.restockShareByPriority[w.automation.amrPriority] ?? AUTOMATION.restockShareByPriority.balanced;
+  return restockMode(w) ? Math.max(base, AUTOMATION.lowStockRestockShare) : base;
+}
+
+/** 入荷行きのビンを取り出し中（または予約中）の棚ロボの数。ポートや搬送ロボに渡った後のビンは数えない（そこはポートの枠で制御） */
+export function shelvesOnRestock(w: WorldState): number {
+  let n = 0;
+  for (const r of w.robots) {
+    if (r.kind !== 'shelf') continue;
+    if ([r.job, ...r.queue].some((j) => j?.type === 'retrieve' && w.bins[j.binId]?.purpose === 'inbound')) n++;
+  }
+  return n;
+}
+
+/** 棚ロボのうち入荷作業（入荷STへ向かうビンの取り出し）に充てる台数 */
+export function restockShelfCap(w: WorldState): number {
+  const shelves = w.robots.filter((o) => o.kind === 'shelf').length;
+  if (!w.pallets.length) return 0;
+  const stockNow = new Set<string>();
+  for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) stockNow.add(b.item);
+  const pickPending = visibleOrders(w).some((o) => o.lines.some((l) => l.picked < l.qty && stockNow.has(l.item)));
+  if (!pickPending) return shelves; // ピック待ちが無ければ全員で補充
+  // 入荷モードや欠品が入荷口にあるときは最低 1 台。それ以外は配分どおり（小さな倉庫では 0 台 = ピックの合間だけ補充）
+  const floor = restockMode(w) || urgentRestock(w) ? AUTOMATION.maxInboundInFlight : 0;
+  return Math.min(shelves, Math.max(floor, Math.round(shelves * restockShare(w))));
+}
+
+/** 搬送ロボのうち入荷ビンだけを運ぶ台数 */
+export function restockAmrCap(w: WorldState): number {
+  const amrs = w.robots.filter((o) => o.kind === 'amr').length;
+  if (!w.pallets.length) return 0;
+  return Math.min(amrs, Math.max(1, Math.round(amrs * restockShare(w))));
+}
+
 // ------------------------------------------------------------------ 棚ロボ
 function assignShelfJob(w: WorldState, r: Robot): boolean {
   const auto = w.automation;
   const inFlight = binsInFlight(w);
+  // 配分: 入荷モード（在庫が薄い）か欠品が入荷口にあるときは、枠（入荷行きのビンを取り出し中の棚ロボの数）が埋まるまで補充を先に。
+  // それ以外はピックを先に、空いた手で枠まで補充する
+  const restockFirst = auto.restock && w.pallets.length > 0 && (restockMode(w) || urgentRestock(w)) && shelvesOnRestock(w) < restockShelfCap(w);
+  if (restockFirst && assignRestock(w, r, inFlight)) return true;
+  if (assignPick(w, r, inFlight)) return true;
+  if (!restockFirst && auto.restock && assignRestock(w, r, inFlight)) return true;
+  return assignRelocate(w, r, inFlight);
+}
 
-  // Lv2/3: オーダーに必要なビンを取り出す
+/** Lv2/3: オーダーに必要なビンを取り出す */
+function assignPick(w: WorldState, r: Robot, inFlight: Set<number>): boolean {
+  const auto = w.automation;
   if (auto.dispatch >= 2) {
     // 商品ごとの未ピック数と最古オーダーの到着時刻。在庫で完了できるオーダーを優先する（欠品待ちのオーダーのために走らない）
     const inStock = new Set<string>();
@@ -132,16 +208,19 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
       return true;
     }
   }
+  return false;
+}
 
-  // 自動補充: 入荷口の山に合うビン（同じ商品で空きあり）か空ビンを入荷ステーションへ
+/** 自動補充: 入荷口の山に合うビン（同じ商品で空きあり）か空ビンを入荷ステーションへ。配分の枠（restockShelfCap）まで */
+function assignRestock(w: WorldState, r: Robot, inFlight: Set<number>): boolean {
+  const auto = w.automation;
   if (auto.restock && w.pallets.length) {
-    const inboundInFlight = [...inFlight].filter((id) => w.bins[id]?.purpose === 'inbound').length;
+    const inboundInFlight = shelvesOnRestock(w);
     const stockNow = new Set<string>();
     for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) stockNow.add(b.item);
     const pickPending = visibleOrders(w).some((o) => o.lines.some((l) => l.picked < l.qty && stockNow.has(l.item)));
-    // ピッカー向けの仕事があるときは棚ロボの 1/3 だけ補充に回す。無ければ暇な棚ロボ全員で補充する
-    const shelfCount = w.robots.filter((o) => o.kind === 'shelf').length;
-    const cap = pickPending ? Math.max(AUTOMATION.maxInboundInFlight, Math.ceil(shelfCount / 3)) : shelfCount;
+    const cap = restockShelfCap(w);
+    // ピック待ちがある間はポートの出庫枠をピック用に残す（入荷モードでも。ポートが入荷ビンで埋まるとピックが止まる）
     const headroom = pickPending ? AUTOMATION.restockPortHeadroom : 1;
     if (inboundInFlight < cap) {
       const palletItems = new Set(w.pallets.map((p) => p.item));
@@ -166,8 +245,12 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
       }
     }
   }
+  return false;
+}
 
-  // 在庫再配置: 暇なときに人気商品を上へ
+/** 在庫再配置: 暇なときに人気商品を上へ */
+function assignRelocate(w: WorldState, r: Robot, inFlight: Set<number>): boolean {
+  const auto = w.automation;
   const relocating = w.robots.filter((o) => o.job?.type === 'relocate').length;
   if (auto.relocate && w.levels >= 2 && relocating < AUTOMATION.maxRelocating && w.tick - auto.lastRetrieveTick >= AUTOMATION.relocateIdleTicks) {
     const target = findRelocation(w, inFlight);
@@ -277,15 +360,50 @@ function unblockStuck(w: WorldState, rt: Runtime): void {
 function assignAmrJob(w: WorldState, r: Robot): boolean {
   if (w.automation.dispatch < 1) return false;
   // ポートごとに「向かっている搬送ロボの数」を数え、出庫ビンがそれより多いポートへ。
-  // 優先設定（ピック／補充）があれば、その行き先のビンがあるポートを先に選ぶ
+  // 配分（restockAmrCap）のぶんは入荷ビンだけを運ぶ専任にし、残りはピックのビンを運ぶ。専任の枠が余っていればピック側も入荷ビンを運んでよい
   const targeting = new Map<number, number>();
-  for (const o of w.robots) for (const j of [o.job, ...o.queue]) if (j?.type === 'fetch') targeting.set(j.portId, (targeting.get(j.portId) ?? 0) + 1);
-  const pri = w.automation.amrPriority;
-  const hasPurpose = (p: WorldState['ports'][number], purpose: 'pick' | 'inbound') => p.outbound.some((id) => (w.bins[id]?.purpose === 'inbound' ? 'inbound' : 'pick') === purpose);
+  let inboundAmrs = 0;
+  for (const o of w.robots) {
+    if (o.kind !== 'amr') continue;
+    for (const j of [o.job, ...o.queue]) if (j?.type === 'fetch') targeting.set(j.portId, (targeting.get(j.portId) ?? 0) + 1);
+    const j = o.job;
+    const carriesInbound = o.carrying.some((id) => w.bins[id]?.purpose === 'inbound');
+    if ((j?.type === 'fetch' && j.only === 'inbound') || (j && j.type !== 'park' && carriesInbound)) inboundAmrs++;
+  }
+  const purposeOfBin = (id: number) => (w.bins[id]?.purpose === 'inbound' ? 'inbound' : 'pick');
+  const hasPurpose = (p: WorldState['ports'][number], purpose: 'pick' | 'inbound') => p.outbound.some((id) => purposeOfBin(id) === purpose);
   const avail = (p: WorldState['ports'][number]) => p.outbound.length > (targeting.get(p.id) ?? 0);
+  // 専任は入荷モード／欠品が入荷口にあるときだけ。普段は優先設定でポートを選ぶだけ（積む順も優先設定）
+  const dedicated = restockMode(w) || urgentRestock(w);
+  const cap = dedicated ? restockAmrCap(w) : 0;
+  if (dedicated && inboundAmrs < cap) {
+    const port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, 'inbound'), true);
+    if (port) {
+      r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false, only: 'inbound' };
+      r.step = 0;
+      return true;
+    }
+  }
+  const pri = w.automation.amrPriority;
   let port = null as WorldState['ports'][number] | null;
-  if (pri !== 'balanced') port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, pri === 'pick' ? 'pick' : 'inbound'), true);
-  if (!port) port = nearestPort(w, r.pose.x, r.pose.z, avail, true); // 停止中のポートの出庫ビンも運ぶ
+  if (dedicated) {
+    // ピック側: ピックのビンがあるポートを先に。入荷ビンは専任に任せる（専任が 0 台なら誰でも運ぶ）
+    port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, 'pick'), true);
+    if (port) {
+      r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false, only: cap > 0 ? 'pick' : undefined };
+      r.step = 0;
+      return true;
+    }
+    if (cap > 0) return false;
+  } else if (pri !== 'balanced') {
+    port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, pri === 'pick' ? 'pick' : 'inbound'), true);
+    if (port) {
+      r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false };
+      r.step = 0;
+      return true;
+    }
+  }
+  port = nearestPort(w, r.pose.x, r.pose.z, avail, true); // 停止中のポートの出庫ビンも運ぶ
   if (!port) return false;
   r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false };
   r.step = 0;
@@ -314,6 +432,7 @@ export function diagnoseIdle(w: WorldState): string[] {
   const idleShelf = w.robots.filter((r) => r.kind === 'shelf' && idle(r)).length;
   const idleAmr = w.robots.filter((r) => r.kind === 'amr' && idle(r)).length;
   out.push(`暇な棚ロボ ${idleShelf} 台 / 暇な搬送ロボ ${idleAmr} 台 / 配車AI Lv${auto.dispatch} / 補充AI ${auto.restock ? 'オン' : 'オフ'}`);
+  out.push(`入荷作業の配分: 在庫率 ${(stockFill(w) * 100).toFixed(0)}%${restockMode(w) ? '（入荷モード）' : ''} 棚ロボ ${restockShelfCap(w)} 台 / 搬送ロボ ${restockAmrCap(w)} 台（優先: ${auto.amrPriority}）`);
   // 動けていないロボと、同じマスに重なっているロボ（本来起きない。起きていれば自動で解消される）
   for (const r of w.robots) if (r.stuckTicks >= AUTOMATION.staleRetrieveTicks) out.push(`[!] ${r.name} が ${Math.round(r.stuckTicks / 10)} 秒動けていない: ${describeRobot(w, r)} @(${r.pose.x},${r.pose.z})${r.carrying.length ? `、持っているビン: ${r.carrying.map((id) => `${w.bins[id]?.item ?? '空'} ${w.bins[id]?.qty ?? 0} 個`).join('、')}` : ''}`);
   const at = new Map<string, Robot>();

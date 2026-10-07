@@ -5,7 +5,7 @@ import { buyAutomation, buyEmptyBin, upgradeLevels } from './shop';
 import { addPallet } from './inbound';
 import { checkRankUp } from './rank';
 import { RANKS } from '../data/balance';
-import { diagnoseIdle, findRelocation } from './automation';
+import { diagnoseIdle, findRelocation, restockMode, restockShelfCap, shelvesOnRestock } from './automation';
 import { buildPreset } from './presets';
 import { commandRetrieve } from './commands';
 import type { WorldState } from './types';
@@ -209,27 +209,37 @@ describe('mixed destinations at the port', () => {
     expect(w.bins[empty.id]).toMatchObject({ item: 'book', qty: 10 });
   });
 
-  it('restock AI leaves room at the port and runs one bin at a time while picks are pending', () => {
-    const w = createWorld({ seed: 22 });
-    const rt = createRuntime();
-    w.nextOrderTick = 1e9;
-    w.coins = 1e6;
-    w.rank = 1;
-    buyAutomation(w, 'dispatch');
-    buyAutomation(w, 'restock');
-    upgradeLevels(w);
-    for (let i = 0; i < 6; i++) buyEmptyBin(w);
-    addRobot(w, 'shelf', w.stacks[6].x, w.stacks[6].z);
-    addRobot(w, 'shelf', w.stacks[9].x, w.stacks[9].z);
-    for (const item of ['apple', 'book', 'mug']) addPallet(w, item, 10);
-    order(w, 1, [['apple', 1]]);
-    let maxInbound = 0;
-    for (let t = 0; t < 600; t++) {
-      stepSim(w, rt);
-      const n = Object.values(w.bins).filter((b) => b.purpose === 'inbound').length;
-      maxInbound = Math.max(maxInbound, n);
-    }
-    expect(maxInbound).toBeLessThanOrEqual(1);
+  it('restock AI keeps the number of inbound bins in flight within the allocation (1 of 3 shelf robots with ample stock, 2 of 3 in restock mode)', () => {
+    const run = (thin: boolean) => {
+      const w = createWorld({ seed: 22 });
+      const rt = createRuntime();
+      w.nextOrderTick = 1e9;
+      w.coins = 1e6;
+      w.rank = 1;
+      buyAutomation(w, 'dispatch');
+      buyAutomation(w, 'restock');
+      upgradeLevels(w);
+      for (let i = 0; i < 6; i++) buyEmptyBin(w);
+      addRobot(w, 'shelf', w.stacks[6].x, w.stacks[6].z);
+      addRobot(w, 'shelf', w.stacks[9].x, w.stacks[9].z);
+      if (!thin) for (const b of Object.values(w.bins)) if (b.item) b.qty = w.binCapacity; // 在庫たっぷり → 入荷モードにならない
+      for (const item of ['apple', 'book', 'mug']) addPallet(w, item, 10);
+      order(w, 1, [['apple', 1]]);
+      let maxInbound = 0;
+      let capMax = 0;
+      for (let t = 0; t < 600; t++) {
+        stepSim(w, rt);
+        const n = shelvesOnRestock(w);
+        maxInbound = Math.max(maxInbound, n);
+        capMax = Math.max(capMax, restockShelfCap(w));
+      }
+      return { maxInbound, capMax, mode: restockMode(w) };
+    };
+    const ample = run(false);
+    expect(ample.mode).toBe(false);
+    expect(ample.maxInbound).toBeLessThanOrEqual(ample.capMax); // ピック待ちがある間は 3 台中 1 台、無くなれば全員
+    const thin = run(true);
+    expect(thin.maxInbound).toBeLessThanOrEqual(thin.capMax);
   });
 
   it('when nothing is waiting for pickers, every idle shelf robot restocks and the backlog drains', () => {

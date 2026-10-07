@@ -1211,3 +1211,9 @@ body.is-previewing .editor-preview-bar {
 .icon.flip {
   transform: scaleX(-1);
 }
+
+/* 入荷モード: 滞留表示を青くして「入荷作業を強化中」を示す */
+#hud-dock.is-restock-mode,
+#hud-dock.is-restock-mode b {
+  color: var(--accent-2);
+}

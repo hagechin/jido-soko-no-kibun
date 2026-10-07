@@ -2,6 +2,7 @@ import { DIFFICULTY, RANKS } from '../data/balance';
 import { formatDate, SEASON_ICON } from '../sim/calendar';
 import { icon } from './icon';
 import { dockBacklog } from '../sim/inbound';
+import { restockMode } from '../sim/automation';
 import type { WorldState } from '../sim/types';
 import { $ } from './layout';
 
@@ -24,7 +25,7 @@ export class Hud {
   private dock = $('hud-dock');
   private dockN = this.dock.querySelector('b')!;
   private speedBtns = Array.from($('speed').querySelectorAll<HTMLButtonElement>('.speed-btn'));
-  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN, difficulty: '' };
+  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN, difficulty: '', restockMode: false };
 
   private cycleBtn = $('speed-cycle');
   private lastNonZeroSpeed = 1;
@@ -66,6 +67,12 @@ export class Hud {
       this.last.dock = dock;
       this.dock.hidden = dock === 0;
       this.dockN.textContent = String(dock);
+    }
+    const rm = restockMode(w);
+    if (this.last.restockMode !== rm) {
+      this.last.restockMode = rm;
+      this.dock.classList.toggle('is-restock-mode', rm);
+      this.dock.title = rm ? '入荷口に滞留している個数。入荷モード: 在庫が薄いのでロボの多くを入荷作業に回しています' : '入荷口に滞留している個数';
     }
     const d = formatDate(w.calendar);
     if (this.last.date !== d) {

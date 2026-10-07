@@ -603,9 +603,15 @@ function purposeOf(w: WorldState, binId: number): 'pick' | 'inbound' {
 /** 次にポートから積むビンの添字（行き先が違っても積み重ねて運び、巡回で届ける）。優先設定に合うものから */
 function nextLoadableBin(w: WorldState, r: Robot, port: WorldState['ports'][number]): number | null {
   if (!port.outbound.length) return null;
+  // 専任（fetch.only）は最初の 1 個を必ずその行き先のビンにする（無ければ積まない）。残りの積載は同じ行き先を優先しつつ他のビンでも埋める（巡回で届ける）
+  const only = r.job?.type === 'fetch' ? r.job.only : undefined;
+  if (only && !r.carrying.length) {
+    const idx = port.outbound.findIndex((id) => purposeOf(w, id) === only);
+    return idx >= 0 ? idx : null;
+  }
   const pri = w.automation.amrPriority;
-  if (pri !== 'balanced') {
-    const want = pri === 'pick' ? 'pick' : 'inbound';
+  const want = r.carrying.length ? purposeOf(w, r.carrying[0]) : pri === 'pick' ? 'pick' : pri === 'restock' ? 'inbound' : null;
+  if (want) {
     const idx = port.outbound.findIndex((id) => purposeOf(w, id) === want);
     if (idx >= 0) return idx;
   }
@@ -713,7 +719,7 @@ export function describeRobot(w: WorldState, r: Robot): string {
     case 'relocate':
       return '在庫を並べ替え中';
     case 'fetch':
-      return r.phase === 'loading' ? '積み込み中' : job.staged ? 'ポートの順番待ち' : 'ポートへ';
+      return r.phase === 'loading' ? '積み込み中' : job.staged ? 'ポートの順番待ち' : job.only === 'inbound' ? 'ポートへ（入荷専任）' : 'ポートへ';
     case 'deliver': {
       const left = unprocessedCargo(w, r).length;
       if (job.staged) return `ステーションの順番待ち（${left} ビン）`;
