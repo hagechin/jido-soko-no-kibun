@@ -22,6 +22,8 @@ export function forecastRestock(w: WorldState, ignoreStock = false): { item: str
   const out: { item: string; qty: number }[] = [];
   for (const item of availableItemIds(w)) {
     if (!ignoreStock && stockOf(w, item) >= w.binCapacity * INBOUND_WORKER.skipRestockStockBins) continue;
+    // 入荷口にまだ山が残っている商品は送らない（詰め込みが追いつかないのに際限なく積み上がるのを防ぐ）
+    if (!ignoreStock && (w.pallets.find((p) => p.item === item)?.qty ?? 0) >= w.binCapacity * INBOUND_WORKER.skipRestockDockBins) continue;
     const shipped = w.stats.shippedLastWeek[item] ?? 0;
     const forecast = demandFor(item, nextMonth) * INBOUND_WORKER.forecastBase;
     const qty = Math.round(Math.max(INBOUND_WORKER.minRestockPerItem, Math.min(INBOUND_WORKER.maxRestockPerItem, shipped * INBOUND_WORKER.restockFactor + forecast)));

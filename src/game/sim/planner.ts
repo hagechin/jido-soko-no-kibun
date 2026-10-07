@@ -67,8 +67,9 @@ export function updatePlanning(w: WorldState, rt: Runtime): void {
     if ((r.retreatUntil ?? 0) > now) return false; // 退避中: しばらくしてから再挑戦
     const plan = rt.plans.get(r.id);
     if (!plan || !plan.length) return periodic; // 経路が無い（詰まり）→ 周期的に再試行
-    // 窓付き計画の続き: 残りが少なくなったら先を引く（止まらずに進める）
-    if (plan.length <= PATHING.replanAheadSteps && !planReachesGoal(w, r, plan)) return true;
+    // 窓付き計画の続き: 残りが少なくなったら先を引く（止まらずに進める）。
+    // ただし引いたばかりの短い部分経路（待ち → 1 マス）は、実行する前に毎 tick 引き直すと永久に動けないので、少し寝かせる
+    if (plan.length <= PATHING.replanAheadSteps && !planReachesGoal(w, r, plan)) return now - (rt.planTick.get(r.id) ?? -Infinity) >= PATHING.replanIntervalTicks;
     return false;
   });
   if (!movers.length) return;
@@ -167,6 +168,7 @@ function planOne(w: WorldState, rt: Runtime, r: Robot): void {
   if (path) {
     reservePath(req, path, true);
     rt.plans.set(r.id, path);
+    rt.planTick.set(r.id, now);
     const last = path.length ? path[path.length - 1] : null;
     foreverCells = footprint(last ? last.to : start, req.shape, []);
     foreverFrom = last ? last.end : startTick;

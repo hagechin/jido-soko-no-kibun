@@ -30,6 +30,8 @@ export interface UpgradeContext {
   refresh: () => void;
   /** 自動化 AI の購入（M9 で実装） */
   buyAutomation?: (id: string) => ShopResult;
+  /** アドバイザーの提案（あれば見出しに出す） */
+  hint?: string | null;
 }
 
 function row(label: string, cost: number | null, onBuy: (() => ShopResult) | null, ctx: UpgradeContext, extra = '', lockedText?: string): HTMLElement {
@@ -48,6 +50,7 @@ function row(label: string, cost: number | null, onBuy: (() => ShopResult) | nul
 export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const w = ctx.world;
   const rank = RANKS[Math.min(w.rank, RANKS.length - 1)];
+  if (ctx.hint) body.append(el('p', { class: 'hint-box', text: `💡 おすすめ: ${ctx.hint}` }));
 
   body.append(el('h4', { text: '倉庫' }));
   const lvCost = levelUpgradeCost(w);

@@ -55,10 +55,19 @@ interface Node {
   h: number;
   parent: Node | null;
   step: PlanStep['type'];
+  /** 最後にゴールへ近づいた時刻（同コストなら早く進む経路を優先する） */
+  pt: number;
 }
 
+/**
+ * 順位: f → h → 進んだ時刻が早い方。
+ * 「待ってから進む」と「進んでから待つ」は同コストになるが、前者を選ぶと部分経路が待ちで始まり、
+ * 再計画のたびに待ちがリセットされて永久に動けないことがある
+ */
 function less(a: Node, b: Node): boolean {
-  return a.f < b.f || (a.f === b.f && a.h < b.h);
+  if (a.f !== b.f) return a.f < b.f;
+  if (a.h !== b.h) return a.h < b.h;
+  return a.pt < b.pt;
 }
 
 /** 簡易二分ヒープ */
@@ -228,7 +237,7 @@ function findPathInner(req: PlanRequest): PlanStep[] | null {
   const open = new Heap();
   const closed = new Set<number>();
   const h0s = heuristic(req, req.start);
-  const startNode: Node = { pose: req.start, t: req.startTick, g: 0, f: h0s, h: h0s, parent: null, step: 'wait' };
+  const startNode: Node = { pose: req.start, t: req.startTick, g: 0, f: h0s, h: h0s, parent: null, step: 'wait', pt: req.startTick };
   open.push(startNode);
   let expansions = 0;
   const is12 = req.shape.w === 1 && req.shape.l === 2;
@@ -366,7 +375,7 @@ function quickPath(req: PlanRequest): PlanStep[] | null {
   const open = new Heap();
   const closed = new Set<number>();
   const h0 = heuristic(req, req.start);
-  open.push({ pose: req.start, t: req.startTick, g: 0, f: h0, h: h0, parent: null, step: 'wait' });
+  open.push({ pose: req.start, t: req.startTick, g: 0, f: h0, h: h0, parent: null, step: 'wait', pt: req.startTick });
   let goal: Node | null = null;
   let guard = 0;
   const fp: Vec2[] = [];
@@ -388,7 +397,7 @@ function quickPath(req: PlanRequest): PlanStep[] | null {
       const t = n.t + req.moveTicks;
       const g = n.g + req.moveTicks;
       const h = heuristic(req, np);
-      open.push({ pose: np, t, g, f: g + h, h, parent: n, step: 'move' });
+      open.push({ pose: np, t, g, f: g + h, h, parent: n, step: 'move', pt: h < n.h ? t : n.pt });
     }
   }
   if (!goal) return null;
@@ -418,7 +427,7 @@ function push(open: Heap, parent: Node, pose: Pose, t: number, step: PlanStep['t
   let g = parent.g + (t - parent.t);
   if (step === 'wait') g += PATHING.waitPenalty;
   else if (step === 'move' && h > parent.h) g += req.moveTicks * PATHING.awayMovePenalty;
-  open.push({ pose, t, g, f: g + h, h, parent, step });
+  open.push({ pose, t, g, f: g + h, h, parent, step, pt: h < parent.h ? t : parent.pt });
 }
 
 function reconstruct(n: Node): PlanStep[] {

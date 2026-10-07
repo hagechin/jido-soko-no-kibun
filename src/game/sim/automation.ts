@@ -13,7 +13,7 @@ import { demandFor } from '../data/seasons';
 import { cellAt, isFloorWalkable, isRailWalkable, manhattan, neighbors4 } from './grid';
 import { rand } from './rng';
 import { visibleOrders } from './orders';
-import { describeRobot, finishJob, nearestPort, setGoal } from './robots';
+import { describeRobot, finishJob, nearestPort, portReachable, setGoal } from './robots';
 import { goalTargetCells } from './goals';
 import type { Runtime } from './runtime';
 import type { Robot, Stack, WorldState } from './types';
@@ -216,7 +216,7 @@ export function bestPort(w: WorldState, stack: { x: number; z: number }, station
   let best = null as WorldState['ports'][number] | null;
   let bs = Infinity;
   for (const p of w.ports) {
-    if (p.closed || !ok(p)) continue;
+    if (p.closed || !portReachable(w, p) || !ok(p)) continue;
     const score = outboundLoad(w, p.id) * PORT.loadWeight + manhattan(stack, p) + (station ? manhattan(p, station) * PORT.stationDistanceWeight : 0);
     if (score < bs) {
       bs = score;

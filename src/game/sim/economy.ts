@@ -30,10 +30,15 @@ export interface RewardBreakdown {
   leadSeconds: number;
 }
 
+/** 商品 1 個あたりの単価（ランクで上がる） */
+export function coinPerItem(w: WorldState): number {
+  return REWARD.coinPerItemByRank[Math.min(w.rank, REWARD.coinPerItemByRank.length - 1)];
+}
+
 export function rewardFor(w: WorldState, o: Order, eventMult = 1): RewardBreakdown {
   const items = orderItemCount(o);
   const leadSeconds = (w.tick - o.arrivedTick) / TICKS_PER_SECOND;
-  const base = items * REWARD.coinPerItem;
+  const base = items * coinPerItem(w);
   const repMult = reputationMultiplier(w.reputation);
   const bonus = speedBonus(leadSeconds);
   const total = Math.round(base * repMult * bonus * eventMult);

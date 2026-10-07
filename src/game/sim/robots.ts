@@ -42,11 +42,17 @@ export function finishJob(w: WorldState, rt: Runtime, r: Robot): void {
 }
 
 /** 条件に合う一番近いポート。既定では使用停止中のポートを除く（片付け目的なら includeClosed = true） */
+/** 搬送ロボが横付けできる（床に面している）ポートか。面していないポートにビンを置くと誰も取りに行けない */
+export function portReachable(w: WorldState, p: { x: number; z: number }): boolean {
+  return approachCells(w, p.x, p.z).length > 0;
+}
+
 export function nearestPort(w: WorldState, x: number, z: number, filter?: (p: WorldState['ports'][number]) => boolean, includeClosed = false) {
   let best = null as WorldState['ports'][number] | null;
   let bd = Infinity;
   for (const p of w.ports) {
     if (p.closed && !includeClosed) continue;
+    if (!portReachable(w, p)) continue;
     if (filter && !filter(p)) continue;
     const d = manhattan({ x, z }, p);
     if (d < bd) {
@@ -120,7 +126,7 @@ export function leastLoadedPort(w: WorldState, near: { x: number; z: number }, f
   let best = null as WorldState['ports'][number] | null;
   let bs = Infinity;
   for (const p of w.ports) {
-    if (p.closed) continue;
+    if (p.closed || !portReachable(w, p)) continue;
     if (filter && !filter(p)) continue;
     const score = load(p) * PORT.loadWeight + manhattan(near, p);
     if (score < bs) {

@@ -96,7 +96,7 @@ export const BIN = {
 export const LEVELS = {
   initial: 1,
   max: 8,
-  costs: [200, 500, 1200, 2500, 5000, 9000, 15000],
+  costs: [150, 400, 900, 1800, 3500, 6000, 10000],
 };
 
 /** 面積拡張費用（§9.4）。costs は「基準マス数ぶん」の費用で、実際は増えるマス数に比例する */
@@ -140,8 +140,8 @@ export const ROBOT = {
   cargoUpgradeCosts: [250, 700],
   speedUpgradeCosts: [150, 350, 800],
   liftUpgradeCosts: [150, 350, 800],
-  shelfRobotCost: 400,
-  amrCost: 300,
+  shelfRobotCost: 300,
+  amrCost: 250,
   /** 同時に存在できる台数の上限（描画負荷の安全弁） */
   maxShelfRobots: 40,
   maxAmrs: 60,
@@ -221,11 +221,13 @@ export const INBOUND_WORKER = {
   trucksPerWeek: 1,
   /** 入荷量 = 先週の出荷実績 × 係数 + 来月の需要係数 × forecastBase。在庫が十分ある商品は入荷しない */
   restockFactor: 1.3,
-  forecastBase: 2,
-  minRestockPerItem: 2,
+  forecastBase: 4,
+  minRestockPerItem: 6,
   maxRestockPerItem: 40,
   /** この在庫数以上ある商品は定期入荷をスキップ（ビン容量の倍数） */
   skipRestockStockBins: 2,
+  /** 入荷口の山がこれ以上残っている商品も定期入荷をスキップ（ビン容量の倍数） */
+  skipRestockDockBins: 1,
   /** 入荷口に積める山の上限（これを超えた分は数だけ表示して滞留）★ */
   dockDisplayMax: 6,
 };
@@ -240,6 +242,8 @@ export const ORDERS = {
   maxLinesPerOrder: 24,
   /** 到着間隔（tick）。ランクごと */
   intervalByRank: [sec(25), sec(22), sec(19), sec(16), sec(13)],
+  /** 評判が高いほど客が増える（間隔が短くなる）: 間隔 × (maxFactor − (maxFactor − minFactor) × 評判/100)。評判 50 で 1 倍（★） */
+  reputationDemand: { minFactor: 0.7, maxFactor: 1.3 },
   /** 商品種類数（ランクごと） */
   itemKindsByRank: [6, 10, 14, 19, 24],
   /** 1オーダーの行数 min/max（ランクごと）。24 行はイベントの倍率で到達する */
@@ -277,6 +281,9 @@ export const ORDERS = {
 };
 
 export const REWARD = {
+  /** 商品 1 個あたりのコイン。ランクが上がると取引先が大きくなり単価が上がる（★ インフレの軸） */
+  coinPerItemByRank: [10, 14, 19, 26, 36],
+  /** ランク 1 の単価（テスト・表示用の基準） */
   coinPerItem: 10,
   /** スピードボーナス（§9.2）: [上限秒, 倍率] */
   speedBonus: [
@@ -303,19 +310,24 @@ export const ECONOMY = {
 };
 
 /** 倉庫ランク（§9.3） */
+/**
+ * 昇格条件（出荷数・面積）と昇格ボーナス（★）。
+ * bonusCoins は昇格時にもらえるコイン。新しく解放された商品の数だけ空ビンも無料でもらえる（棚に空きがあれば）。
+ * 以前は 40 / 150 / 400 / 1000 件で、完全自動化まで 2 時間以上かかって苦行だった → 1 年（72 分）以内を目安に短縮
+ */
 export const RANKS = [
-  { name: '町の小さな倉庫', shipped: 0, area: 0, maxLevels: 2, maxExpansions: 0 },
-  { name: '地域の倉庫', shipped: 40, area: 0, maxLevels: 3, maxExpansions: 1 },
-  { name: '配送センター', shipped: 150, area: 16 * 12 + 4 * 12, maxLevels: 5, maxExpansions: 3 },
-  { name: '物流センター', shipped: 400, area: 16 * 12 + 8 * 12, maxLevels: 7, maxExpansions: 5 },
-  { name: 'メガDC', shipped: 1000, area: 16 * 12 + 12 * 12, maxLevels: 8, maxExpansions: 99 },
+  { name: '町の小さな倉庫', shipped: 0, area: 0, maxLevels: 2, maxExpansions: 0, bonusCoins: 0 },
+  { name: '地域の倉庫', shipped: 20, area: 0, maxLevels: 3, maxExpansions: 1, bonusCoins: 300 },
+  { name: '配送センター', shipped: 80, area: 16 * 12 + 4 * 12, maxLevels: 5, maxExpansions: 3, bonusCoins: 800 },
+  { name: '物流センター', shipped: 250, area: 16 * 12 + 8 * 12, maxLevels: 7, maxExpansions: 5, bonusCoins: 2000 },
+  { name: 'メガDC', shipped: 700, area: 16 * 12 + 12 * 12, maxLevels: 8, maxExpansions: 99, bonusCoins: 5000 },
 ] as const;
 
 /** 自動化AI（§7.3 / §9.4） */
 export const AUTOMATION = {
-  dispatchCosts: [500, 1500, 4000],
-  restockCost: 1200,
-  relocateCost: 2500,
+  dispatchCosts: [250, 600, 2000],
+  restockCost: 800,
+  relocateCost: 1500,
   /** 自動化のアンロックランク（0始まり） */
   unlockRank: { dispatch1: 0, dispatch2: 1, dispatch3: 2, restock: 1, relocate: 2 },
   /** 在庫再配置AIが動く「暇」判定の tick */
@@ -334,6 +346,23 @@ export const AUTOMATION = {
   preferEmptyBacklogBins: 2,
   /** 自動補充がポートに残しておく出庫枠 */
   restockPortHeadroom: 2,
+};
+
+/** アドバイザー（★）: ボトルネック判定のしきい値。サンプルは 1 秒ごと、直近 1 分程度の移動平均 */
+export const ADVISOR = {
+  smoothing: 1 / 60,
+  /** 提案を出し始めるまでのサンプル数（開始直後のノイズを避ける） */
+  minSamples: 45,
+  /** 全ポートの出庫枠が満杯だった時間の割合がこれ以上なら「ポート増設」 */
+  portsFullRatio: 0.4,
+  pickersBusyRatio: 0.8,
+  lowIdleRatio: 0.15,
+  highIdleRatio: 0.5,
+  /** キューがこの件数以上なら底上げを提案 */
+  queueHint: 6,
+  /** 同じヒントを再表示するまでの間隔（ms）／ヒントの確認間隔（ms） */
+  repeatMs: 180_000,
+  checkMs: 30_000,
 };
 
 /** 建設コスト（§9.4） */

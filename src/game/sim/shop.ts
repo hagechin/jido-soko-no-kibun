@@ -2,7 +2,7 @@
 import { ROBOT } from '../data/balance';
 import { cellAt, isFloorWalkable } from './grid';
 import { addRobot, createBin } from './world';
-import type { Robot, WorldState } from './types';
+import type { Robot, Stack, WorldState } from './types';
 
 export type ShopResult = { ok: true } | { ok: false; reason: string };
 
@@ -200,19 +200,32 @@ export function reservedSlots(w: WorldState): number {
 /** 空ビンを買って、空きのあるスタックの頂上に置く（★）。掘り出し用の空きスロットは必ず残す（棚が満杯だと掘り出しが止まる） */
 export function buyEmptyBin(w: WorldState): ShopResult {
   if (freeBinSlots(w) <= reservedSlots(w)) return { ok: false, reason: `掘り出し用に空きスロットを ${reservedSlots(w)} 個残す必要があります。段数を増やすかスタックを置いてください` };
-  const inbound = w.stations.find((s) => s.kind === 'inbound') ?? w.stacks[0];
-  // 入荷ステーションに近く、頂上が在庫でないスタックへ
-  const candidates = w.stacks.filter((s) => s.bins.length < w.levels);
-  candidates.sort((a, b) => {
-    const topStocked = (s: typeof a) => (s.bins.length ? (w.bins[s.bins[s.bins.length - 1]]?.item ? 1 : 0) : 0);
-    return topStocked(a) - topStocked(b) || Math.abs(a.x - inbound.x) + Math.abs(a.z - inbound.z) - (Math.abs(b.x - inbound.x) + Math.abs(b.z - inbound.z));
-  });
-  const stack = candidates[0];
+  const stack = stackForNewEmptyBin(w);
   if (!stack) return { ok: false, reason: '今は空いているスタックがありません（運搬中のビンが戻るまで待つ）' };
   const p = pay(w, BIN.emptyBinCost);
   if (!p.ok) return p;
   stack.bins.push(createBin(w, null, 0).id);
   return { ok: true };
+}
+
+/** 空ビンを無料で 1 個置く（昇格ボーナス用）。掘り出し用の空きは必ず残す。置けなければ false */
+export function grantEmptyBin(w: WorldState): boolean {
+  if (freeBinSlots(w) <= reservedSlots(w)) return false;
+  const stack = stackForNewEmptyBin(w);
+  if (!stack) return false;
+  stack.bins.push(createBin(w, null, 0).id);
+  return true;
+}
+
+/** 新しい空ビンの置き場: 入荷ステーションに近く、頂上が在庫でないスタック */
+function stackForNewEmptyBin(w: WorldState): Stack | null {
+  const inbound = w.stations.find((s) => s.kind === 'inbound') ?? w.stacks[0];
+  const candidates = w.stacks.filter((s) => s.bins.length < w.levels);
+  candidates.sort((a, b) => {
+    const topStocked = (s: typeof a) => (s.bins.length ? (w.bins[s.bins[s.bins.length - 1]]?.item ? 1 : 0) : 0);
+    return topStocked(a) - topStocked(b) || Math.abs(a.x - inbound.x) + Math.abs(a.z - inbound.z) - (Math.abs(b.x - inbound.x) + Math.abs(b.z - inbound.z));
+  });
+  return candidates[0] ?? null;
 }
 
 export function pickerUpgradeCost(s: { level: number }): number | null {

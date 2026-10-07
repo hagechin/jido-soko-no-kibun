@@ -1,6 +1,6 @@
 /** オーダーシート（§2.4）: 4×6 のアイコン、経過時間バー、ピック済み、欠品 */
 import { ORDERS, REWARD, TICKS_PER_SECOND } from '../data/balance';
-import { backpressureFactor, itemInStock, lateLimitTicks, queuedCount, visibleOrders } from '../sim/orders';
+import { backpressureFactor, itemInStock, lateClockStart, lateLimitTicks, queuedCount, visibleOrders } from '../sim/orders';
 import type { Order, WorldState } from '../sim/types';
 import { $, el } from './layout';
 import { iconImg } from './icons';
@@ -89,7 +89,7 @@ export class OrderSheet {
   }
 
   private updateTime(w: WorldState, o: Order, c: CardRefs): void {
-    const sec = (w.tick - o.arrivedTick) / TICKS_PER_SECOND;
+    const sec = (w.tick - lateClockStart(o)) / TICKS_PER_SECOND;
     const limit = lateLimitTicks(o) / TICKS_PER_SECOND;
     const pct = Math.min(100, (sec / limit) * 100);
     c.bar.style.width = `${pct}%`;

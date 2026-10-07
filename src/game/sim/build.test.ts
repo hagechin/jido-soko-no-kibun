@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
-import { assignItem, canPlace, canRemove, expand, expansionCost, move, place, railConnected, remove } from './build';
+import { assignItem, canPlace, canRemove, expand, expansionCost, move, place, railConnected, remove, wouldDisconnectFloor } from './build';
 import { BUILD, EXPANSION, GRID } from '../data/balance';
 import { cellAt } from './grid';
 import { createRuntime, stepMany, stepSim } from './sim';
@@ -167,5 +167,33 @@ describe('closed ports', () => {
     const shelf = w.robots.find((r) => r.kind === 'shelf')!;
     const stack = w.stacks[0];
     expect(commandRetrieve(w, rt, shelf.id, stack.id, stack.bins[0]).ok).toBe(false);
+  });
+});
+
+describe('ports and stations keep a floor face', () => {
+  it('refuses a stack that would enclose the port, and robots never target an enclosed port', () => {
+    const w = createWorld({ seed: 1 });
+    w.coins = 10_000;
+    // 初期ポート (7,3): 西 (6,3) はスタック。北 (7,2)・南 (7,4) にスタックを置くのは OK、最後の床 (8,3) を塞ぐのは NG
+    expect(place(w, 'stack', 7, 2).ok).toBe(true);
+    expect(place(w, 'stack', 7, 4).ok).toBe(true);
+    const r = place(w, 'stack', 8, 3);
+    expect(r.ok).toBe(false);
+    expect(r.ok ? '' : r.reason).toContain('床に面しなくなります');
+    // ステーションも同じ: ピッカー (11,2) の最後の床を塞げない
+    for (const [x, z] of [[10, 2], [12, 2], [11, 1]]) expect(place(w, 'stack', x, z, true).ok || place(w, 'pickStation', x, z, true).ok).toBe(true);
+    expect(place(w, 'pickStation', 11, 3, true).ok).toBe(false);
+  });
+
+  it('refuses a stack that would cut the floor into islands (a pocket in front of the port)', () => {
+    const w = createWorld({ seed: 1 });
+    w.coins = 10_000;
+    // ポート (7,3) の前 (8,3) を袋小路にする: (7,2)(7,4)(8,2)(8,4) を置くのは OK、(9,3) で島になるので NG
+    for (const [x, z] of [[7, 2], [7, 4], [8, 2], [8, 4]]) expect(place(w, 'stack', x, z).ok).toBe(true);
+    const r = place(w, 'stack', 9, 3);
+    expect(r.ok).toBe(false);
+    expect(r.ok ? '' : r.reason).toContain('分断');
+    expect(wouldDisconnectFloor(w, 9, 3)).toBe(true);
+    expect(wouldDisconnectFloor(w, 9, 2)).toBe(false);
   });
 });

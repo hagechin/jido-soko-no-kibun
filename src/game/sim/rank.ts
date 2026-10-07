@@ -2,6 +2,8 @@
 import { ORDERS, RANKS } from '../data/balance';
 import { ITEMS } from '../data/items';
 import { availableItemIds } from './orders';
+import { addCoins } from './economy';
+import { grantEmptyBin } from './shop';
 import type { WorldState } from './types';
 
 export function rankName(w: WorldState): string {
@@ -23,12 +25,20 @@ export function checkRankUp(w: WorldState): boolean {
   const afterItems = availableItemIds(w);
   // 新商品はピッカーに均等に割り当てる（★）
   const pickers = w.stations.filter((s) => s.kind === 'pick');
+  let newItems = 0;
   for (const item of afterItems) {
     if (beforeItems.includes(item) || !pickers.length) continue;
+    newItems++;
     pickers.sort((a, b) => a.assignedItems.length - b.assignedItems.length);
     pickers[0].assignedItems.push(item);
   }
+  // 昇格ボーナス（★）: コインと、新商品の数だけ空ビン（棚に空きがあるぶんだけ）。新商品を入荷口から取り込めずに止まるのを防ぐ
+  const bonus = RANKS[Math.min(w.rank, RANKS.length - 1)].bonusCoins;
+  if (bonus > 0) addCoins(w, bonus);
+  let granted = 0;
+  for (let i = 0; i < newItems; i++) if (grantEmptyBin(w)) granted++;
   w.events.push({ type: 'rankUp', rank: w.rank });
+  if (bonus > 0 || granted) w.events.push({ type: 'notice', text: `🎉 昇格ボーナス: ${bonus > 0 ? `+${bonus} コイン` : ''}${bonus > 0 && granted ? '、' : ''}${granted ? `空ビン ${granted} 個` : ''}` });
   return true;
 }
 

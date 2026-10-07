@@ -15,8 +15,10 @@ export interface Runtime {
   known: Set<number>;
   /** 他ロボと同じマスに重なっている連続 tick（重なりの解消に使う） */
   overlapTicks: Map<number, number>;
+  /** ロボごとに、今の計画を引いた tick */
+  planTick: Map<number, number>;
 }
 
 export function createRuntime(): Runtime {
-  return { floor: new ReservationTable(), rail: new ReservationTable(), plans: new Map(), lastPlanTick: -1, dirty: true, needsPlan: new Set(), known: new Set(), overlapTicks: new Map() };
+  return { floor: new ReservationTable(), rail: new ReservationTable(), plans: new Map(), lastPlanTick: -1, dirty: true, needsPlan: new Set(), known: new Set(), overlapTicks: new Map(), planTick: new Map() };
 }

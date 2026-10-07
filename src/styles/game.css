@@ -979,3 +979,14 @@ body.is-calm .mini-hud {
 .robot-pick .sel-status {
   display: inline;
 }
+
+/* アドバイザーの提案（アップグレード画面の見出し） */
+.hint-box {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 214, 102, 0.18);
+  border: 1px solid rgba(255, 214, 102, 0.45);
+  font-size: 13px;
+  line-height: 1.45;
+}

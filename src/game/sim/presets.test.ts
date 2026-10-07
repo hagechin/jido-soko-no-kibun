@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { RANKS } from '../data/balance';
 import { buildPreset, PRESETS } from './presets';
 import { addRobot } from './world';
 import { addPallet } from './inbound';
@@ -60,8 +61,8 @@ describe('presets', () => {
       }
     }
     const msPerTick = (performance.now() - t0) / 3600;
-    console.log('mega ms/tick', msPerTick.toFixed(2), 'shipped', w.stats.totalShipped - 1000, 'pathStats', JSON.stringify(pathStats));
-    expect(w.stats.totalShipped).toBeGreaterThan(1000 + 10);
+    console.log('mega ms/tick', msPerTick.toFixed(2), 'shipped', w.stats.totalShipped - RANKS[RANKS.length - 1].shipped, 'pathStats', JSON.stringify(pathStats));
+    expect(w.stats.totalShipped).toBeGreaterThan(RANKS[RANKS.length - 1].shipped + 10);
     expect(msPerTick).toBeLessThan(25);
     for (const r of w.robots) expect(r.stuckTicks).toBeLessThan(300);
   });
@@ -91,7 +92,7 @@ describe('port load balancing (no pile-up at the port nearest the pickers)', () 
       } else gap++;
       maxGap = Math.max(maxGap, gap);
     }
-    const shipped = w.stats.totalShipped - 150;
+    const shipped = w.stats.totalShipped - RANKS[2].shipped;
     console.log('medium: shipped', shipped, 'ports used', JSON.stringify([...used.entries()]), 'amr idle ratio', (idleSamples / samples).toFixed(2), 'max gap', maxGap);
     expect(used.size).toBe(w.ports.length); // 両方のポートを使う
     expect(shipped).toBeGreaterThan(20);
@@ -130,9 +131,9 @@ describe('many robots (windowed planning)', () => {
     }
     const msPerTick = (performance.now() - t0) / 2400;
     const stuck = w.robots.filter((r) => r.stuckTicks > 300).length;
-    console.log('70 robots: ms/tick', msPerTick.toFixed(2), 'shipped', w.stats.totalShipped - 1000, 'stuck', stuck);
+    console.log('70 robots: ms/tick', msPerTick.toFixed(2), 'shipped', w.stats.totalShipped - RANKS[RANKS.length - 1].shipped, 'stuck', stuck);
     expect(msPerTick).toBeLessThan(12);
-    expect(w.stats.totalShipped - 1000).toBeGreaterThan(5);
+    expect(w.stats.totalShipped - RANKS[RANKS.length - 1].shipped).toBeGreaterThan(5);
     expect(stuck).toBeLessThanOrEqual(3);
   });
 });
@@ -150,10 +151,10 @@ describe('inbound surge on the mega preset (crowding control)', () => {
     }
     const backlog1 = w.pallets.reduce((a, p) => a + p.qty, 0);
     const staged = w.robots.filter((r) => r.job && (r.job.type === 'deliver' || r.job.type === 'fetch') && r.job.staged).length;
-    console.log('surge: backlog', backlog0, '->', backlog1, 'maxStuck', maxStuck, 'staged now', staged, 'shipped', w.stats.totalShipped - 1000);
+    console.log('surge: backlog', backlog0, '->', backlog1, 'maxStuck', maxStuck, 'staged now', staged, 'shipped', w.stats.totalShipped - RANKS[RANKS.length - 1].shipped);
     expect(backlog1).toBeLessThan(backlog0 * 0.7);
     expect(maxStuck).toBeLessThan(600); // 誰も 1 分以上動けないままにならない
-    expect(w.stats.totalShipped - 1000).toBeGreaterThan(3); // 入荷ラッシュ中も出荷は続く
+    expect(w.stats.totalShipped - RANKS[RANKS.length - 1].shipped).toBeGreaterThan(3); // 入荷ラッシュ中も出荷は続く
   });
 });
 

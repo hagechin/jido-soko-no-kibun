@@ -5,7 +5,7 @@
  */
 import { BUILD, EXPANSION, GRID, RANKS } from '../data/balance';
 import type { CellKind } from '../data/balance';
-import { cellAt, inBounds, isAdjacentToStack, isFacingFloor, isRailWalkable, neighbors4 } from './grid';
+import { approachCells, cellAt, inBounds, isAdjacentToStack, isFacingFloor, isFloorWalkable, isRailWalkable, neighbors4 } from './grid';
 import { footprint, shapeFor } from './footprint';
 import { createBin, placeCell, removeCell } from './world';
 import type { WorldState } from './types';
@@ -72,6 +72,13 @@ export function canPlace(w: WorldState, kind: BuildKind, x: number, z: number, f
   if (cur !== 'floor') return 'そこには何かがあります';
   if (robotOn(w, x, z)) return 'ロボがいます';
   if (!free && w.coins < BUILD_COST[kind]) return `コインが足りません（${BUILD_COST[kind]} 必要）`;
+  // 床でなくなるものを置くとき、隣のポート／ステーションが床に面しなくなる（搬送ロボが横付けできなくなる）なら拒否。
+  // 床の通路が分断される（袋小路の島ができて、そこにしか面していないポートへ行けなくなる）置き方も拒否
+  if (kind !== 'waitSpot') {
+    if (wouldDisconnectFloor(w, x, z)) return '床の通路が分断されます（搬送ロボが通れない場所ができる）';
+    for (const p of w.ports) if (approachCells(w, p.x, p.z).some((c) => c.x === x && c.z === z) && approachCells(w, p.x, p.z).length <= 1) return 'ポートが床に面しなくなります（搬送ロボが横付けできません）';
+    for (const s of w.stations) if (approachCells(w, s.x, s.z).some((c) => c.x === x && c.z === z) && approachCells(w, s.x, s.z).length <= 1) return 'ステーションが床に面しなくなります（搬送ロボが横付けできません）';
+  }
   switch (kind) {
     case 'port':
       if (!isAdjacentToStack(w, x, z)) return 'ポートは棚（スタック）に隣接させてください';
@@ -91,6 +98,33 @@ export function canPlace(w: WorldState, kind: BuildKind, x: number, z: number, f
       break;
   }
   return null;
+}
+
+/** (x,z) を床でなくしたとき、床（搬送ロボが通れるマス）が 2 つ以上の島に分かれるか */
+export function wouldDisconnectFloor(w: WorldState, x: number, z: number): boolean {
+  const walk = (cx: number, cz: number) => !(cx === x && cz === z) && inBounds(w, cx, cz) && isFloorWalkable(cellAt(w, cx, cz));
+  let total = 0;
+  let start: { x: number; z: number } | null = null;
+  for (let cz = 0; cz < w.height; cz++) {
+    for (let cx = 0; cx < w.width; cx++) {
+      if (!walk(cx, cz)) continue;
+      total++;
+      if (!start) start = { x: cx, z: cz };
+    }
+  }
+  if (!start) return false;
+  const seen = new Set<number>([start.z * w.width + start.x]);
+  const queue = [start];
+  for (let head = 0; head < queue.length; head++) {
+    const c = queue[head];
+    for (const n of neighbors4(w, c.x, c.z)) {
+      const k = n.z * w.width + n.x;
+      if (seen.has(k) || !walk(n.x, n.z)) continue;
+      seen.add(k);
+      queue.push(n);
+    }
+  }
+  return seen.size < total;
 }
 
 export function place(w: WorldState, kind: BuildKind, x: number, z: number, free = false): BuildResult {

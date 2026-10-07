@@ -5,6 +5,8 @@ import { SPEED_OPTIONS, TICKS_PER_SECOND } from './data/balance';
 import { itemDef } from './data/items';
 import { createWorld } from './sim/world';
 import { createRuntime, stepSim, type Runtime } from './sim/sim';
+import { adviseNext, createAdvisorStats, sampleAdvisor, type AdvisorStats, type Hint } from './sim/advisor';
+import { ADVISOR } from './data/balance';
 import type { Robot, SimEvent, WorldState } from './sim/types';
 import { commandCancel, commandFetch, commandGoStation, commandRetrieve } from './sim/commands';
 import { WarehouseRenderer, type PickResult } from './render/scene';
@@ -62,6 +64,11 @@ class Game {
   private highlightTimer = 0;
   private infoSig = '';
   private lastStockoutHint = 0;
+  private advisor: AdvisorStats = createAdvisorStats();
+  private lastHint: { id: string; at: number } | null = null;
+  private lastHintCheck = 0;
+  /** 直近の提案（アップグレード画面の見出しに出す） */
+  currentHint: Hint | null = null;
   /** デバッグ: 計測 */
   private debug = { enabled: false, showStats: false, simMs: 0, fps: 0, frames: 0, fpsAt: 0 };
   private statsEl: HTMLElement | null = null;
@@ -218,7 +225,7 @@ class Game {
         },
       }),
     );
-    this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh(), buyAutomation: (id) => buyAutomation(this.world, id) }));
+    this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh(), buyAutomation: (id) => buyAutomation(this.world, id), hint: this.currentHint?.text ?? null }));
 
     $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
     $('btn-calm').addEventListener('click', () => this.calm.enter());
@@ -253,6 +260,18 @@ class Game {
       this.modal.show('サイバーウィーク成績表', cyberReportNode(rec, this.world.stats.cyberWeekRecords));
       this.world.season.pendingReport = null;
     }
+  }
+
+  /** アドバイザー（★）: 30 秒ごとに提案を確認し、新しい提案（または 3 分ぶり）ならトーストで知らせる */
+  private checkAdvisor(now: number): void {
+    if (now - this.lastHintCheck < ADVISOR.checkMs || this.world.speed === 0 || this.world.flags.buildMode) return;
+    this.lastHintCheck = now;
+    const hint = adviseNext(this.world, this.advisor);
+    this.currentHint = hint;
+    if (!hint) return;
+    if (this.lastHint && this.lastHint.id === hint.id && now - this.lastHint.at < ADVISOR.repeatMs) return;
+    this.lastHint = { id: hint.id, at: now };
+    showToast(`💡 ${hint.text}`, 8000);
   }
 
   /** 表示中のオーダーが全部欠品待ちで、誰も動いていないときに知らせる（60 秒に 1 回） */
@@ -574,6 +593,7 @@ class Game {
       let ticks = 0;
       while (this.acc >= TICK_MS && guard++ < 40) {
         stepSim(this.world, this.rt);
+        if (this.world.tick % TICKS_PER_SECOND === 0) sampleAdvisor(this.world, this.advisor);
         this.acc -= TICK_MS;
         ticks++;
       }
@@ -618,6 +638,7 @@ class Game {
       }
       this.lastRender = now;
       this.checkStockoutHint(now);
+      this.checkAdvisor(now);
       this.hud.update(this.world);
       this.banner.update(this.world);
       this.orders.update(this.world);
