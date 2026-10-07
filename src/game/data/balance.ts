@@ -139,8 +139,8 @@ export const ROBOT = {
   shelfRobotCost: 400,
   amrCost: 300,
   /** 同時に存在できる台数の上限（描画負荷の安全弁） */
-  maxShelfRobots: 12,
-  maxAmrs: 16,
+  maxShelfRobots: 40,
+  maxAmrs: 60,
 };
 
 /** 衝突回避（§4.3） */
@@ -151,6 +151,15 @@ export const PATHING = {
   pruneIntervalTicks: 50,
   /** 空間時間 A* の探索上限（tick）。目的地までの距離に応じて自動で伸ばす */
   horizonTicks: 150,
+  /**
+   * 窓付き計画（WHCA*）: 一度に引く経路はこのマス数まで。先は近づいてから引き直す。
+   * 遠くまで一気に引くと探索が膨らむので、1 台あたりの計算量を距離によらず一定にする
+   */
+  windowCells: 10,
+  /** 計画の残りがこのステップ数以下になったら続きを引く */
+  replanAheadSteps: 3,
+  /** 1 tick に経路を引く台数の上限（負荷をならす。詰まっているロボは優先） */
+  plansPerTick: 6,
   /** A* 展開ノード上限（グリッド幅の二乗 × expansionsPerCellSq と大きいほう） */
   maxExpansions: 2500,
   expansionsPerCellSq: 4,

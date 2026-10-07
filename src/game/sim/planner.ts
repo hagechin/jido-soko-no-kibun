@@ -59,12 +59,29 @@ export function updatePlanning(w: WorldState, rt: Runtime): void {
     if (rt.needsPlan.has(r.id)) return true;
     const plan = rt.plans.get(r.id);
     if (!plan || !plan.length) return periodic; // 経路が無い（詰まり）→ 周期的に再試行
+    // 窓付き計画の続き: 残りが少なくなったら先を引く（止まらずに進める）
+    if (plan.length <= PATHING.replanAheadSteps && !planReachesGoal(w, r, plan)) return true;
     return false;
   });
   if (!movers.length) return;
   if (periodic) rt.lastPlanTick = now;
   sortMovers(movers);
-  for (const r of movers) planOne(w, rt, r);
+  // 1 tick に引く台数を絞って負荷をならす（残りは次の tick。詰まっているロボが先）
+  let budget = PATHING.plansPerTick;
+  for (const r of movers) {
+    if (budget-- <= 0) {
+      rt.needsPlan.add(r.id);
+      continue;
+    }
+    planOne(w, rt, r);
+  }
+}
+
+/** 計画の終点がゴールか（部分経路なら false） */
+function planReachesGoal(w: WorldState, r: Robot, plan: PlanStep[]): boolean {
+  const last = plan[plan.length - 1];
+  if (!last || !r.goal) return true;
+  return makeGoalTest(w, r, r.goal).isGoal(last.to);
 }
 
 function sortMovers(movers: Robot[]): void {

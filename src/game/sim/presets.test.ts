@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildPreset, PRESETS } from './presets';
+import { addRobot } from './world';
 import { railConnected } from './build';
 import { isAdjacentToStack, isFacingFloor, cellAt, isFloorWalkable, isRailWalkable } from './grid';
 import { freeBinSlots, reservedSlots } from './shop';
@@ -94,5 +95,42 @@ describe('port load balancing (no pile-up at the port nearest the pickers)', () 
     expect(shipped).toBeGreaterThan(20);
     expect(maxGap).toBeLessThan(2400); // 4 分以上出荷が止まらない
     for (const r of w.robots) expect(r.stuckTicks).toBeLessThan(300);
+  });
+});
+
+describe('many robots (windowed planning)', () => {
+  it('mega + extra robots = 70 run 4 minutes without collisions at a bounded cost per tick', () => {
+    const w = buildPreset('mega');
+    // 空いている床／スタックに追加
+    const occ = new Set(w.robots.map((r) => `${r.kind}:${r.pose.x},${r.pose.z}`));
+    let added = 0;
+    for (let z = 0; z < w.height && added < 30; z++) for (let x = 0; x < w.width && added < 30; x++) {
+      if (cellAt(w, x, z) === 'floor' && !occ.has(`amr:${x},${z}`) && (x + z) % 3 === 0) { addRobot(w, 'amr', x, z); occ.add(`amr:${x},${z}`); added++; }
+    }
+    for (const s of w.stacks) { if (added >= 42) break; if (!occ.has(`shelf:${s.x},${s.z}`) && (s.x * 7 + s.z * 3) % 11 === 0) { addRobot(w, 'shelf', s.x, s.z); occ.add(`shelf:${s.x},${s.z}`); added++; } }
+    expect(w.robots.length).toBe(70);
+    const rt = createRuntime();
+    const t0 = performance.now();
+    for (let t = 0; t < 2400; t++) {
+      stepSim(w, rt);
+      const seen = new Map<string, number>();
+      for (const r of w.robots) {
+        const shape = shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel);
+        const cells = footprint(r.pose, shape, []);
+        if (r.moveTo) cells.push(...footprint(r.moveTo, shape, []));
+        for (const c of cells) {
+          const k = `${r.kind}:${c.x},${c.z}`;
+          const other = seen.get(k);
+          if (other !== undefined && other !== r.id) throw new Error(`collision at tick ${w.tick}: ${other} & ${r.id} on ${k}`);
+          seen.set(k, r.id);
+        }
+      }
+    }
+    const msPerTick = (performance.now() - t0) / 2400;
+    const stuck = w.robots.filter((r) => r.stuckTicks > 300).length;
+    console.log('70 robots: ms/tick', msPerTick.toFixed(2), 'shipped', w.stats.totalShipped - 1000, 'stuck', stuck);
+    expect(msPerTick).toBeLessThan(12);
+    expect(w.stats.totalShipped - 1000).toBeGreaterThan(5);
+    expect(stuck).toBeLessThanOrEqual(3);
   });
 });

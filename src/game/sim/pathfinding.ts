@@ -35,6 +35,8 @@ export interface PlanRequest {
   holdTicks: number;
   maxExpansions?: number;
   horizon?: number;
+  /** 窓付き計画のマス数（省略時は PATHING.windowCells。Infinity で全経路） */
+  window?: number;
 }
 
 interface Node {
@@ -191,7 +193,7 @@ function stateKey(req: PlanRequest, p: Pose, t: number): number {
  * 開始姿勢の占有は呼び出し側が予約済みであること。
  */
 /** 計測用: 失敗理由のカウンタ */
-export const pathStats = { unreachable: 0, exhausted: 0, open: 0, ok: 0, partial: 0 };
+export const pathStats = { unreachable: 0, exhausted: 0, open: 0, ok: 0, partial: 0, windowed: 0 };
 
 export function findPath(req: PlanRequest): PlanStep[] | null {
   const r = findPathInner(req);
@@ -222,6 +224,8 @@ function findPathInner(req: PlanRequest): PlanStep[] | null {
   const is12 = req.shape.w === 1 && req.shape.l === 2;
   /** 展開上限に達したときのための「一番ゴールに近づいた節点」 */
   let best: Node = startNode;
+  // 窓付き計画: 開始から windowCells マス以上離れたら、そこまでの部分経路で返す（先は近づいてから引く）
+  const windowTicks = (req.window ?? PATHING.windowCells) * req.moveTicks;
 
   while (open.size) {
     const n = open.pop()!;
@@ -232,6 +236,14 @@ function findPathInner(req: PlanRequest): PlanStep[] | null {
     if (++expansions > maxExp) {
       pathStats.exhausted++;
       return partialPath(req, best, startNode);
+    }
+    if (n.t - req.startTick >= windowTicks && n.h < startNode.h && n !== startNode) {
+      // 窓の端まで来た: ここまでで返す（ゴールに近づいていること）
+      const p = partialPath(req, n, startNode);
+      if (p) {
+        pathStats.windowed++;
+        return p;
+      }
     }
 
     if (req.isGoal(n.pose)) {
