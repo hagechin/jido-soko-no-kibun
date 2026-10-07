@@ -5,7 +5,8 @@ import { buyAutomation, buyEmptyBin, upgradeLevels } from './shop';
 import { addPallet } from './inbound';
 import { checkRankUp } from './rank';
 import { RANKS } from '../data/balance';
-import { findRelocation } from './automation';
+import { diagnoseIdle, findRelocation } from './automation';
+import { buildPreset } from './presets';
 import { commandRetrieve } from './commands';
 import type { WorldState } from './types';
 
@@ -284,4 +285,19 @@ describe('AMR priority setting', () => {
       expect(amr.carrying[0]).toBe(expectFirst === 'apple' ? apple.id : empty.id);
     });
   }
+});
+
+describe('idle diagnosis (debug panel)', () => {
+  it('explains a stockout with pallets at the dock and no bin to stuff', () => {
+    const w = buildPreset('medium');
+    const rt = createRuntime();
+    for (let t = 0; t < 50; t++) stepSim(w, rt);
+    const lines = diagnoseIdle(w);
+    expect(lines.length).toBeGreaterThan(2);
+    expect(lines[0]).toContain('暇な棚ロボ');
+    // 在庫ゼロの商品を注文させると「欠品」として説明される
+    w.orders.unshift({ id: 9999, lines: [{ item: 'fish', qty: 1, picked: 0 }], arrivedTick: w.tick, shownTick: w.tick, penalized: false });
+    for (const b of Object.values(w.bins)) if (b.item === 'fish') b.qty = 0;
+    expect(diagnoseIdle(w).some((l) => l.startsWith('fish: 欠品'))).toBe(true);
+  });
 });

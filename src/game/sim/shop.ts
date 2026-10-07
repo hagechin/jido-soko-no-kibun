@@ -87,6 +87,36 @@ export function upgradeLift(w: WorldState, robotId: number): ShopResult {
   return { ok: true };
 }
 
+/**
+ * デバッグ用: 全ロボの機体ステータスを最大にする（速度・リフト・積載量。コイン不要）。
+ * 積載量は底面積が変わる設定のときだけ、改造後の占有マスが空いているロボに限る（今の設定ではビンを積み重ねるので底面積は変わらない）
+ */
+export function maxOutRobots(w: WorldState): { upgraded: number; skipped: number } {
+  let upgraded = 0;
+  let skipped = 0;
+  for (const r of w.robots) {
+    r.speedLevel = ROBOT.maxSpeedLevel;
+    if (r.kind === 'shelf') r.liftLevel = ROBOT.maxLiftLevel;
+    if (r.kind === 'amr') {
+      const maxCargo = ROBOT.cargo.length - 1;
+      const newShape = shapeFor(maxCargo);
+      const oldShape = shapeFor(r.cargoLevel);
+      if (r.cargoLevel < maxCargo && (newShape.w !== oldShape.w || newShape.l !== oldShape.l)) {
+        const cells = footprint(r.pose, newShape, []);
+        const occ = occupiedCells(w);
+        occ.delete(`${r.pose.x},${r.pose.z}`);
+        if (r.moveTo || r.actRemaining > 0 || cells.some((c) => !isFloorWalkable(cellAt(w, c.x, c.z)) || occ.has(`${c.x},${c.z}`))) {
+          skipped++;
+          continue;
+        }
+      }
+      r.cargoLevel = maxCargo;
+    }
+    upgraded++;
+  }
+  return { upgraded, skipped };
+}
+
 // ---------------------------------------------------------------- 倉庫のアップグレード（§9.4）
 import { BIN, LEVELS, PICKER, RANKS } from '../data/balance';
 import { footprint, shapeFor } from './footprint';

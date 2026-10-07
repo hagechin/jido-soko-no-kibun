@@ -5,6 +5,8 @@ import { updateEvents } from '../sim/events';
 import { forecastRestock, scheduleTruck } from '../sim/inbound';
 import { buildPreset, PRESETS } from '../sim/presets';
 import { generateOrder } from '../sim/orders';
+import { maxOutRobots } from '../sim/shop';
+import { diagnoseIdle } from '../sim/automation';
 import type { WorldState } from '../sim/types';
 import { el, showToast } from './layout';
 
@@ -71,6 +73,18 @@ export function renderDebug(body: HTMLElement, ctx: DebugContext): void {
   body.append(rankRow);
   body.append(el('div', { class: 'settings-row' }, btn('全 AI を有効化', () => { w.automation.dispatch = 3; w.automation.restock = true; w.automation.relocate = true; showToast('自動化AI をすべて有効にしました'); ctx.refresh(); }), btn('AI をすべて無効化', () => { w.automation.dispatch = 0; w.automation.restock = false; w.automation.relocate = false; ctx.refresh(); })));
 
+  body.append(el('h4', { text: 'ロボ' }));
+  body.append(
+    el('div', { class: 'settings-row' },
+      btn('ロボ MAX（全ロボの速度・リフト・積載量を最大に）', () => {
+        const r = maxOutRobots(w);
+        showToast(r.skipped ? `${r.upgraded} 台を MAX にしました（${r.skipped} 台は周りに床が無くて積載量だけ見送り）` : `${r.upgraded} 台を MAX にしました`);
+        ctx.refresh();
+      }),
+      el('span', { class: 'muted small', text: `棚ロボ ${w.robots.filter((r) => r.kind === 'shelf').length} 台 / 搬送ロボ ${w.robots.filter((r) => r.kind === 'amr').length} 台` }),
+    ),
+  );
+
   body.append(el('h4', { text: '時間・イベント' }));
   body.append(
     el('div', { class: 'settings-row' },
@@ -87,6 +101,11 @@ export function renderDebug(body: HTMLElement, ctx: DebugContext): void {
       btn('オーダーを全部消す', () => { w.orders = []; ctx.refresh(); }),
     ),
   );
+
+  body.append(el('h4', { text: '停滞診断' }));
+  const diag = el('pre', { class: 'muted small', style: 'white-space: pre-wrap; margin: 0;' });
+  const runDiag = () => { diag.textContent = diagnoseIdle(w).join('\n'); };
+  body.append(el('div', { class: 'settings-row' }, btn('いま誰も動かない理由を調べる', runDiag)), diag);
 
   body.append(el('h4', { text: '計測' }));
   const st = ctx.stats;

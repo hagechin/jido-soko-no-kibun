@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
-import { buyAmr, buyEmptyBin, buyShelfRobot, freeBinSlots, upgradeLevels, upgradeSpeed } from './shop';
+import { buyAmr, buyEmptyBin, buyShelfRobot, freeBinSlots, maxOutRobots, upgradeLevels, upgradeSpeed } from './shop';
+import { buildPreset } from './presets';
+import { createRuntime, stepSim } from './sim';
 import { ROBOT } from '../data/balance';
 
 describe('shop', () => {
@@ -47,5 +49,24 @@ describe('empty bins never exceed stack slots', () => {
     // 掘り出し用の空き（段数 2 + 棚ロボ 1 = 3 スロット）は残す
     while (buyEmptyBin(w).ok) {}
     expect(freeBinSlots(w)).toBe(3);
+  });
+});
+
+describe('debug: max out robots', () => {
+  it('sets every robot to max speed / lift / cargo without paying', () => {
+    const w = buildPreset('medium');
+    const coins = w.coins;
+    const r = maxOutRobots(w);
+    expect(r.upgraded).toBe(w.robots.length);
+    expect(r.skipped).toBe(0);
+    expect(w.coins).toBe(coins);
+    for (const ro of w.robots) {
+      expect(ro.speedLevel).toBe(ROBOT.maxSpeedLevel);
+      if (ro.kind === 'shelf') expect(ro.liftLevel).toBe(ROBOT.maxLiftLevel);
+      if (ro.kind === 'amr') expect(ro.cargoLevel).toBe(ROBOT.cargo.length - 1);
+    }
+    const rt = createRuntime();
+    for (let t = 0; t < 600; t++) stepSim(w, rt);
+    expect(w.robots.every((ro) => ro.stuckTicks < 300)).toBe(true);
   });
 });

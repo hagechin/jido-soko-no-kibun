@@ -270,6 +270,71 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
   return true;
 }
 
+// ------------------------------------------------------------------ 停滞診断（デバッグ画面）
+/**
+ * 「在庫があるのに誰も取りに行かない」ときに、配車AI／補充AI／搬送ロボがそれぞれ何を見て何もしていないかを列挙する（★）。
+ * 判断のロジックはシミュレーション本体と同じ材料（need・在庫の所在・ポートの混み具合）で説明する
+ */
+export function diagnoseIdle(w: WorldState): string[] {
+  const out: string[] = [];
+  const auto = w.automation;
+  const inFlight = binsInFlight(w);
+  const locate = (id: number): string => {
+    for (const s of w.stacks) if (s.bins.includes(id)) return `棚(${s.x},${s.z})${s.bins.length - 1 - s.bins.indexOf(id) > 0 ? ` ${s.bins.length - 1 - s.bins.indexOf(id)} 段下` : ' 頂上'}`;
+    for (const p of w.ports) {
+      if (p.outbound.includes(id)) return `ポート(${p.x},${p.z}) 出庫待ち`;
+      if (p.returns.includes(id)) return `ポート(${p.x},${p.z}) 返却待ち`;
+    }
+    for (const r of w.robots) if (r.carrying.includes(id)) return `${r.name} が運搬中`;
+    for (const r of w.robots) for (const j of [r.job, ...r.queue]) if (j?.type === 'retrieve' && j.binId === id) return `${r.name} が取り出しに向かっている`;
+    return '不明';
+  };
+  const idleShelf = w.robots.filter((r) => r.kind === 'shelf' && idle(r)).length;
+  const idleAmr = w.robots.filter((r) => r.kind === 'amr' && idle(r)).length;
+  out.push(`暇な棚ロボ ${idleShelf} 台 / 暇な搬送ロボ ${idleAmr} 台 / 配車AI Lv${auto.dispatch} / 補充AI ${auto.restock ? 'オン' : 'オフ'}`);
+  for (const p of w.ports) out.push(`ポート(${p.x},${p.z})${p.closed ? ' 停止中' : ''}: 出庫待ち ${p.outbound.length}（向かっている取り出し込み ${outboundLoad(w, p.id)}/${PORT.outboundCapacity}） 返却待ち ${p.returns.length}/${PORT.returnCapacity}`);
+
+  if (auto.dispatch < 2) out.push('配車AI が Lv1 以下なので、棚ロボはオーダーを見て自動では取り出しません（手動指示が必要）');
+  const inStock = new Set<string>();
+  for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) inStock.add(b.item);
+  const need = new Map<string, number>();
+  for (const o of visibleOrders(w)) for (const l of o.lines) if (l.picked < l.qty) need.set(l.item, (need.get(l.item) ?? 0) + l.qty - l.picked);
+  if (!need.size) out.push('表示中のオーダーに未ピックの行はありません');
+  for (const [item, qty] of need) {
+    const all = Object.entries(w.bins).filter(([, b]) => b.item === item && b.qty > 0).map(([id]) => Number(id));
+    if (!all.length) {
+      const dock = w.pallets.find((p) => p.item === item)?.qty ?? 0;
+      out.push(`${item}: 欠品（在庫ゼロ）${dock ? `。入荷口に ${dock} 個あるので補充待ち` : '。入荷口にも無く、次のトラック待ち'}`);
+      continue;
+    }
+    const masked = all.filter((id) => inFlight.has(id) && w.bins[id].purpose !== 'inbound');
+    const maskedQty = masked.reduce((a, id) => a + w.bins[id].qty, 0);
+    const toInbound = all.filter((id) => inFlight.has(id) && w.bins[id].purpose === 'inbound');
+    const options = stackedBinsOf(w, (b) => b.item === item && b.qty > 0).filter((o) => !inFlight.has(o.binId));
+    let line = `${item}: 必要 ${qty}`;
+    if (maskedQty >= qty) line += ` → ピッカーへ向かっている分（${masked.map((id) => `${locate(id)} ${w.bins[id].qty} 個`).join('、')}）でまかなえるので新たに取りに行かない`;
+    else if (!options.length) line += toInbound.length ? ` → 棚に残りが無く、在庫のビンは入荷ステーション行き（${toInbound.map((id) => `${locate(id)} ${w.bins[id].qty} 個`).join('、')}）。戻って格納されるまで待ち` : ` → 棚に取り出せるビンが無い（${all.map((id) => `${locate(id)} ${w.bins[id].qty} 個`).join('、')}）`;
+    else {
+      const pick = options[0];
+      const port = bestPort(w, pick.stack, null, (p) => outboundLoad(w, p.id) < PORT.outboundCapacity);
+      line += port ? ` → 取り出せる（${locate(pick.binId)}）。棚ロボが空けば向かう` : ` → 取り出せるビンはある（${locate(pick.binId)}）が、全ポートが出庫待ちで満杯／停止中なので待ち。搬送ロボがポートのビンを運ぶと再開`;
+    }
+    out.push(line);
+  }
+  if (auto.restock) {
+    if (!w.pallets.length) out.push('補充AI: 入荷口に山が無いので何もしない');
+    else {
+      const palletItems = new Set(w.pallets.map((p) => p.item));
+      const empties = stackedBinsOf(w, (b) => b.item === null).filter((o) => !inFlight.has(o.binId)).length;
+      const partial = stackedBinsOf(w, (b) => b.item !== null && palletItems.has(b.item) && b.qty < w.binCapacity).filter((o) => !inFlight.has(o.binId)).length;
+      const inboundInFlight = [...inFlight].filter((id) => w.bins[id]?.purpose === 'inbound').length;
+      if (!empties && !partial) out.push(`補充AI: 入荷口に ${w.pallets.reduce((a, p) => a + p.qty, 0)} 個あるが、空ビンも同じ商品の空きのあるビンも無いので詰められない → 空ビンを買う／ビン容量アップ`);
+      else out.push(`補充AI: 空ビン ${empties} / 詰め足せるビン ${partial} / 入荷ステーション行き ${inboundInFlight} 個`);
+    }
+  }
+  return out;
+}
+
 // ------------------------------------------------------------------ 毎 tick
 export function updateAutomation(w: WorldState, rt: Runtime): void {
   // 棚ロボ: 返却ビンの格納（常時）→ AI の仕事 → ポートから退く
