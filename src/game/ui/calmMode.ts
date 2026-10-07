@@ -1,3 +1,4 @@
+import { icon, iconText } from './icon';
 /** 眺めモード（暖炉モード）§10.1: UI を隠し、自動カメラ、タップで復帰、Wake Lock、fps 制限 */
 import { RENDER, UI } from '../data/balance';
 import { formatDate } from '../sim/calendar';
@@ -74,8 +75,11 @@ export class CalmMode {
   /** 毎フレーム: ミニ HUD と無操作の提案 */
   update(w: WorldState, now: number): void {
     if (this.active) {
-      const txt = `${formatDate(w.calendar)}　🪙 ${Math.floor(w.coins).toLocaleString('ja-JP')}`;
-      if (this.mini.textContent !== txt) this.mini.textContent = txt;
+      const txt = `${formatDate(w.calendar)}　${Math.floor(w.coins).toLocaleString('ja-JP')}`;
+      if (this.mini.dataset.txt !== txt) {
+        this.mini.dataset.txt = txt;
+        this.mini.replaceChildren(el('span', { text: formatDate(w.calendar) + '　' }), icon('coins', 14), el('span', { text: ' ' + Math.floor(w.coins).toLocaleString('ja-JP') }));
+      }
       return;
     }
     if (!this.suggested && now - this.lastInteraction > UI.idleSuggestMs && !w.flags.buildMode) {
@@ -114,7 +118,7 @@ export class CalmMode {
       row.append(b);
     }
     const supported = 'wakeLock' in navigator;
-    const wl = el('button', { class: `btn${this.settings.wakeLock ? ' is-active' : ''}`, type: 'button', text: supported ? '📱 画面を点けっぱなし' : '📱 画面点けっぱなし（非対応）' });
+    const wl = el('button', { class: `btn${this.settings.wakeLock ? ' is-active' : ''}`, type: 'button' }, iconText('smartphone', supported ? '画面を点けっぱなし' : '画面点けっぱなし（非対応）'));
     if (!supported) wl.setAttribute('disabled', 'true');
     wl.addEventListener('click', () => {
       this.settings.wakeLock = !this.settings.wakeLock;

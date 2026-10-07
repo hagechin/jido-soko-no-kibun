@@ -1,3 +1,4 @@
+import { icon, type IconName } from './icon';
 import { UI } from '../data/balance';
 
 export type LayoutMode = 'pc' | 'mobile';
@@ -32,10 +33,10 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return e;
 }
 
-export function showToast(text: string, ms = 2200): void {
+export function showToast(text: string, ms = 2200, iconName?: IconName): void {
   const host = document.getElementById('toasts');
   if (!host) return;
-  const t = el('div', { class: 'toast', text });
+  const t = el('div', { class: 'toast' }, iconName ? icon(iconName, 16) : null, el('span', { text }));
   host.append(t);
   while (host.children.length > 4) host.firstElementChild?.remove();
   setTimeout(() => t.remove(), ms);

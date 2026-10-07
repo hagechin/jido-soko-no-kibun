@@ -233,6 +233,9 @@ export interface Automation {
   lastRetrieveTick: number;
 }
 
+/** お知らせの種類（UI がアイコンに変換する。sim は DOM を知らない） */
+export type NoticeIcon = 'truck' | 'party' | 'alert' | 'megaphone' | 'bulb' | 'package' | 'info';
+
 export interface WorldState {
   version: number;
   rng: RngState;
@@ -280,7 +283,7 @@ export type SimEvent =
   | { type: 'repChange'; delta: number; reason: string }
   | { type: 'truckArrived'; kind: 'inbound' | 'outbound' }
   | { type: 'rankUp'; rank: number }
-  | { type: 'notice'; text: string }
+  | { type: 'notice'; text: string; icon?: NoticeIcon }
   | { type: 'eventStart'; id: string; banner: string }
   | { type: 'eventEnd'; id: string }
   | { type: 'cyberWeekReport'; record: CyberWeekRecord }

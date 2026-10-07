@@ -44,7 +44,7 @@ export function updateEvents(w: WorldState): void {
   const weeks = weeksUntilCyberWeek(w);
   if (weeks > 0 && weeks <= CYBER_WEEK_NOTICE_WEEKS && w.season.cyberNoticeYear !== w.calendar.year) {
     w.season.cyberNoticeYear = w.calendar.year;
-    w.events.push({ type: 'notice', text: `📣 サイバーウィークまで あと${weeks}週。大型トラックが順次到着します` });
+    w.events.push({ type: 'notice', icon: 'megaphone', text: `サイバーウィークまで あと${weeks}週。大型トラックが順次到着します` });
     for (let i = 0; i < CYBER_WEEK_PRESTOCK.trucks; i++) {
       const pallets = forecastRestock(w, true).map((p) => ({ item: p.item, qty: Math.round(p.qty * CYBER_WEEK_PRESTOCK.factor) }));
       scheduleTruck(w, pallets, 'prestock', Math.round(((i + 0.3) * CALENDAR.ticksPerWeek) / CYBER_WEEK_PRESTOCK.trucks) + 1);
@@ -84,7 +84,7 @@ function endCyberWeek(w: WorldState): void {
 export function bannerText(w: WorldState): string | null {
   if (isCyberWeek(w)) return eventById('cyberWeek').banner;
   const weeks = weeksUntilCyberWeek(w);
-  if (weeks > 0 && weeks <= CYBER_WEEK_NOTICE_WEEKS) return `⚠️ サイバーウィークまで あと${weeks}週`;
+  if (weeks > 0 && weeks <= CYBER_WEEK_NOTICE_WEEKS) return `サイバーウィークまで あと${weeks}週`;
   for (const id of w.season.active) {
     const ev = SEASON_EVENTS.find((e) => e.id === id);
     if (ev) return ev.banner;

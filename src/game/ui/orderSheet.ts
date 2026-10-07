@@ -1,3 +1,4 @@
+import { icon } from './icon';
 /** オーダーシート（§2.4）: 4×6 のアイコン、経過時間バー、ピック済み、欠品 */
 import { ORDERS, REWARD, TICKS_PER_SECOND } from '../data/balance';
 import { backpressureFactor, itemInStock, lateClockStart, lateLimitTicks, queuedCount, visibleOrders } from '../sim/orders';
@@ -70,7 +71,7 @@ export class OrderSheet {
         { class: `order-cell${done ? ' is-done' : ''}${stockout ? ' is-stockout' : ''}`, type: 'button', 'data-item': l.item },
         iconImg(l.item, 28),
         el('span', { class: 'order-qty', text: `×${l.qty}` }),
-        done ? el('span', { class: 'order-check', text: '✓' }) : null,
+        done ? el('span', { class: 'order-check' }, icon('check', 14)) : null,
       );
       cell.addEventListener('click', (e) => {
         e.stopPropagation();

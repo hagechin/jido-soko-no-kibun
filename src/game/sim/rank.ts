@@ -38,7 +38,7 @@ export function checkRankUp(w: WorldState): boolean {
   let granted = 0;
   for (let i = 0; i < newItems; i++) if (grantEmptyBin(w)) granted++;
   w.events.push({ type: 'rankUp', rank: w.rank });
-  if (bonus > 0 || granted) w.events.push({ type: 'notice', text: `🎉 昇格ボーナス: ${bonus > 0 ? `+${bonus} コイン` : ''}${bonus > 0 && granted ? '、' : ''}${granted ? `空ビン ${granted} 個` : ''}` });
+  if (bonus > 0 || granted) w.events.push({ type: 'notice', icon: 'party', text: `昇格ボーナス: ${bonus > 0 ? `+${bonus} コイン` : ''}${bonus > 0 && granted ? '、' : ''}${granted ? `空ビン ${granted} 個` : ''}` });
   return true;
 }
 

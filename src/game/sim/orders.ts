@@ -139,7 +139,7 @@ export function unblockVisible(w: WorldState): boolean {
   if (idx < 0) return false;
   const [o] = w.orders.splice(idx, 1);
   w.orders.unshift(o);
-  w.events.push({ type: 'notice', text: `#${o.id} を先に処理します（表示中のオーダーが全部欠品待ちのため）` });
+  w.events.push({ type: 'notice', icon: 'info', text: `#${o.id} を先に処理します（表示中のオーダーが全部欠品待ちのため）` });
   return true;
 }
 

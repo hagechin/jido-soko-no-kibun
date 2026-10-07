@@ -7,6 +7,11 @@ import { createWorld } from './sim/world';
 import { createRuntime, stepSim, type Runtime } from './sim/sim';
 import { adviseNext, createAdvisorStats, sampleAdvisor, type AdvisorStats, type Hint } from './sim/advisor';
 import { ADVISOR } from './data/balance';
+import { iconText, type IconName } from './ui/icon';
+import type { NoticeIcon } from './sim/types';
+
+/** sim のお知らせ種別 → アイコン */
+const NOTICE_ICON: Record<NoticeIcon, IconName> = { truck: 'truck', party: 'party-popper', alert: 'triangle-alert', megaphone: 'megaphone', bulb: 'lightbulb', package: 'package', info: 'info' };
 import type { Robot, SimEvent, WorldState } from './sim/types';
 import { commandCancel, commandFetch, commandGoStation, commandRetrieve } from './sim/commands';
 import { WarehouseRenderer, type PickResult } from './render/scene';
@@ -183,7 +188,7 @@ class Game {
     // デバッグ画面（?debug）
     this.debug.enabled = /[?&]debug/.test(location.search);
     if (this.debug.enabled) {
-      this.bar.addButton('debug', '🐞', 'デバッグ');
+      this.bar.addButton('debug', 'bug', 'デバッグ');
       this.bar.registerPanel('debug', (body) =>
         renderDebug(body, {
           world: this.world,
@@ -213,7 +218,7 @@ class Game {
         importSave: (file) => this.importSave(file),
         extra: (body) => {
           body.append(el('h4', { text: 'サウンド' }));
-          const b = el('button', { class: `btn${this.sound.enabled ? ' is-active' : ''}`, type: 'button', text: this.sound.enabled ? '🔊 オン' : '🔇 オフ' });
+          const b = el('button', { class: `btn${this.sound.enabled ? ' is-active' : ''}`, type: 'button' }, this.sound.enabled ? iconText('volume-2', 'オン', 14) : iconText('volume-x', 'オフ', 14));
           b.addEventListener('click', () => {
             this.sound.setEnabled(!this.sound.enabled);
             this.bar.refresh();
@@ -257,7 +262,7 @@ class Game {
     this.renderer.resize();
     this.refreshSelectedInfo(true);
     if (offlineReport && offlineReport.elapsedMs > 0) {
-      this.modal.show('🏠 お留守番レポート', offlineReportNode(offlineReport));
+      this.modal.show('お留守番レポート', offlineReportNode(offlineReport));
       this.save();
     }
     if (this.world.season.pendingReport) {
@@ -276,7 +281,7 @@ class Game {
     if (!hint) return;
     if (this.lastHint && this.lastHint.id === hint.id && now - this.lastHint.at < ADVISOR.repeatMs) return;
     this.lastHint = { id: hint.id, at: now };
-    showToast(`💡 ${hint.text}`, 8000);
+    showToast(hint.text, 8000, 'lightbulb');
   }
 
   /** 表示中のオーダーが全部欠品待ちで、誰も動いていないときに知らせる（60 秒に 1 回） */
@@ -293,7 +298,7 @@ class Game {
     this.lastStockoutHint = now;
     const dock = w.pallets.reduce((a, p) => a + p.qty, 0);
     if (dock <= 0) {
-      showToast('⚠️ 表示中のオーダーは全部欠品待ち。次の入荷トラック（週 1 回）を待っています', 6000);
+      showToast('表示中のオーダーは全部欠品待ち。次の入荷トラック（週 1 回）を待っています', 6000, 'triangle-alert');
       return;
     }
     // 入荷口に山はあるのに詰められるビンが無い（空ビンも、同じ商品の空きのあるビンも無い）→ 補充AIも動けない
@@ -301,10 +306,10 @@ class Game {
     const canStuff = Object.values(w.bins).some((b) => b.item === null || (palletItems.has(b.item) && b.qty < w.binCapacity));
     if (!canStuff) {
       const slot = freeBinSlots(w) > reservedSlots(w);
-      showToast(slot ? '⚠️ 欠品の商品は入荷口にありますが、詰められる空きビンがありません。ショップで空ビンを買うと補充が動きます（ビン容量アップも有効）' : '⚠️ 欠品の商品は入荷口にありますが、空きビンも棚の空きもありません。スタックを増やすか段数を上げてから空ビンを買ってください', 8000);
+      showToast(slot ? '欠品の商品は入荷口にありますが、詰められる空きビンがありません。ショップで空ビンを買うと補充が動きます（ビン容量アップも有効）' : '欠品の商品は入荷口にありますが、空きビンも棚の空きもありません。スタックを増やすか段数を上げてから空ビンを買ってください', 8000, 'triangle-alert');
       return;
     }
-    showToast('⚠️ 表示中のオーダーは全部欠品待ち。入荷口の山をビンに詰めましょう（棚ロボで空ビンを取り出し → 搬送ロボを入荷ステーションへ。自動補充AIなら自動）', 6000);
+    showToast('表示中のオーダーは全部欠品待ち。入荷口の山をビンに詰めましょう（棚ロボで空ビンを取り出し → 搬送ロボを入荷ステーションへ。自動補充AIなら自動）', 6000, 'triangle-alert');
   }
 
   /** タブが戻ったとき: 5 分以内なら追いつき計算、それ以上はまとめて計算（§10.3） */
@@ -314,7 +319,7 @@ class Game {
       this.catchUp += (hiddenMs / TICK_MS) * this.world.speed;
     } else {
       const r = applyOffline(this.world, hiddenMs);
-      if (r.elapsedMs > 0) this.modal.show('🏠 お留守番レポート', offlineReportNode(r));
+      if (r.elapsedMs > 0) this.modal.show('お留守番レポート', offlineReportNode(r));
       this.rt.dirty = true;
       this.save();
     }
@@ -531,7 +536,7 @@ class Game {
     // 複数ビン: 上から順に並べて選ばせる
     const items = [...stack.bins].reverse().map((id, i) => {
       const b = w.bins[id];
-      const node = el('span', {}, b.item ? iconImg(b.item, 28) : el('span', { text: '▫️' }), el('span', { text: `${i === 0 ? '上 ' : ''}${binLabel(w, id)}` }));
+      const node = el('span', {}, b.item ? iconImg(b.item, 28) : el('span', { class: 'slot-empty', title: '空ビン' }), el('span', { text: `${i === 0 ? '上 ' : ''}${binLabel(w, id)}` }));
       return { node, onPick: () => issue(id) };
     });
     this.popup.show(x, y, items, 'どのビンを取り出す？');
@@ -544,7 +549,7 @@ class Game {
         case 'shipped':
           this.renderer.effects.ship(this.world, e.stationId, e.coins, e.bonus);
           this.sound.ship(e.bonus);
-          if (!this.calm.active) showToast(`📦 出荷！ +${e.coins} コイン${e.bonus > 1 ? `（×${e.bonus} ボーナス）` : ''}`);
+          if (!this.calm.active) showToast(`出荷！ +${e.coins} コイン${e.bonus > 1 ? `（×${e.bonus} ボーナス）` : ''}`, 2200, 'package-check');
           break;
         case 'pick':
           this.renderer.effects.pickFlash(this.world, e.stationId);
@@ -557,7 +562,7 @@ class Game {
           if (e.delta < 0) showToast(`評判が下がった（${e.reason}）`);
           break;
         case 'notice':
-          showToast(e.text, 3500);
+          showToast(e.text, 3500, NOTICE_ICON[e.icon ?? 'info']);
           break;
         case 'truckArrived':
           this.renderer.effects.truckArrive(this.world);
@@ -565,13 +570,13 @@ class Game {
           if (this.bar.open === 'inventory') this.bar.refresh();
           break;
         case 'eventStart':
-          showToast(e.banner, 4000);
+          showToast(e.banner, 4000, 'megaphone');
           this.sound.notice();
           break;
         case 'rankUp': {
           const list = el('ul');
           for (const u of unlockSummary(this.world)) list.append(el('li', { text: u }));
-          this.modal.show(`🎉 ランクアップ: ${rankName(this.world)}`, el('p', { text: '倉庫が昇格しました。アンロック:' }), list);
+          this.modal.show(`ランクアップ: ${rankName(this.world)}`, el('p', { text: '倉庫が昇格しました。アンロック:' }), list);
           if (this.bar.open) this.bar.refresh();
           break;
         }

@@ -315,12 +315,12 @@ export function diagnoseIdle(w: WorldState): string[] {
   const idleAmr = w.robots.filter((r) => r.kind === 'amr' && idle(r)).length;
   out.push(`暇な棚ロボ ${idleShelf} 台 / 暇な搬送ロボ ${idleAmr} 台 / 配車AI Lv${auto.dispatch} / 補充AI ${auto.restock ? 'オン' : 'オフ'}`);
   // 動けていないロボと、同じマスに重なっているロボ（本来起きない。起きていれば自動で解消される）
-  for (const r of w.robots) if (r.stuckTicks >= AUTOMATION.staleRetrieveTicks) out.push(`⚠️ ${r.name} が ${Math.round(r.stuckTicks / 10)} 秒動けていない: ${describeRobot(w, r)} @(${r.pose.x},${r.pose.z})${r.carrying.length ? `、持っているビン: ${r.carrying.map((id) => `${w.bins[id]?.item ?? '空'} ${w.bins[id]?.qty ?? 0} 個`).join('、')}` : ''}`);
+  for (const r of w.robots) if (r.stuckTicks >= AUTOMATION.staleRetrieveTicks) out.push(`[!] ${r.name} が ${Math.round(r.stuckTicks / 10)} 秒動けていない: ${describeRobot(w, r)} @(${r.pose.x},${r.pose.z})${r.carrying.length ? `、持っているビン: ${r.carrying.map((id) => `${w.bins[id]?.item ?? '空'} ${w.bins[id]?.qty ?? 0} 個`).join('、')}` : ''}`);
   const at = new Map<string, Robot>();
   for (const r of w.robots) {
     const k = `${r.kind}:${r.pose.x},${r.pose.z}`;
     const o = at.get(k);
-    if (o) out.push(`⚠️ ${o.name} と ${r.name} が同じマス (${r.pose.x},${r.pose.z}) に重なっている`);
+    if (o) out.push(`[!] ${o.name} と ${r.name} が同じマス (${r.pose.x},${r.pose.z}) に重なっている`);
     at.set(k, r);
   }
   for (const p of w.ports) out.push(`ポート(${p.x},${p.z})${p.closed ? ' 停止中' : ''}: 出庫待ち ${p.outbound.length}（向かっている取り出し込み ${outboundLoad(w, p.id)}/${PORT.outboundCapacity}） 返却待ち ${p.returns.length}/${PORT.returnCapacity}`);

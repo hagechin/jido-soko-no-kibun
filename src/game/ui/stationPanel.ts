@@ -1,3 +1,4 @@
+import { iconText } from './icon';
 /** ピッカーの担当商品を変更する（§5.1） */
 import { ITEMS } from '../data/items';
 import { assignItem } from '../sim/build';
@@ -36,7 +37,7 @@ export function renderPortPanel(body: HTMLElement, w: WorldState, portId: number
   const p = w.ports.find((p) => p.id === portId);
   if (!p) return;
   body.append(el('p', { text: `ポート (${p.x}, ${p.z})　出庫待ち ${p.outbound.length} / 返却待ち ${p.returns.length}` }));
-  const b = el('button', { class: `btn${p.closed ? ' danger' : ''}`, type: 'button', text: p.closed ? '▶ 使用を再開する' : '⛔ 使用を停止する' });
+  const b = el('button', { class: `btn${p.closed ? ' danger' : ''}`, type: 'button', }, p.closed ? iconText('play', '使用を再開する', 14) : iconText('ban', '使用を停止する', 14));
   b.addEventListener('click', () => {
     p.closed = !p.closed;
     refresh();

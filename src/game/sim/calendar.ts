@@ -2,19 +2,20 @@
 import { CALENDAR } from '../data/balance';
 import type { Calendar, WorldState } from './types';
 
-export const SEASON_ICON: Record<number, string> = {
-  1: '🎍',
-  2: '⛄',
-  3: '🌸',
-  4: '🌸',
-  5: '🌿',
-  6: '☔',
-  7: '🌻',
-  8: '🌞',
-  9: '🍁',
-  10: '🎃',
-  11: '🍂',
-  12: '🎄',
+/** 月ごとの季節アイコン（UI の Lucide アイコン名。sim は名前だけを持つ） */
+export const SEASON_ICON: Record<number, 'sparkles' | 'snowflake' | 'flower' | 'flower-2' | 'leaf' | 'umbrella' | 'sun' | 'thermometer-sun' | 'ghost' | 'wind' | 'tree-pine'> = {
+  1: 'sparkles',
+  2: 'snowflake',
+  3: 'flower',
+  4: 'flower-2',
+  5: 'leaf',
+  6: 'umbrella',
+  7: 'sun',
+  8: 'thermometer-sun',
+  9: 'leaf',
+  10: 'ghost',
+  11: 'wind',
+  12: 'tree-pine',
 };
 
 export function calendarFromTick(tick: number): Calendar {

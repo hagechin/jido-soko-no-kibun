@@ -990,3 +990,68 @@ body.is-calm .mini-hud {
   font-size: 13px;
   line-height: 1.45;
 }
+
+/* ---------- アイコン（Lucide、単色・currentColor） ---------- */
+.icon {
+  display: inline-block;
+  vertical-align: -0.2em;
+  flex: none;
+}
+.hud-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast .icon {
+  color: var(--accent);
+}
+.bar-btn .ico,
+.build-tool .ico {
+  display: inline-flex;
+  line-height: 1;
+}
+.build-tool .cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.buy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.robot-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+.robot-dot.shelf {
+  background: #e0533c;
+}
+.robot-dot.amr {
+  background: #3b8fd6;
+}
+.slot-empty {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.5);
+  border-radius: 3px;
+  vertical-align: -2px;
+}
+.hint-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.hint-box .icon {
+  color: #ffd666;
+  margin-top: 2px;
+}

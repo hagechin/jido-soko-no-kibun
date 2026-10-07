@@ -1,5 +1,6 @@
 import { DIFFICULTY, RANKS } from '../data/balance';
 import { formatDate, SEASON_ICON } from '../sim/calendar';
+import { icon } from './icon';
 import { dockBacklog } from '../sim/inbound';
 import type { WorldState } from '../sim/types';
 import { $ } from './layout';
@@ -59,13 +60,14 @@ export class Hud {
     if (this.last.date !== d) {
       this.last.date = d;
       this.date.textContent = d;
-      this.season.textContent = SEASON_ICON[w.calendar.month] ?? '';
+      this.season.replaceChildren(icon(SEASON_ICON[w.calendar.month] ?? 'calendar', 16));
     }
     if (this.last.speed !== w.speed) {
       this.last.speed = w.speed;
       for (const b of this.speedBtns) b.classList.toggle('is-active', Number(b.dataset.speed) === w.speed);
       if (w.speed > 0) this.lastNonZeroSpeed = w.speed;
-      this.cycleBtn.textContent = w.speed > 0 ? `${w.speed}x` : `▶ ${this.lastNonZeroSpeed}x`;
+      if (w.speed > 0) this.cycleBtn.textContent = `${w.speed}x`;
+      else this.cycleBtn.replaceChildren(icon('play', 14), document.createTextNode(` ${this.lastNonZeroSpeed}x`));
       this.cycleBtn.classList.toggle('is-active', w.speed > 0);
     }
   }

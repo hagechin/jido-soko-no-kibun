@@ -1,6 +1,7 @@
 ---
 // 1ページ構成。ゲーム本体は src/game/main.ts（クライアント側）で動く。
 import '../styles/game.css';
+import { iconMarkup } from '../game/ui/icon';
 ---
 <!doctype html>
 <html lang="ja">
@@ -23,17 +24,17 @@ import '../styles/game.css';
     <div id="app" class="app">
       <header id="hud" class="hud" aria-label="状況">
         <div class="hud-group">
-          <span class="hud-item" id="hud-coins" title="コイン">🪙 <b>0</b></span>
-          <span class="hud-item rank-name" id="hud-rank" title="倉庫ランク">🏭 <b>—</b></span>
-          <span class="hud-item" id="hud-rep" title="評判">⭐ <b>0</b></span>
-          <span class="hud-item" id="hud-dock" title="入荷口に滞留している個数" hidden>📥 <b>0</b></span>
+          <span class="hud-item" id="hud-coins" title="コイン"><Fragment set:html={iconMarkup('coins', 16)} /> <b>0</b></span>
+          <span class="hud-item rank-name" id="hud-rank" title="倉庫ランク"><Fragment set:html={iconMarkup('factory', 16)} /> <b>—</b></span>
+          <span class="hud-item" id="hud-rep" title="評判"><Fragment set:html={iconMarkup('star', 16)} /> <b>0</b></span>
+          <span class="hud-item" id="hud-dock" title="入荷口に滞留している個数" hidden><Fragment set:html={iconMarkup('inbox', 16)} /> <b>0</b></span>
         </div>
         <div class="hud-group">
-          <span class="hud-item" id="hud-date" title="日付">📅 <b>—</b></span>
-          <span class="hud-item" id="hud-season">🌸</span>
+          <span class="hud-item" id="hud-date" title="日付"><Fragment set:html={iconMarkup('calendar', 16)} /> <b>—</b></span>
+          <span class="hud-item" id="hud-season"><Fragment set:html={iconMarkup('flower', 16)} /></span>
         </div>
         <div class="hud-group speed" id="speed" role="group" aria-label="速度">
-          <button class="btn speed-btn" data-speed="0" aria-label="一時停止">⏸</button>
+          <button class="btn speed-btn" data-speed="0" aria-label="一時停止"><Fragment set:html={iconMarkup('pause', 16)} /></button>
           <button class="btn speed-btn is-active" data-speed="1">1x</button>
           <button class="btn speed-btn" data-speed="2">2x</button>
           <button class="btn speed-btn" data-speed="4">4x</button>
@@ -51,30 +52,30 @@ import '../styles/game.css';
         <canvas id="game-canvas" class="game-canvas"></canvas>
         <div class="fx-overlay" id="fx-overlay" aria-hidden="true"></div>
         <div class="view-overlay">
-          <button class="btn icon-btn" id="btn-camera-reset" title="カメラをリセット" aria-label="カメラをリセット">🎯</button>
+          <button class="btn icon-btn" id="btn-camera-reset" title="カメラをリセット" aria-label="カメラをリセット"><Fragment set:html={iconMarkup('crosshair', 18)} /></button>
         </div>
         <div class="banner" id="banner" hidden></div>
         <div class="toasts" id="toasts" aria-live="polite"></div>
-        <button class="btn calm-suggest" id="calm-suggest" hidden>🔥 眺めモードにする？</button>
-        <button class="btn update-banner" id="update-banner" hidden>🔄 更新があります（タップで再読み込み）</button>
+        <button class="btn calm-suggest" id="calm-suggest" hidden><Fragment set:html={iconMarkup('flame', 16)} /> 眺めモードにする？</button>
+        <button class="btn update-banner" id="update-banner" hidden><Fragment set:html={iconMarkup('refresh-cw', 16)} /> 更新があります（タップで再読み込み）</button>
       </main>
 
       <nav id="bottombar" class="bottombar" aria-label="操作">
         <div class="selected" id="selected-info"><span class="muted">ロボをタップして選択</span></div>
         <div class="bottom-actions">
-          <button class="btn bar-btn" data-panel="robots"><span class="ico">🤖</span><span class="lbl">ロボ</span></button>
-          <button class="btn bar-btn" data-panel="build"><span class="ico">🧱</span><span class="lbl">建設</span></button>
-          <button class="btn bar-btn" data-panel="upgrades"><span class="ico">⬆️</span><span class="lbl">強化</span></button>
-          <button class="btn bar-btn" data-panel="inventory"><span class="ico">📦</span><span class="lbl">在庫</span></button>
-          <button class="btn bar-btn" data-panel="settings"><span class="ico">⚙️</span><span class="lbl">設定</span></button>
-          <button class="btn bar-btn" id="btn-calm"><span class="ico">🔥</span><span class="lbl">眺める</span></button>
+          <button class="btn bar-btn" data-panel="robots"><span class="ico"><Fragment set:html={iconMarkup('bot', 18)} /></span><span class="lbl">ロボ</span></button>
+          <button class="btn bar-btn" data-panel="build"><span class="ico"><Fragment set:html={iconMarkup('hammer', 18)} /></span><span class="lbl">建設</span></button>
+          <button class="btn bar-btn" data-panel="upgrades"><span class="ico"><Fragment set:html={iconMarkup('trending-up', 18)} /></span><span class="lbl">強化</span></button>
+          <button class="btn bar-btn" data-panel="inventory"><span class="ico"><Fragment set:html={iconMarkup('package', 18)} /></span><span class="lbl">在庫</span></button>
+          <button class="btn bar-btn" data-panel="settings"><span class="ico"><Fragment set:html={iconMarkup('settings', 18)} /></span><span class="lbl">設定</span></button>
+          <button class="btn bar-btn" id="btn-calm"><span class="ico"><Fragment set:html={iconMarkup('flame', 18)} /></span><span class="lbl">眺める</span></button>
         </div>
       </nav>
 
       <div id="sheet" class="sheet" hidden>
         <div class="sheet-head">
           <span id="sheet-title">パネル</span>
-          <button class="btn icon-btn" id="sheet-close" aria-label="閉じる">✕</button>
+          <button class="btn icon-btn" id="sheet-close" aria-label="閉じる"><Fragment set:html={iconMarkup('x', 18)} /></button>
         </div>
         <div class="sheet-body" id="sheet-body"></div>
       </div>
@@ -82,7 +83,7 @@ import '../styles/game.css';
       <div id="mini-hud" class="mini-hud"></div>
       <div id="modal" class="modal" hidden>
         <div class="modal-card" role="dialog" aria-modal="true">
-          <div class="modal-head"><span id="modal-title">お知らせ</span><button class="btn icon-btn" id="modal-close" aria-label="閉じる">✕</button></div>
+          <div class="modal-head"><span id="modal-title">お知らせ</span><button class="btn icon-btn" id="modal-close" aria-label="閉じる"><Fragment set:html={iconMarkup('x', 18)} /></button></div>
           <div class="modal-body" id="modal-body"></div>
         </div>
       </div>

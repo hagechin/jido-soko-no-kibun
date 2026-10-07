@@ -1,3 +1,4 @@
+import { iconText } from './icon';
 /** 設定パネル: セーブ・新規開始・画質（書き出し／読み込みは M10、眺めモードの fps は M10） */
 import { saveQuality, settingsFor, type QualityLevel } from '../render/quality';
 import { DIFFICULTY, DIFFICULTY_ORDER, type DifficultyId } from '../data/balance';
@@ -36,13 +37,13 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     body.append(el('p', { class: 'muted small', text: '変わるのは受注まわり（客の多さ・溜まったときの受注抑制・遅延の猶予とペナルティ・報酬倍率）だけ。倉庫やロボはそのまま' }));
   }
   body.append(el('h4', { text: 'セーブ' }));
-  const saveBtn = el('button', { class: 'btn', type: 'button', text: '💾 今すぐセーブ' });
+  const saveBtn = el('button', { class: 'btn', type: 'button' }, iconText('save', '今すぐセーブ'));
   saveBtn.addEventListener('click', () => showToast(ctx.saveNow() ? 'セーブしました' : 'セーブできませんでした'));
   body.append(el('div', { class: 'settings-row' }, saveBtn, el('span', { class: 'muted small', text: ctx.lastSavedAt ? `最終セーブ ${new Date(ctx.lastSavedAt).toLocaleTimeString('ja-JP')}（30 秒ごとに自動）` : '30 秒ごとに自動セーブ' })));
   if (ctx.exportSave) {
-    const ex = el('button', { class: 'btn', type: 'button', text: '📤 ファイルに書き出し' });
+    const ex = el('button', { class: 'btn', type: 'button' }, iconText('upload', 'ファイルに書き出し'));
     ex.addEventListener('click', () => ctx.exportSave!());
-    const im = el('label', { class: 'btn', text: '📥 ファイルから読み込み' });
+    const im = el('label', { class: 'btn' }, iconText('download', 'ファイルから読み込み'));
     const input = el('input', { type: 'file', accept: 'application/json,.json', hidden: true });
     input.addEventListener('change', () => {
       const f = input.files?.[0];
@@ -52,7 +53,7 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     im.append(input);
     body.append(el('div', { class: 'settings-row' }, ex, im));
   }
-  const reset = el('button', { class: 'btn danger', type: 'button', text: '🗑 新しく始める' });
+  const reset = el('button', { class: 'btn danger', type: 'button' }, iconText('trash-2', '新しく始める'));
   reset.addEventListener('click', () => {
     if (confirm('セーブデータを消して最初から始めますか？')) ctx.newGame();
   });

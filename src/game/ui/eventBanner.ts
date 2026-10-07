@@ -1,3 +1,4 @@
+import { icon } from './icon';
 /** イベントバナー（§6.4 予告・開催中）と成績表モーダル */
 import { bannerText, isCyberWeek } from '../sim/events';
 import type { CyberWeekRecord, WorldState } from '../sim/types';
@@ -80,5 +81,5 @@ export function cyberReportNode(record: CyberWeekRecord, history: CyberWeekRecor
     : record.shipped > prev.shipped
       ? `去年より ${record.shipped - prev.shipped} 件多く出荷できました！`
       : '去年より出荷が減りました。段数・ロボ・自動化を見直しましょう。';
-  return el('div', {}, el('p', { text: '🔥 サイバーウィーク終了。お疲れさまでした！' }), table, el('p', { class: 'muted', text: comment }));
+  return el('div', {}, el('p', {}, icon('flame', 16), el('span', { text: ' サイバーウィーク終了。お疲れさまでした！' })), table, el('p', { class: 'muted', text: comment }));
 }

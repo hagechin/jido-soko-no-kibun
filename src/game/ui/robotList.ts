@@ -14,13 +14,13 @@ export function renderRobotList(body: HTMLElement, w: WorldState, selectedId: nu
       const cargo = el('span', { class: 'sel-cargo' });
       for (const id of r.carrying) {
         const b = w.bins[id];
-        cargo.append(b?.item ? iconImg(b.item, 18) : el('span', { text: '▫' }));
+        cargo.append(b?.item ? iconImg(b.item, 18) : el('span', { class: 'slot-empty', title: '空ビン' }));
       }
       const lv = kind === 'shelf' ? `速度 Lv${r.speedLevel} / リフト Lv${r.liftLevel}` : `速度 Lv${r.speedLevel} / 積載 ${ROBOT.cargo[r.cargoLevel].bins}`;
       const row = el(
         'div',
         { class: `robot-row${r.id === selectedId ? ' is-active' : ''}` },
-        el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name', text: `${kind === 'shelf' ? '🟥' : '🟦'} ${r.name}` }), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small', text: `${lv}${r.job?.manual ? ' / 手動指示中' : ''}` })),
+        el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${kind}` }), el('span', { text: ' ' + r.name })), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small', text: `${lv}${r.job?.manual ? ' / 手動指示中' : ''}` })),
         el('button', { class: 'btn', type: 'button', text: '強化' }),
       );
       row.children[0].addEventListener('click', () => onSelect(r.id));

@@ -57,7 +57,7 @@ export function updateInbound(w: WorldState): void {
     w.stats.trucks++;
     w.events.push({ type: 'truckArrived', kind: 'inbound' });
     const total = t.pallets.reduce((a, p) => a + p.qty, 0);
-    w.events.push({ type: 'notice', text: `🚚 入荷トラック到着: ${t.pallets.length} 品目 / ${total} 個` });
+    w.events.push({ type: 'notice', icon: 'truck', text: `入荷トラック到着: ${t.pallets.length} 品目 / ${total} 個` });
   }
 }
 

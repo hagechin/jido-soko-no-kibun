@@ -1,3 +1,4 @@
+import { icon } from './icon';
 /** アップグレードショップ（§4.4 / §9.4） */
 import { AUTOMATION, BIN, BUILD, LEVELS, RANKS, ROBOT } from '../data/balance';
 import {
@@ -35,8 +36,10 @@ export interface UpgradeContext {
 }
 
 function row(label: string, cost: number | null, onBuy: (() => ShopResult) | null, ctx: UpgradeContext, extra = '', lockedText?: string): HTMLElement {
-  const text = lockedText ?? (cost === null ? 'MAX' : `${cost} 🪙`);
-  const btn = el('button', { class: 'btn buy-btn', type: 'button', text });
+  const btn = el('button', { class: 'btn buy-btn', type: 'button' });
+  if (lockedText) btn.textContent = lockedText;
+  else if (cost === null) btn.textContent = 'MAX';
+  else btn.append(icon('coins', 14), document.createTextNode(` ${cost}`));
   if (lockedText || cost === null || ctx.world.coins < cost || !onBuy) btn.setAttribute('disabled', 'true');
   btn.addEventListener('click', () => {
     if (!onBuy) return;
@@ -50,7 +53,7 @@ function row(label: string, cost: number | null, onBuy: (() => ShopResult) | nul
 export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const w = ctx.world;
   const rank = RANKS[Math.min(w.rank, RANKS.length - 1)];
-  if (ctx.hint) body.append(el('p', { class: 'hint-box', text: `💡 おすすめ: ${ctx.hint}` }));
+  if (ctx.hint) body.append(el('p', { class: 'hint-box' }, icon('lightbulb', 16), el('span', { text: ` おすすめ: ${ctx.hint}` })));
 
   body.append(el('h4', { text: '倉庫' }));
   const lvCost = levelUpgradeCost(w);
@@ -59,7 +62,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   body.append(row(`ビン容量 ${w.binCapacity} → ${w.binCapacity + 10}`, binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, '1 ビンに入る個数'));
   body.append(row('空ビン 1 個', BIN.emptyBinCost, () => buyEmptyBin(w), ctx, `空きのあるスタックの頂上に置く（買えるのはあと ${Math.max(0, freeBinSlots(w) - reservedSlots(w))} 個。掘り出し用に ${reservedSlots(w)} スロットは空けておく）`));
   body.append(row('面積拡張（東へ +4 列／南へ +4 行）', null, null, ctx, '建設モードのツールバーから行います', '建設'));
-  body.append(el('p', { class: 'muted small', text: `スタック ${BUILD.stackCost}🪙 / ポート ${BUILD.portCost}🪙 / ステーション ${BUILD.pickStationCost}🪙 は「建設」で配置します` }));
+  body.append(el('p', { class: 'muted small', text: `スタック ${BUILD.stackCost} / ポート ${BUILD.portCost} / ステーション ${BUILD.pickStationCost} コイン。「建設」で配置します` }));
 
   body.append(el('h4', { text: 'ロボット' }));
   body.append(row('棚ロボ追加', ROBOT.shelfRobotCost, () => buyShelfRobot(w), ctx, `現在 ${w.robots.filter((r) => r.kind === 'shelf').length} 台`));

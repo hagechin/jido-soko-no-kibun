@@ -1,4 +1,4 @@
-/** デバッグ画面（`/?debug` で下部バーに 🐞 が出る）: コイン、プリセット倉庫、ランク、暦ジャンプ、計測 */
+/** デバッグ画面（`/?debug` で下部バーに虫アイコンが出る）: コイン、プリセット倉庫、ランク、暦ジャンプ、計測 */
 import { CALENDAR, RANKS } from '../data/balance';
 import { calendarFromTick } from '../sim/calendar';
 import { updateEvents } from '../sim/events';

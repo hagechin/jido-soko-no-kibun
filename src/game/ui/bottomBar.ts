@@ -1,3 +1,4 @@
+import { icon, type IconName } from './icon';
 import { $, el } from './layout';
 
 export type PanelId = 'build' | 'upgrades' | 'inventory' | 'settings' | 'station' | 'debug' | 'robots' | 'port';
@@ -23,8 +24,8 @@ export class BottomBar {
   }
 
   /** 下部バーにボタンを追加する（デバッグ用） */
-  addButton(id: PanelId, icon: string, label: string): void {
-    const b = el('button', { class: 'btn bar-btn', 'data-panel': id }, el('span', { class: 'ico', text: icon }), el('span', { class: 'lbl', text: label }));
+  addButton(id: PanelId, iconName: IconName, label: string): void {
+    const b = el('button', { class: 'btn bar-btn', 'data-panel': id }, el('span', { class: 'ico' }, icon(iconName, 18)), el('span', { class: 'lbl', text: label }));
     b.addEventListener('click', () => this.toggle(id));
     const actions = document.querySelector('.bottom-actions');
     actions?.prepend(b);
@@ -41,7 +42,7 @@ export class BottomBar {
 
   show(id: PanelId): void {
     this.current = id;
-    const titles: Record<PanelId, string> = { build: '建設モード', upgrades: 'アップグレード', inventory: '在庫', settings: '設定', station: 'ステーション', debug: '🐞 デバッグ', robots: 'ロボ一覧', port: 'ポート' };
+    const titles: Record<PanelId, string> = { build: '建設モード', upgrades: 'アップグレード', inventory: '在庫', settings: '設定', station: 'ステーション', debug: 'デバッグ', robots: 'ロボ一覧', port: 'ポート' };
     this.sheetTitle.textContent = titles[id];
     this.sheet.classList.toggle('is-compact', id === 'build');
     this.refresh();
