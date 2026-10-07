@@ -5,6 +5,16 @@ import { dockBacklog } from '../sim/inbound';
 import type { WorldState } from '../sim/types';
 import { $ } from './layout';
 
+/** 評判の色: 0〜30 は赤、60 で黄、100 で緑（間は補間） */
+export function reputationColor(rep: number): string {
+  const red = [255, 107, 107];
+  const yellow = [242, 201, 76];
+  const green = [123, 211, 137];
+  const mix = (a: number[], b: number[], t: number) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  const c = rep <= 30 ? red : rep <= 60 ? mix(red, yellow, (rep - 30) / 30) : mix(yellow, green, Math.min(1, (rep - 60) / 40));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
 export class Hud {
   private coins = $('hud-coins').querySelector('b')!;
   private rank = $('hud-rank').querySelector('b')!;
@@ -49,6 +59,7 @@ export class Hud {
     if (this.last.rep !== rep) {
       this.last.rep = rep;
       this.rep.textContent = String(rep);
+      this.rep.style.color = reputationColor(rep);
     }
     const dock = dockBacklog(w);
     if (this.last.dock !== dock) {

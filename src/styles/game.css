@@ -114,6 +114,10 @@ button {
 }
 .hud-item b {
   font-weight: 700;
+  color: var(--text);
+}
+/* コインだけ黄色。評判は値で色が変わる（hud.ts） */
+#hud-coins b {
   color: var(--accent);
 }
 .speed-btn {
