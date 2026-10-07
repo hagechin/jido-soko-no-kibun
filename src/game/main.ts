@@ -8,7 +8,7 @@ import { createRuntime, stepSim, type Runtime } from './sim/sim';
 import type { Robot, SimEvent, WorldState } from './sim/types';
 import { commandCancel, commandFetch, commandGoStation, commandRetrieve } from './sim/commands';
 import { WarehouseRenderer, type PickResult } from './render/scene';
-import { detectQuality } from './render/quality';
+import { detectQuality, settingsFor } from './render/quality';
 import { Hud } from './ui/hud';
 import { BottomBar } from './ui/bottomBar';
 import { OrderSheet } from './ui/orderSheet';
@@ -18,6 +18,10 @@ import { iconImg } from './ui/icons';
 import { $, el, showToast } from './ui/layout';
 import { renderUpgrades } from './ui/upgrades';
 import { renderInventory } from './ui/inventory';
+import { renderSettings } from './ui/settings';
+import { clearStorage, loadFromStorage, saveToStorage } from './ui/storage';
+import { SAVE } from './data/balance';
+import type { QualityLevel } from './render/quality';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 
@@ -38,18 +42,43 @@ class Game {
   private focusItem: string | null = null;
   private highlightTimer = 0;
   private infoSig = '';
+  private lastSavedAt: number | null = null;
+  private quality: QualityLevel;
 
   constructor() {
-    this.world = createWorld({ seed: Date.now() >>> 0 });
+    const loaded = loadFromStorage();
+    if (loaded?.ok) {
+      this.world = loaded.world;
+      this.lastSavedAt = loaded.savedAt;
+      setTimeout(() => showToast(loaded.migrated ? 'セーブデータを新しい形式に移行しました' : '続きから再開しました'), 300);
+    } else {
+      if (loaded && !loaded.ok) setTimeout(() => showToast(`セーブデータを読めませんでした: ${loaded.reason}`), 300);
+      this.world = createWorld({ seed: Date.now() >>> 0 });
+    }
     this.rt = createRuntime();
     const canvas = $<HTMLCanvasElement>('game-canvas');
-    this.renderer = new WarehouseRenderer(canvas, detectQuality());
+    const q = detectQuality();
+    this.quality = q.level;
+    this.renderer = new WarehouseRenderer(canvas, q);
     this.hud = new Hud((s) => this.setSpeed(s));
     this.bar = new BottomBar();
     this.orders = new OrderSheet();
     this.popup = new Popup();
     this.orders.onItemTap = (itemId) => this.onOrderItemTap(itemId);
     this.bar.registerPanel('inventory', (body) => renderInventory(body, this.world, (item) => this.onOrderItemTap(item)));
+    this.bar.registerPanel('settings', (body) =>
+      renderSettings(body, {
+        quality: this.quality,
+        lastSavedAt: this.lastSavedAt,
+        saveNow: () => this.save(),
+        newGame: () => this.newGame(),
+        setQuality: (lv) => {
+          this.quality = lv;
+          this.renderer.setQuality(settingsFor(lv));
+          this.bar.refresh();
+        },
+      }),
+    );
     this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh() }));
 
     $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
@@ -57,11 +86,33 @@ class Game {
     this.renderer.controls.onTap = (x, y) => this.onTap(x, y);
 
     window.addEventListener('resize', () => this.renderer.resize());
+    // オートセーブ: 30 秒ごと＋タブを閉じる／隠すとき（§11.2）
+    setInterval(() => this.save(), SAVE.autosaveIntervalMs);
+    window.addEventListener('pagehide', () => this.save());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.save();
+    });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) this.last = performance.now();
     });
     this.renderer.resize();
     this.refreshSelectedInfo(true);
+  }
+
+  save(): boolean {
+    const ok = saveToStorage(this.world);
+    if (ok) this.lastSavedAt = Date.now();
+    return ok;
+  }
+
+  newGame(): void {
+    clearStorage();
+    this.world = createWorld({ seed: Date.now() >>> 0 });
+    this.rt = createRuntime();
+    this.select(null);
+    this.bar.close();
+    this.save();
+    showToast('新しい倉庫を始めました');
   }
 
   setSpeed(s: number): void {

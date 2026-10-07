@@ -701,3 +701,15 @@ button {
 #hud-dock[hidden] {
   display: none;
 }
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0;
+}
+.btn.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
