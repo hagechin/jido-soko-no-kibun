@@ -32,6 +32,9 @@ const ICON: Record<BuildTool, IconName> = {
   move: 'move',
 };
 
+/** ツールの並び = ショートカットの番号（1〜7） */
+export const BUILD_TOOL_ORDER: BuildTool[] = ['stack', 'port', 'pickStation', 'inboundStation', 'waitSpot', 'move', 'erase'];
+
 /** 「30 🪙」の代わり: コインアイコン + 数字 */
 function coinCost(n: number): HTMLElement {
   return el('span', { class: 'cost' }, icon('coins', 12), document.createTextNode(String(n)));
@@ -40,14 +43,14 @@ function coinCost(n: number): HTMLElement {
 export function renderBuild(body: HTMLElement, ctx: BuildContext): void {
   const w = ctx.world;
   const tools = el('div', { class: 'build-tools' });
-  const list: BuildTool[] = ['stack', 'port', 'pickStation', 'inboundStation', 'waitSpot', 'move', 'erase'];
-  for (const t of list) {
+  const list: BuildTool[] = BUILD_TOOL_ORDER;
+  list.forEach((t, i) => {
     const label = t === 'erase' ? '撤去' : t === 'move' ? '移動' : BUILD_LABEL[t];
     const cost = t === 'erase' || t === 'move' ? el('span', { class: 'cost', text: '無料' }) : coinCost(BUILD_COST[t]);
-    const b = el('button', { class: `btn build-tool${ctx.state.tool === t ? ' is-active' : ''}`, type: 'button' }, el('span', { class: 'ico' }, icon(ICON[t], 20)), el('span', { class: 'lbl', text: label }), cost);
+    const b = el('button', { class: `btn build-tool${ctx.state.tool === t ? ' is-active' : ''}`, type: 'button', title: `${label}（${i + 1}）` }, el('span', { class: 'ico' }, icon(ICON[t], 20)), el('span', { class: 'lbl' }, el('kbd', { class: 'key', text: String(i + 1) }), document.createTextNode(label)), cost);
     b.addEventListener('click', () => ctx.onToolChange(t));
     tools.append(b);
-  }
+  });
   const left = maxExpansionsForRank(w) - w.expansions;
   for (const [dir, ico, lbl] of [
     ['east', 'move-horizontal', '東へ +4列'],
@@ -61,7 +64,7 @@ export function renderBuild(body: HTMLElement, ctx: BuildContext): void {
   }
   body.append(tools);
   if (ctx.onOpenEditor) {
-    const open = el('button', { class: 'btn primary', type: 'button' }, iconText('layers', 'レイアウトエディタ（倉庫を停止して俯瞰で配置換え）', 16));
+    const open = el('button', { class: 'btn primary', type: 'button', title: 'L' }, iconText('layers', 'レイアウトエディタ（倉庫を停止して俯瞰で配置換え）', 16), el('kbd', { class: 'key', text: 'L' }));
     open.addEventListener('click', () => ctx.onOpenEditor!());
     body.append(el('div', { class: 'settings-row' }, open));
   }

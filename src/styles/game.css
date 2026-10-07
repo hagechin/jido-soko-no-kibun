@@ -1217,3 +1217,68 @@ body.is-previewing .editor-preview-bar {
 #hud-dock.is-restock-mode b {
   color: var(--accent-2);
 }
+
+/* ---------- ショートカットの表示とヘルプ ---------- */
+kbd.key {
+  display: inline-block;
+  min-width: 14px;
+  padding: 0 4px;
+  margin-right: 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.25);
+  font: 600 10px/16px ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted);
+  text-align: center;
+  vertical-align: middle;
+}
+.btn.is-active kbd.key,
+.btn.primary kbd.key {
+  color: #1b1b1b;
+  border-color: rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.35);
+}
+.build-tool .lbl kbd.key,
+.editor-tool .lbl kbd.key {
+  margin-right: 2px;
+}
+/* タッチ端末ではキー表示を出さない */
+@media (hover: none) and (pointer: coarse) {
+  kbd.key {
+    display: none;
+  }
+}
+.help h4 {
+  margin: 14px 0 6px;
+}
+.help p,
+.help li {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.help ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+.help-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+.help-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.help-table .help-keys {
+  white-space: nowrap;
+  width: 1%;
+}
+.help-table kbd {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.25);
+  font: 600 11px/18px ui-monospace, SFMono-Regular, Menlo, monospace;
+}

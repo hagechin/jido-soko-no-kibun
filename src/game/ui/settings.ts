@@ -17,9 +17,16 @@ export interface SettingsContext {
   /** 難易度（受注まわりだけに効く。途中で変更できる） */
   difficulty?: DifficultyId;
   setDifficulty?: (d: DifficultyId) => void;
+  /** 操作方法を開く */
+  openHelp?: () => void;
 }
 
 export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
+  if (ctx.openHelp) {
+    const help = el('button', { class: 'btn', type: 'button' }, iconText('info', '操作方法とショートカット（H）'));
+    help.addEventListener('click', () => ctx.openHelp!());
+    body.append(el('div', { class: 'settings-row' }, help));
+  }
   if (ctx.setDifficulty) {
     body.append(el('h4', { text: '難易度（いつでも変更できます）' }));
     const cur = ctx.difficulty ?? 'normal';

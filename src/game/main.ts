@@ -41,6 +41,8 @@ import { AutoCamera } from './render/autoCamera';
 import { KeyboardCamera } from './render/keyboardCamera';
 import { LayoutEditor } from './ui/layoutEditor';
 import { beginEdit, finishEdit } from './sim/layoutEditor';
+import { helpNode } from './ui/help';
+import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
 import { Sound } from './audio/sound';
 import { renderDebug } from './ui/debugPanel';
@@ -88,6 +90,8 @@ class Game {
   private autoCam: AutoCamera;
   private keyCam: KeyboardCamera;
   private editor = new LayoutEditor();
+  /** 最後に選ばれていた 0 以外の速度（Space で再開するとき用） */
+  private lastSpeed = 1;
   private lastRender = 0;
   private hiddenAt: number | null = null;
   private catchUp = 0;
@@ -225,6 +229,7 @@ class Game {
     }
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {
+        openHelp: () => this.openHelp(),
         difficulty: this.world.difficulty,
         setDifficulty: (d) => {
           this.world.difficulty = d;
@@ -256,6 +261,7 @@ class Game {
     this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh(), buyAutomation: (id) => buyAutomation(this.world, id), hint: this.currentHint?.text ?? null }));
 
     $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
+    window.addEventListener('keydown', (e) => this.onShortcut(e));
     $('btn-calm').addEventListener('click', () => this.calm.enter());
     this.renderer.controls.onTap = (x, y) => {
       if (this.calm.active || this.editor.open) return; // MANUAL 中・プレビュー中のタップは視点操作の一部。ロボは選ばない
@@ -289,6 +295,68 @@ class Game {
       const rec = this.world.season.pendingReport;
       this.modal.show('サイバーウィーク成績表', cyberReportNode(rec, this.world.stats.cyberWeekRecords));
       this.world.season.pendingReport = null;
+    }
+  }
+
+  /** 操作方法のモーダル */
+  openHelp(): void {
+    this.modal.show('操作方法', helpNode());
+  }
+
+  /**
+   * キーボードショートカット（文字入力中・修飾キー付き・エディタ中・眺めモード中は無効。眺めモードとエディタは自前のキー処理を持つ）。
+   * Space 一時停止 / [ ] 速度 / O B U I S N パネル / F カメラ / H ? ヘルプ / Esc 閉じる / 建設中は 1〜7 でツール、L でレイアウトエディタ
+   */
+  private onShortcut(e: KeyboardEvent): void {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (this.editor.open || this.calm.active) return;
+    const code = e.code;
+    const panel = (id: Parameters<BottomBar['toggle']>[0]) => {
+      this.bar.toggle(id);
+      e.preventDefault();
+    };
+    if (code === 'Space') {
+      this.setSpeed(this.world.speed === 0 ? this.lastSpeed || 1 : 0);
+      e.preventDefault();
+    } else if (code === 'BracketLeft' || code === 'BracketRight') {
+      const order = [1, 2, 4];
+      const cur = Math.max(0, order.indexOf(this.world.speed === 0 ? this.lastSpeed || 1 : this.world.speed));
+      this.setSpeed(order[Math.min(order.length - 1, Math.max(0, cur + (code === 'BracketRight' ? 1 : -1)))]);
+      e.preventDefault();
+    } else if (code === 'KeyO') panel('robots');
+    else if (code === 'KeyB') panel('build');
+    else if (code === 'KeyU') panel('upgrades');
+    else if (code === 'KeyI') panel('inventory');
+    else if (code === 'KeyS') panel('settings');
+    else if (code === 'KeyN') {
+      this.calm.enter();
+      e.preventDefault();
+    } else if (code === 'KeyF') {
+      this.renderer.controls.reset();
+      e.preventDefault();
+    } else if (code === 'KeyH' || (code === 'Slash' && e.shiftKey)) {
+      this.openHelp();
+      e.preventDefault();
+    } else if (code === 'Escape') {
+      if (this.bar.open) this.bar.close();
+      else this.select(null);
+    } else if (this.bar.open === 'build') {
+      const digit = /^Digit([1-7])$/.exec(code);
+      if (digit) {
+        const tool = BUILD_TOOL_ORDER[Number(digit[1]) - 1];
+        if (tool) {
+          this.build.tool = tool;
+          this.build.held = null;
+          this.renderer.highlightCells = [];
+          this.bar.refresh();
+          e.preventDefault();
+        }
+      } else if (code === 'KeyL') {
+        this.openEditor();
+        e.preventDefault();
+      }
     }
   }
 
@@ -461,6 +529,7 @@ class Game {
 
   setSpeed(s: number): void {
     if (!(SPEED_OPTIONS as readonly number[]).includes(s)) return;
+    if (s > 0) this.lastSpeed = s;
     this.world.speed = s;
   }
 

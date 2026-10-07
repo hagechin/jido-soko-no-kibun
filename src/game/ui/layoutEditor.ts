@@ -127,14 +127,14 @@ export class LayoutEditor {
   private renderChrome(): void {
     const w = this.world!;
     this.toolbar.replaceChildren();
-    for (const t of TOOLS) {
-      const b = el('button', { class: `btn editor-tool${this.tool === t.id ? ' is-active' : ''}`, type: 'button', title: t.label }, icon(t.icon, 18), el('span', { class: 'lbl', text: t.label }));
+    TOOLS.forEach((t, i) => {
+      const b = el('button', { class: `btn editor-tool${this.tool === t.id ? ' is-active' : ''}`, type: 'button', title: `${t.label}（${i + 1}）` }, icon(t.icon, 18), el('span', { class: 'lbl' }, el('kbd', { class: 'key', text: String(i + 1) }), document.createTextNode(t.label)));
       b.addEventListener('click', () => {
         this.tool = t.id;
         this.renderChrome();
       });
       this.toolbar.append(b);
-    }
+    });
     const sep = () => el('span', { class: 'editor-sep' });
     this.toolbar.append(sep());
     const undo = el('button', { class: 'btn editor-tool', type: 'button', title: '元に戻す（Ctrl+Z）' }, icon('refresh-cw', 18), el('span', { class: 'lbl', text: '戻す' }));
@@ -167,7 +167,7 @@ export class LayoutEditor {
     }
 
     this.actions.replaceChildren();
-    const prev = el('button', { class: 'btn', type: 'button' }, iconText('crosshair', '3D プレビュー', 16));
+    const prev = el('button', { class: 'btn', type: 'button', title: 'P' }, iconText('crosshair', '3D プレビュー', 16), el('kbd', { class: 'key', text: 'P' }));
     prev.addEventListener('click', () => this.setPreview(true));
     const cancel = el('button', { class: 'btn danger', type: 'button' }, iconText('x', 'キャンセル（元に戻す）', 16));
     cancel.addEventListener('click', () => {
@@ -557,9 +557,24 @@ export class LayoutEditor {
   }
 
   private onKey(e: KeyboardEvent): void {
-    if (!this.open || this.preview) return;
+    if (!this.open) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    if (e.code === 'KeyP' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      this.setPreview(!this.preview);
+      return;
+    }
+    if (this.preview) return;
+    const digit = /^Digit([1-8])$/.exec(e.code);
+    if (digit && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const tool = TOOLS[Number(digit[1]) - 1];
+      if (tool) {
+        this.tool = tool.id;
+        this.renderChrome();
+      }
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
       e.preventDefault();
       if (e.shiftKey) this.doRedo();
