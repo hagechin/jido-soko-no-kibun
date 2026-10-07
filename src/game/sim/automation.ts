@@ -13,7 +13,7 @@ import { demandFor } from '../data/seasons';
 import { cellAt, isFloorWalkable, isRailWalkable, manhattan, neighbors4 } from './grid';
 import { rand } from './rng';
 import { visibleOrders } from './orders';
-import { nearestPort, setGoal } from './robots';
+import { describeRobot, finishJob, nearestPort, setGoal } from './robots';
 import { goalTargetCells } from './goals';
 import type { Runtime } from './runtime';
 import type { Robot, Stack, WorldState } from './types';
@@ -49,6 +49,27 @@ function stackedBinsOf(w: WorldState, pred: (b: { item: string | null; qty: numb
   return out;
 }
 
+/** staleCarryTicks 以上動けていないロボが持っている（または取りに向かっている）ビン */
+function staleCarriedBins(w: WorldState): Set<number> {
+  const s = new Set<number>();
+  for (const r of w.robots) {
+    if (r.stuckTicks < AUTOMATION.staleCarryTicks) continue;
+    for (const id of r.carrying) s.add(id);
+    for (const j of [r.job, ...r.queue]) if (j?.type === 'retrieve') s.add(j.binId);
+  }
+  return s;
+}
+
+/** 長く動けていない棚ロボの、まだビンを持っていない自動の取り出し指示は取り消す（他のロボが代わりに取りに行ける） */
+function releaseStaleRetrieves(w: WorldState, rt: Runtime): void {
+  for (const r of w.robots) {
+    const j = r.job;
+    if (!j || j.type !== 'retrieve' || j.manual || r.carrying.length || r.step !== 0 || r.stuckTicks < AUTOMATION.staleRetrieveTicks) continue;
+    w.bins[j.binId] && (w.bins[j.binId].purpose = null);
+    finishJob(w, rt, r);
+  }
+}
+
 export function outboundLoad(w: WorldState, portId: number): number {
   const p = w.ports.find((p) => p.id === portId)!;
   let n = p.outbound.length;
@@ -82,10 +103,11 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
         need.set(l.item, e);
       }
     }
-    // すでに向かっている／ポートにあるビンでまかなえる分を引く
+    // すでに向かっている／ポートにあるビンでまかなえる分を引く（長く動けていないロボが持っているビンは当てにしない）
+    const stale = staleCarriedBins(w);
     for (const id of inFlight) {
       const b = w.bins[id];
-      if (b?.item && b.purpose !== 'inbound') {
+      if (b?.item && b.purpose !== 'inbound' && !stale.has(id)) {
         const e = need.get(b.item);
         if (e) e.qty -= b.qty;
       }
@@ -292,6 +314,15 @@ export function diagnoseIdle(w: WorldState): string[] {
   const idleShelf = w.robots.filter((r) => r.kind === 'shelf' && idle(r)).length;
   const idleAmr = w.robots.filter((r) => r.kind === 'amr' && idle(r)).length;
   out.push(`暇な棚ロボ ${idleShelf} 台 / 暇な搬送ロボ ${idleAmr} 台 / 配車AI Lv${auto.dispatch} / 補充AI ${auto.restock ? 'オン' : 'オフ'}`);
+  // 動けていないロボと、同じマスに重なっているロボ（本来起きない。起きていれば自動で解消される）
+  for (const r of w.robots) if (r.stuckTicks >= AUTOMATION.staleRetrieveTicks) out.push(`⚠️ ${r.name} が ${Math.round(r.stuckTicks / 10)} 秒動けていない: ${describeRobot(w, r)} @(${r.pose.x},${r.pose.z})${r.carrying.length ? `、持っているビン: ${r.carrying.map((id) => `${w.bins[id]?.item ?? '空'} ${w.bins[id]?.qty ?? 0} 個`).join('、')}` : ''}`);
+  const at = new Map<string, Robot>();
+  for (const r of w.robots) {
+    const k = `${r.kind}:${r.pose.x},${r.pose.z}`;
+    const o = at.get(k);
+    if (o) out.push(`⚠️ ${o.name} と ${r.name} が同じマス (${r.pose.x},${r.pose.z}) に重なっている`);
+    at.set(k, r);
+  }
   for (const p of w.ports) out.push(`ポート(${p.x},${p.z})${p.closed ? ' 停止中' : ''}: 出庫待ち ${p.outbound.length}（向かっている取り出し込み ${outboundLoad(w, p.id)}/${PORT.outboundCapacity}） 返却待ち ${p.returns.length}/${PORT.returnCapacity}`);
 
   if (auto.dispatch < 2) out.push('配車AI が Lv1 以下なので、棚ロボはオーダーを見て自動では取り出しません（手動指示が必要）');
@@ -337,6 +368,7 @@ export function diagnoseIdle(w: WorldState): string[] {
 
 // ------------------------------------------------------------------ 毎 tick
 export function updateAutomation(w: WorldState, rt: Runtime): void {
+  releaseStaleRetrieves(w, rt);
   // 棚ロボ: 返却ビンの格納（常時）→ AI の仕事 → ポートから退く
   const storeTargets = new Set<number>();
   for (const r of w.robots) if (r.job?.type === 'store') storeTargets.add(r.job.portId);

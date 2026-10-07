@@ -1,6 +1,6 @@
 /** オーダーシート（§2.4）: 4×6 のアイコン、経過時間バー、ピック済み、欠品 */
 import { ORDERS, REWARD, TICKS_PER_SECOND } from '../data/balance';
-import { itemInStock, queuedCount, visibleOrders } from '../sim/orders';
+import { backpressureFactor, itemInStock, lateLimitTicks, queuedCount, visibleOrders } from '../sim/orders';
 import type { Order, WorldState } from '../sim/types';
 import { $, el } from './layout';
 import { iconImg } from './icons';
@@ -47,7 +47,9 @@ export class OrderSheet {
     });
     const q = queuedCount(w);
     this.queueBadge.hidden = q === 0;
-    this.queueBadge.textContent = `+${q}`;
+    const bp = backpressureFactor(w);
+    this.queueBadge.textContent = bp > 1 ? `+${q} 受注抑制 ×${bp.toFixed(1)}` : `+${q}`;
+    this.queueBadge.title = bp > 1 ? 'キューが長いので、新しいオーダーの到着間隔を伸ばしています' : '';
   }
 
   private signature(w: WorldState, o: Order): string {
@@ -88,7 +90,7 @@ export class OrderSheet {
 
   private updateTime(w: WorldState, o: Order, c: CardRefs): void {
     const sec = (w.tick - o.arrivedTick) / TICKS_PER_SECOND;
-    const limit = ORDERS.latePenaltyTicks / TICKS_PER_SECOND;
+    const limit = lateLimitTicks(o) / TICKS_PER_SECOND;
     const pct = Math.min(100, (sec / limit) * 100);
     c.bar.style.width = `${pct}%`;
     let cls = 'tier-0';

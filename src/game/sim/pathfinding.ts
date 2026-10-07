@@ -39,6 +39,12 @@ export interface PlanRequest {
   window?: number;
   /** ロボの現在の姿勢（移動中は start = 移動先と異なる）。部分経路は現在地より確実にゴールへ近づくものだけ採用する */
   pose?: Pose;
+  /**
+   * 開始マスに重なっている他ロボ（本来は起きない）。開始マスの判定ではこのロボたちの予約を無視し、重なりから抜け出せるようにする。
+   * startKeys は開始マスのセル添字（z * width + x）
+   */
+  ignoreAtStart?: Set<number>;
+  startKeys?: Set<number>;
 }
 
 interface Node {
@@ -101,7 +107,9 @@ const fpB: Vec2[] = [];
 function cellsFree(req: PlanRequest, cells: Vec2[], from: number, to: number): boolean {
   for (const c of cells) {
     if (!req.passable(c.x, c.z)) return false;
-    if (req.table.isReserved(c.z * req.width + c.x, from, to, req.robotId)) return false;
+    const idx = c.z * req.width + c.x;
+    const ignore = req.ignoreAtStart && req.startKeys?.has(idx) ? req.ignoreAtStart : undefined;
+    if (req.table.isReserved(idx, from, to, req.robotId, ignore)) return false;
   }
   return true;
 }

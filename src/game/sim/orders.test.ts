@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
 import { stepWorld } from './step';
-import { generateOrder, isOrderComplete, orderInterval, queuedCount, unblockVisible, visibleOrders } from './orders';
+import { backpressureFactor, generateOrder, isOrderComplete, lateLimitTicks, orderInterval, queuedCount, unblockVisible, visibleOrders } from './orders';
 import { ORDERS, TICKS_PER_SECOND } from '../data/balance';
 import { rewardFor, speedBonus } from './economy';
 
@@ -36,16 +36,32 @@ describe('orders', () => {
     expect(w.orders[7].shownTick).toBeNull();
   });
 
-  it('applies the late penalty once per order after 180s', () => {
+  it('applies the late penalty once per order after 180s + 15s per line', () => {
     const w = createWorld({ seed: 3 });
     const rep0 = w.reputation;
     w.nextOrderTick = 1;
-    for (let t = 0; t < ORDERS.latePenaltyTicks + 5; t++) {
-      stepWorld(w);
-      if (t === 1) w.nextOrderTick = 1e9; // 1件だけにする
-    }
-    expect(w.orders[0].penalized).toBe(true);
+    stepWorld(w);
+    stepWorld(w);
+    w.nextOrderTick = 1e9; // 1件だけにする
+    const o = w.orders[0];
+    const limit = lateLimitTicks(o);
+    expect(limit).toBe(ORDERS.latePenaltyTicks + ORDERS.latePenaltyPerLineTicks * o.lines.length);
+    while (w.tick - o.arrivedTick < limit) stepWorld(w);
+    expect(o.penalized).toBe(false); // 猶予内はまだ
+    for (let t = 0; t < 3; t++) stepWorld(w);
+    expect(o.penalized).toBe(true);
     expect(w.reputation).toBe(rep0 - ORDERS.latePenaltyRep);
+  });
+
+  it('backpressure: a long queue stretches the order interval up to the cap', () => {
+    const w = createWorld({ seed: 4 });
+    const base = orderInterval(w);
+    expect(backpressureFactor(w)).toBe(1);
+    for (let i = 0; i < ORDERS.visibleMax + ORDERS.backpressure.startAt + 10; i++) w.orders.push(generateOrder(w));
+    expect(backpressureFactor(w)).toBeCloseTo(1 + 10 * ORDERS.backpressure.perOrder);
+    expect(orderInterval(w)).toBe(Math.round(base * (1 + 10 * ORDERS.backpressure.perOrder)));
+    for (let i = 0; i < 100; i++) w.orders.push(generateOrder(w));
+    expect(backpressureFactor(w)).toBe(ORDERS.backpressure.maxFactor);
   });
 
   it('completion requires every line picked', () => {

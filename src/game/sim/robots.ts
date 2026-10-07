@@ -9,7 +9,7 @@ import { atGoal, passableFor, sameGoal } from './goals';
 import { footprint, shapeFor, turnSweep } from './footprint';
 import { moveTicksFor } from './pathfinding';
 import type { Runtime } from './runtime';
-import type { AmrJob, Goal, Robot, RobotJob, ShelfJob, Stack, WorldState } from './types';
+import type { AmrJob, Goal, Robot, RobotJob, ShelfJob, Stack, Vec2, WorldState } from './types';
 
 export function liftTicks(r: Robot): number {
   return ROBOT.liftTicksByLevel[Math.min(r.liftLevel, ROBOT.liftTicksByLevel.length - 1)];
@@ -245,11 +245,13 @@ export function executeMovement(w: WorldState, rt: Runtime, r: Robot): void {
   if (!plan || !plan.length) return;
   const next = plan[0];
   if (next.start > w.tick) return;
-  // レイアウトが変わって通れなくなっていたら計画を捨てて引き直す
+  // レイアウトが変わって通れなくなっていたら計画を捨てて引き直す。
+  // 進む先に同じ層のロボが実際に居る（購入で置かれた直後など、予約表に載る前のロボ）ときも進まずに引き直す（重なりを物理的に防ぐ）
   if (next.type !== 'wait') {
     const pass = passableFor(w, r);
-    const cells = next.type === 'turn' ? turnSweep(next.from, next.to.dir) : footprint(next.to, shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel), []);
-    if (!cells.every((c) => pass(c.x, c.z))) {
+    const shape = shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel);
+    const cells = next.type === 'turn' ? turnSweep(next.from, next.to.dir) : footprint(next.to, shape, []);
+    if (!cells.every((c) => pass(c.x, c.z)) || cellsOccupiedByOthers(w, r, cells)) {
       rt.plans.delete(r.id);
       rt.needsPlan.add(r.id);
       return;
@@ -269,6 +271,20 @@ export function executeMovement(w: WorldState, rt: Runtime, r: Robot): void {
     r.actTotal = next.end - next.start;
     r.actRemaining = remaining;
   }
+}
+
+/** cells のどれかを、同じ層の他ロボが今占有している（居る、または移動中の行き先にしている）か */
+function cellsOccupiedByOthers(w: WorldState, r: Robot, cells: Vec2[]): boolean {
+  const mine = new Set(footprint(r.pose, shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel), []).map((c) => `${c.x},${c.z}`));
+  const keys = new Set(cells.map((c) => `${c.x},${c.z}`).filter((k) => !mine.has(k)));
+  if (!keys.size) return false;
+  for (const o of w.robots) {
+    if (o === r || o.kind !== r.kind) continue;
+    const shape = shapeFor(o.kind === 'shelf' ? 0 : o.cargoLevel);
+    for (const c of footprint(o.pose, shape, [])) if (keys.has(`${c.x},${c.z}`)) return true;
+    if (o.moveTo) for (const c of footprint(o.moveTo, shape, [])) if (keys.has(`${c.x},${c.z}`)) return true;
+  }
+  return false;
 }
 
 export function updateStuck(w: WorldState, r: Robot): void {

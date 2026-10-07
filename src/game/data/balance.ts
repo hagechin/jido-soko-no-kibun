@@ -182,6 +182,8 @@ export const PATHING = {
   retryAfterRetreatTicks: sec(5),
   /** 退避先を探す BFS の最大距離 */
   escapeRadius: 6,
+  /** 同じマスにロボが重なった状態がこの tick 続いたら、片方を隣の空きマスへ移して解消する（本来起きないが、起きても固まらないための保険） */
+  overlapHealTicks: sec(3),
   /** 作業中（ステーション待機など）の予約長 */
   dwellReserveTicks: sec(6),
 };
@@ -256,11 +258,17 @@ export const ORDERS = {
     [1, 4],
     [1, 5],
   ],
+  /**
+   * 受注の抑制（★）: キュー（表示枠に入りきらないオーダー）が startAt 件を超えると、1 件ごとに到着間隔が perOrder 倍ずつ伸びる（最大 maxFactor 倍）。
+   * 現実の倉庫が受注を絞るのと同じで、処理能力を超えた分が際限なく積み上がって評判が下がり続けるのを防ぐ
+   */
+  backpressure: { startAt: 5, perOrder: 0.15, maxFactor: 3 },
   /** キューがこの件数を超えると評判が下がり続ける */
   queuePenaltyThreshold: 10,
   queuePenaltyIntervalTicks: sec(20),
-  /** 出荷までの時間がこれを超えると評判 -1 */
+  /** 出荷までの時間がこれを超えると評判 -1。行数の多いオーダーは 1 行ごとに latePenaltyPerLineTicks ぶん猶予が延びる（★） */
   latePenaltyTicks: sec(180),
+  latePenaltyPerLineTicks: sec(15),
   latePenaltyRep: 1,
   /** 到着直後のオーダー生成の初回遅延 */
   firstOrderDelayTicks: sec(5),
@@ -316,6 +324,10 @@ export const AUTOMATION = {
   relocateMinGain: 3,
   /** 同時に再配置する棚ロボの台数 */
   maxRelocating: 1,
+  /** これ以上動けていないロボが持っているビンは「向かっている在庫」とみなさない（他のビンを取りに行く） */
+  staleCarryTicks: sec(90),
+  /** これ以上動けていない、まだビンを持っていない自動の取り出し指示は取り消して他のロボに譲る */
+  staleRetrieveTicks: sec(60),
   /** 自動補充の同時ビン数の下限（ピック待ちがあるときは棚ロボの 1/3 かこの値の大きいほう。無ければ全員） */
   maxInboundInFlight: 1,
   /** 入荷口の滞留がビン容量の何倍以上なら空ビンを優先して補充するか */

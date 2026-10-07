@@ -20,7 +20,19 @@ export function orderInterval(w: WorldState): number {
   const base = ORDERS.intervalByRank[Math.min(w.rank, ORDERS.intervalByRank.length - 1)];
   let f = 1;
   for (const e of currentEvents(w)) f *= e.intervalFactor;
-  return Math.max(TICKS_PER_SECOND, Math.round(base * f));
+  return Math.max(TICKS_PER_SECOND, Math.round(base * f * backpressureFactor(w)));
+}
+
+/** 受注の抑制（★）: キューが長いほど次のオーダーが来るまでの間隔が伸びる（1 = 抑制なし） */
+export function backpressureFactor(w: WorldState): number {
+  const bp = ORDERS.backpressure;
+  const over = Math.max(0, queuedCount(w) - bp.startAt);
+  return Math.min(bp.maxFactor, 1 + over * bp.perOrder);
+}
+
+/** このオーダーが「遅れ」になるまでの猶予（tick）。行数が多いほど長い */
+export function lateLimitTicks(o: Order): number {
+  return ORDERS.latePenaltyTicks + ORDERS.latePenaltyPerLineTicks * o.lines.length;
 }
 
 /** 商品の重み（季節需要 × イベント強調） */
@@ -83,7 +95,7 @@ export function updateOrders(w: WorldState): void {
   }
   for (const o of visibleOrders(w)) {
     if (o.shownTick === null) o.shownTick = w.tick;
-    if (!o.penalized && w.tick - o.arrivedTick > ORDERS.latePenaltyTicks) {
+    if (!o.penalized && w.tick - o.arrivedTick > lateLimitTicks(o)) {
       o.penalized = true;
       changeReputation(w, -ORDERS.latePenaltyRep, '出荷が遅れた');
     }

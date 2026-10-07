@@ -7,6 +7,7 @@ import { PATHING, ROBOT } from '../data/balance';
 import { footprint, shapeFor } from './footprint';
 import { atGoal, makeGoalTest, passableFor } from './goals';
 import { findPath, moveTicksFor, reservePath, type PlanRequest, type PlanStep } from './pathfinding';
+import { cellAt, DIRS, isFloorWalkable, isRailWalkable } from './grid';
 import type { ReservationTable } from './reservation';
 import { rand } from './rng';
 import { stagingGoal } from './robots';
@@ -39,6 +40,7 @@ function wantsToMove(w: WorldState, r: Robot): boolean {
  * 目標が変わった／計画が無い／詰まっているロボだけ引き直す（他ロボの予約はそのまま使う）。
  */
 export function updatePlanning(w: WorldState, rt: Runtime): void {
+  resolveOverlaps(w, rt);
   if (rt.dirty) {
     replanAll(w, rt);
     return;
@@ -48,11 +50,15 @@ export function updatePlanning(w: WorldState, rt: Runtime): void {
     rt.floor.prune(now);
     rt.rail.prune(now);
   }
-  // 新しく現れたロボ（購入など）は現在位置を無期限予約しておく
+  // 新しく現れたロボ（購入など）は現在位置を無期限予約しておく。そこを通る予定だった他ロボには経路を引き直させる（突っ込んで重ならないように）
   for (const r of w.robots) {
     if (rt.known.has(r.id)) continue;
     rt.known.add(r.id);
-    reserveCells(rt, w, r, occupancyNow(r), now, Infinity);
+    const cells = occupancyNow(r);
+    reserveCells(rt, w, r, cells, now, Infinity);
+    const others = new Set<number>();
+    for (const c of cells) layerOf(rt, r).othersAfter(c.z * w.width + c.x, now, r.id, others);
+    for (const id of others) rt.needsPlan.add(id);
   }
   const periodic = now - rt.lastPlanTick >= PATHING.replanIntervalTicks;
   const movers = w.robots.filter((r) => {
@@ -118,10 +124,14 @@ function planOne(w: WorldState, rt: Runtime, r: Robot): void {
   if (r.actRemaining > 0) reserveCells(rt, w, r, occupancyNow(r), now, startTick);
   const goal = r.goal!;
   const { isGoal, cells } = makeGoalTest(w, r, goal);
+  // 同じマスに他ロボが重なっていたら（本来起きない）、開始マスではその予約を無視して抜け出せるようにする
+  const overlapping = overlappingRobots(w, r);
   const req: PlanRequest = {
     robotId: r.id,
     start,
     pose: r.pose,
+    ignoreAtStart: overlapping.size ? overlapping : undefined,
+    startKeys: overlapping.size ? new Set(occupancyNow(r).map((c) => c.z * w.width + c.x)) : undefined,
     startTick,
     shape: shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel),
     moveTicks: moveTicksFor(r.speedLevel),
@@ -170,6 +180,89 @@ function planOne(w: WorldState, rt: Runtime, r: Robot): void {
   for (const id of others) rt.needsPlan.add(id);
   if ((globalThis as { __planDebug?: (r: Robot, path: PlanStep[] | null, table: ReservationTable, now: number) => void }).__planDebug) (globalThis as { __planDebug?: (r: Robot, path: PlanStep[] | null, table: ReservationTable, now: number) => void }).__planDebug!(r, path, table, now);
   if (t0) planStats.ms += performance.now() - t0;
+}
+
+/** 同じ層で占有マスが重なっている他ロボ */
+function overlappingRobots(w: WorldState, r: Robot): Set<number> {
+  const mine = new Set(occupancyNow(r).map((c) => `${c.x},${c.z}`));
+  const out = new Set<number>();
+  for (const o of w.robots) {
+    if (o === r || o.kind !== r.kind) continue;
+    if (occupancyNow(o).some((c) => mine.has(`${c.x},${c.z}`))) out.add(o.id);
+  }
+  return out;
+}
+
+/**
+ * 重なりの解消（★保険）: 同じマスに 2 台が overlapHealTicks 以上重なったままなら、片方（荷物を持っていない方、同じなら後の ID）を
+ * 一番近い空いているマスへ移して、予約表を作り直す。経路計画は重なりを作らないはずだが、万一起きたときに何時間も固まらないため
+ */
+export function resolveOverlaps(w: WorldState, rt: Runtime): void {
+  const seen = new Map<string, Robot>();
+  const pairs: [Robot, Robot][] = [];
+  for (const r of w.robots) {
+    for (const c of occupancyNow(r)) {
+      const k = `${r.kind}:${c.x},${c.z}`;
+      const o = seen.get(k);
+      if (o && o !== r && !pairs.some(([a, b]) => (a === o && b === r) || (a === r && b === o))) pairs.push([o, r]);
+      seen.set(k, r);
+    }
+  }
+  const overlapped = new Set<number>();
+  for (const [a, b] of pairs) {
+    overlapped.add(a.id);
+    overlapped.add(b.id);
+  }
+  for (const id of [...rt.overlapTicks.keys()]) if (!overlapped.has(id)) rt.overlapTicks.delete(id);
+  for (const id of overlapped) rt.overlapTicks.set(id, (rt.overlapTicks.get(id) ?? 0) + 1);
+  for (const [a, b] of pairs) {
+    const ticks = Math.min(rt.overlapTicks.get(a.id) ?? 0, rt.overlapTicks.get(b.id) ?? 0);
+    if (ticks < PATHING.overlapHealTicks) continue;
+    // 動いている最中（moveTo あり）は終わるまで待つ
+    if (a.moveTo || b.moveTo) continue;
+    const pick = (x: Robot, y: Robot) => (x.carrying.length !== y.carrying.length ? (x.carrying.length < y.carrying.length ? x : y) : x.id > y.id ? x : y);
+    const mover = pick(a, b);
+    const spot = nearestFreeCell(w, mover);
+    if (!spot) continue;
+    mover.pose = { x: spot.x, z: spot.z, dir: mover.pose.dir };
+    mover.moveTo = null;
+    mover.phase = 'idle';
+    mover.actRemaining = 0;
+    mover.actTotal = 0;
+    mover.stuckTicks = 0;
+    rt.plans.delete(mover.id);
+    rt.overlapTicks.delete(mover.id);
+    rt.dirty = true;
+    w.events.push({ type: 'notice', text: `⚠️ ${mover.name} が他のロボと同じマスに重なっていたので (${spot.x},${spot.z}) へ移しました` });
+  }
+}
+
+/** 同じ層のロボが居ない（向かってもいない）一番近い通行可能マス（BFS） */
+function nearestFreeCell(w: WorldState, r: Robot): Vec2 | null {
+  const occ = new Set<string>();
+  for (const o of w.robots) {
+    if (o === r || o.kind !== r.kind) continue;
+    for (const c of occupancyNow(o)) occ.add(`${c.x},${c.z}`);
+  }
+  const ok = (x: number, z: number) => {
+    const k = cellAt(w, x, z);
+    return r.kind === 'shelf' ? isRailWalkable(k) : isFloorWalkable(k);
+  };
+  const seen = new Set<string>([`${r.pose.x},${r.pose.z}`]);
+  const queue: Vec2[] = [{ x: r.pose.x, z: r.pose.z }];
+  let head = 0;
+  while (head < queue.length && head < 4000) {
+    const c = queue[head++];
+    if (!(c.x === r.pose.x && c.z === r.pose.z) && !occ.has(`${c.x},${c.z}`) && !w.ports.some((p) => p.x === c.x && p.z === c.z)) return c;
+    for (const d of DIRS) {
+      const n = { x: c.x + d.x, z: c.z + d.z };
+      const k = `${n.x},${n.z}`;
+      if (seen.has(k) || n.x < 0 || n.z < 0 || n.x >= w.width || n.z >= w.height || !ok(n.x, n.z)) continue;
+      seen.add(k);
+      queue.push(n);
+    }
+  }
+  return null;
 }
 
 export function replanAll(w: WorldState, rt: Runtime): void {

@@ -34,12 +34,12 @@ export class ReservationTable {
     set.add(cellIdx);
   }
 
-  /** [from, to] の区間に robotId 以外の予約があるか */
-  isReserved(cellIdx: number, from: number, to: number, robotId: number): boolean {
+  /** [from, to] の区間に robotId（と ignore に含まれるロボ）以外の予約があるか */
+  isReserved(cellIdx: number, from: number, to: number, robotId: number, ignore?: Set<number>): boolean {
     const arr = this.cells.get(cellIdx);
     if (!arr) return false;
     for (const r of arr) {
-      if (r.robotId === robotId) continue;
+      if (r.robotId === robotId || ignore?.has(r.robotId)) continue;
       if (r.from <= to && from <= r.to) return true;
     }
     return false;
