@@ -83,7 +83,10 @@ export type AmrJob =
   | { type: 'deliver'; stationId: number; manual: boolean }
   | { type: 'return'; portId: number | null; manual: boolean };
 
-export type RobotJob = ShelfJob | AmrJob;
+/** 両方: 指定セルへ移動して待機（待機スポット・退避） */
+export type ParkJob = { type: 'park'; x: number; z: number; manual: boolean };
+
+export type RobotJob = ShelfJob | AmrJob | ParkJob;
 
 export type RobotPhase =
   | 'idle'

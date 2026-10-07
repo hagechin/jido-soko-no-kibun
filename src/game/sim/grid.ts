@@ -25,9 +25,9 @@ export function setCell(w: WorldState, x: number, z: number, kind: CellKind): vo
   w.cells[z * w.width + x] = kind;
 }
 
-/** 搬送ロボが走れるセルか（床レイヤー） */
+/** 搬送ロボが走れるセルか（床レイヤー）。ポートはレール下なので隣接セルから受け渡す */
 export function isFloorWalkable(kind: CellKind | null): boolean {
-  return kind === 'floor' || kind === 'waitSpot' || kind === 'port';
+  return kind === 'floor' || kind === 'waitSpot';
 }
 
 /** 棚ロボが走れるセルか（レールレイヤー） */

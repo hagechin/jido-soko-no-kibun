@@ -1,5 +1,6 @@
 /** 報酬・評判（§9.2 / §9.3） */
 import { REPUTATION, REWARD, TICKS_PER_SECOND } from '../data/balance';
+import { activeEvents } from '../data/seasons';
 import type { Order, WorldState } from './types';
 
 export function orderItemCount(o: Order): number {
@@ -50,4 +51,21 @@ export function changeReputation(w: WorldState, delta: number, reason: string): 
 export function addCoins(w: WorldState, delta: number): void {
   w.coins += delta;
   if (delta > 0) w.stats.totalCoins += delta;
+}
+
+/** オーダー出荷（§9.2）。報酬・評判・統計・イベント */
+export function shipOrder(w: WorldState, o: Order, stationId: number): void {
+  const idx = w.orders.indexOf(o);
+  if (idx < 0) return;
+  w.orders.splice(idx, 1);
+  let eventMult = 1;
+  for (const e of activeEvents(w.calendar.month, w.calendar.week)) eventMult *= e.rewardFactor;
+  const r = rewardFor(w, o, eventMult);
+  addCoins(w, r.total);
+  changeReputation(w, REWARD.repGainPerShipment, '出荷');
+  w.stats.totalShipped++;
+  w.stats.recentShipments.push({ tick: w.tick, coins: r.total, items: r.items });
+  while (w.stats.recentShipments.length > 200) w.stats.recentShipments.shift();
+  for (const l of o.lines) w.stats.shippedByItem[l.item] = (w.stats.shippedByItem[l.item] ?? 0) + l.qty;
+  w.events.push({ type: 'shipped', orderId: o.id, coins: r.total, bonus: r.bonus, stationId });
 }
