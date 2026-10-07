@@ -713,3 +713,54 @@ button {
   border-color: var(--danger);
   color: var(--danger);
 }
+
+/* ---------- 建設モード ---------- */
+.sheet.is-compact {
+  max-height: none;
+  width: 100%;
+  border-radius: 0;
+}
+.build-tools {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.build-tool {
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 0;
+  min-width: 64px;
+  padding: 4px 6px;
+  line-height: 1.15;
+}
+.build-tool .ico {
+  font-size: 18px;
+}
+.build-tool .lbl {
+  font-size: 11px;
+}
+.build-tool .cost {
+  font-size: 10px;
+  color: var(--muted);
+}
+.build-tool.is-active .cost {
+  color: #333;
+}
+.build-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--accent);
+}
+.assign-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.assign-btn {
+  flex-direction: column;
+  gap: 0;
+  min-width: 56px;
+  padding: 4px;
+}

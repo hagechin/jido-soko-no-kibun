@@ -21,6 +21,10 @@ import {
   Vector3,
   WebGLRenderer,
   BoxGeometry,
+  BufferGeometry,
+  Float32BufferAttribute,
+  LineBasicMaterial,
+  LineSegments,
 } from 'three';
 import { RENDER, BIN, INBOUND_WORKER } from '../data/balance';
 import { itemDef } from '../data/items';
@@ -87,6 +91,9 @@ export class WarehouseRenderer {
   /** 強調表示するセル（オーダーの商品タップなど） */
   highlightCells: { x: number; z: number; color: string }[] = [];
   selectedRobotId: number | null = null;
+  private gridLines: LineSegments | null = null;
+  /** 建設モード: グリッド表示 */
+  showGrid = false;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -246,6 +253,17 @@ export class WarehouseRenderer {
 
     this.staticGroup.add(this.floorBatch.mesh, this.frameBatch.mesh, this.miscBatch.mesh);
 
+    // 建設モード用グリッド線
+    const pts: number[] = [];
+    const gy = 0.02;
+    for (let x = 0; x <= w.width; x++) pts.push(x, gy, 0, x, gy, w.height);
+    for (let z = 0; z <= w.height; z++) pts.push(0, gy, z, w.width, gy, z);
+    const geo = new BufferGeometry();
+    geo.setAttribute('position', new Float32BufferAttribute(pts, 3));
+    this.gridLines = new LineSegments(geo, new LineBasicMaterial({ color: '#1d2733', transparent: true, opacity: 0.35 }));
+    this.gridLines.visible = this.showGrid;
+    this.staticGroup.add(this.gridLines);
+
     // 光・地面・ピック用平面
     this.sun.position.set(w.width * 0.6, 30, w.height * 1.2);
     this.sun.target.position.set(w.width / 2, 0, w.height / 2);
@@ -289,6 +307,7 @@ export class WarehouseRenderer {
       this.lastTick = w.tick;
       this.drawBins(w);
     }
+    if (this.gridLines) this.gridLines.visible = this.showGrid;
     this.drawRobots(w, alpha);
     this.drawHighlights(w);
     this.renderer.render(this.scene, this.camera);
@@ -355,7 +374,15 @@ export class WarehouseRenderer {
       this.robotWorldPos(r, alpha, this.tmpPos);
       const x = this.tmpPos.x;
       const z = this.tmpPos.z;
-      const rot = (r.pose.dir * Math.PI) / 2;
+      let dirF = r.pose.dir as number;
+      if (r.phase === 'turning' && r.moveTo && r.actTotal > 0) {
+        const t = Math.min(1, (r.actTotal - r.actRemaining + alpha) / r.actTotal);
+        let d = r.moveTo.dir - r.pose.dir;
+        if (d > 2) d -= 4;
+        if (d < -2) d += 4;
+        dirF = r.pose.dir + d * t;
+      }
+      const rot = (dirF * Math.PI) / 2;
       if (r.kind === 'shelf') {
         const y = rh + 0.25;
         this.robotBatch.add(x, y, z, 0.78, 0.36, 0.78, COLORS.shelfRobot, rot);
@@ -379,45 +406,46 @@ export class WarehouseRenderer {
         }
       } else {
         const cargo = r.cargoLevel;
-        const fw = cargo >= 2 ? 1.8 : 0.8;
-        const fl = cargo >= 1 ? 1.8 : 0.8;
         const y = 0.17;
-        // 1×2 は向きに沿って長い。アンカー基準で後ろへ伸ばす
+        // 向きベクトル（補間した角度）。1×2 はアンカー（前）から後ろへ伸びる
+        const fx = Math.cos(rot);
+        const fz = Math.sin(rot);
         let cx = x;
         let cz = z;
+        let bw = 0.8;
+        let bl = 0.8;
+        let bodyRot = -rot;
         if (cargo === 1) {
-          const back = [
-            [-0.5, 0],
-            [0, -0.5],
-            [0.5, 0],
-            [0, 0.5],
-          ][r.pose.dir];
-          cx += back[0];
-          cz += back[1];
+          cx -= fx * 0.5;
+          cz -= fz * 0.5;
+          bw = 1.8; // 長辺が進行方向
+          bl = 0.8;
         } else if (cargo === 2) {
           cx += 0.5;
           cz += 0.5;
+          bw = 1.8;
+          bl = 1.8;
+          bodyRot = 0;
         }
-        const long = cargo === 1 && (r.pose.dir === 1 || r.pose.dir === 3);
-        const w2 = cargo === 1 ? (long ? 0.8 : fl) : fw;
-        const d2 = cargo === 1 ? (long ? fl : 0.8) : cargo === 2 ? 1.8 : 0.8;
-        this.robotBatch.add(cx, y, cz, w2, 0.3, d2, COLORS.amr);
-        this.robotBatch.add(cx, y + 0.17, cz, w2 * 0.9, 0.06, d2 * 0.9, COLORS.amrDark);
+        this.robotBatch.add(cx, y, cz, bw, 0.3, bl, COLORS.amr, bodyRot);
+        this.robotBatch.add(cx, y + 0.17, cz, bw * 0.9, 0.06, bl * 0.9, COLORS.amrDark, bodyRot);
         // ライト（進行方向）
-        const f = [
-          [0.5, 0],
-          [0, 0.5],
-          [-0.5, 0],
-          [0, -0.5],
-        ][r.pose.dir];
-        this.robotBatch.add(x + f[0] * 0.8, 0.2, z + f[1] * 0.8, 0.12, 0.08, 0.12, '#ffe066');
+        const lx = cargo === 2 ? cx + fx * 0.85 : x + fx * 0.4;
+        const lz = cargo === 2 ? cz + fz * 0.85 : z + fz * 0.4;
+        this.robotBatch.add(lx, 0.2, lz, 0.12, 0.08, 0.12, '#ffe066');
         r.carrying.forEach((id, i) => {
-          const col = i % 2;
-          const row = Math.floor(i / 2);
-          const ox = cargo === 2 ? (col - 0.5) * 0.9 : 0;
-          const oz = cargo >= 1 ? (row - (cargo === 1 ? 0.5 : 0.5)) * 0.9 : 0;
-          const yy = 0.4 + bh / 2 + (cargo === 0 ? i * bh : 0);
-          this.robotBatch.add(cx + ox, yy, cz + oz, RENDER.binSize * 0.85, bh * 0.9, RENDER.binSize * 0.85, this.binColor(w, id));
+          let ox = 0;
+          let oz = 0;
+          if (cargo === 1) {
+            const k = i === 0 ? 0.45 : -0.45;
+            ox = fx * k;
+            oz = fz * k;
+          } else if (cargo === 2) {
+            ox = ((i % 2) - 0.5) * 0.9;
+            oz = (Math.floor(i / 2) - 0.5) * 0.9;
+          }
+          const yy = 0.4 + bh / 2;
+          this.robotBatch.add(cx + ox, yy, cz + oz, RENDER.binSize * 0.85, bh * 0.9, RENDER.binSize * 0.85, this.binColor(w, id), bodyRot);
         });
         if (r.id === this.selectedRobotId) {
           this.selectionRing.visible = true;

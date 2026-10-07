@@ -19,6 +19,9 @@ import { $, el, showToast } from './ui/layout';
 import { renderUpgrades } from './ui/upgrades';
 import { renderInventory } from './ui/inventory';
 import { renderSettings } from './ui/settings';
+import { renderBuild, type BuildUiState } from './ui/buildMode';
+import { renderStationPanel } from './ui/stationPanel';
+import { expand, move as moveObject, place, remove } from './sim/build';
 import { clearStorage, loadFromStorage, saveToStorage } from './ui/storage';
 import { SAVE } from './data/balance';
 import type { QualityLevel } from './render/quality';
@@ -44,6 +47,8 @@ class Game {
   private infoSig = '';
   private lastSavedAt: number | null = null;
   private quality: QualityLevel;
+  private build: BuildUiState = { tool: 'stack', held: null };
+  private stationPanelId: number | null = null;
 
   constructor() {
     const loaded = loadFromStorage();
@@ -66,6 +71,38 @@ class Game {
     this.popup = new Popup();
     this.orders.onItemTap = (itemId) => this.onOrderItemTap(itemId);
     this.bar.registerPanel('inventory', (body) => renderInventory(body, this.world, (item) => this.onOrderItemTap(item)));
+    this.bar.registerPanel('build', (body) =>
+      renderBuild(body, {
+        world: this.world,
+        state: this.build,
+        onToolChange: (tool) => {
+          this.build.tool = tool;
+          this.build.held = null;
+          this.renderer.highlightCells = [];
+          this.bar.refresh();
+        },
+        onExpand: () => {
+          const r = expand(this.world);
+          showToast(r.ok ? `倉庫を ${this.world.width}×${this.world.height} マスに広げました` : r.reason);
+          this.bar.refresh();
+        },
+        refresh: () => this.bar.refresh(),
+      }),
+    );
+    this.bar.registerPanel('station', (body) => {
+      if (this.stationPanelId !== null) renderStationPanel(body, this.world, this.stationPanelId, () => this.bar.refresh());
+    });
+    this.bar.onPanelChange = (panel) => {
+      const building = panel === 'build';
+      if (this.world.flags.buildMode !== building) {
+        this.world.flags.buildMode = building;
+        this.renderer.showGrid = building;
+        this.build.held = null;
+        this.renderer.highlightCells = [];
+        if (building) this.select(null);
+        else this.rt.dirty = true; // レイアウトが変わったかもしれないので再計画
+      }
+    };
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {
         quality: this.quality,
@@ -178,6 +215,7 @@ class Game {
     }
     const hit = this.renderer.pick(this.world, x, y, this.alpha);
     if (!hit) return;
+    if (this.world.flags.buildMode) return this.onBuildTap(hit.x, hit.z);
     const r = this.selectedRobot;
     if (hit.kind === 'robot') {
       // 選択中の棚ロボ自身をタップ → その真下のスタックを指したとみなす
@@ -213,6 +251,39 @@ class Game {
     this.describeTarget(hit);
   }
 
+  private onBuildTap(x: number, z: number): void {
+    const w = this.world;
+    const tool = this.build.tool;
+    let res: { ok: true } | { ok: false; reason: string };
+    if (tool === 'erase') {
+      res = remove(w, x, z);
+      if (res.ok) showToast('撤去しました');
+    } else if (tool === 'move') {
+      if (!this.build.held) {
+        const kind = w.cells[z * w.width + x];
+        if (kind === 'floor' || kind === 'inboundDock' || kind === 'outboundDock') {
+          showToast('動かせる設備をタップしてください');
+          return;
+        }
+        this.build.held = { x, z };
+        this.renderer.highlightCells = [{ x, z, color: '#4fc3f7' }];
+        this.bar.refresh();
+        return;
+      }
+      res = moveObject(w, this.build.held.x, this.build.held.z, x, z);
+      if (res.ok) {
+        this.build.held = null;
+        this.renderer.highlightCells = [];
+        showToast('移動しました');
+      }
+    } else {
+      res = place(w, tool, x, z);
+      if (res.ok) showToast(`${tool === 'stack' ? 'スタック' : tool === 'port' ? 'ポート' : tool === 'waitSpot' ? '待機スポット' : 'ステーション'} を置きました`);
+    }
+    if (!res.ok) showToast(res.reason);
+    this.bar.refresh();
+  }
+
   private describeTarget(hit: PickResult): void {
     const w = this.world;
     if (hit.kind === 'stack') {
@@ -223,9 +294,8 @@ class Game {
       const p = w.ports.find((p) => p.id === hit.id)!;
       showToast(`ポート: 出庫待ち ${p.outbound.length} / 返却待ち ${p.returns.length}`);
     } else if (hit.kind === 'station') {
-      const s = w.stations.find((s) => s.id === hit.id)!;
-      if (s.kind === 'pick') showToast(`ピッカー: 担当 ${s.assignedItems.map((i) => itemDef(i).name).join('・') || 'なし'}`);
-      else showToast('入荷担当: 入荷した商品をビンに詰めます');
+      this.stationPanelId = hit.id;
+      this.bar.show('station');
     }
   }
 
@@ -290,7 +360,7 @@ class Game {
       const dt = Math.min(250, now - this.last);
       this.last = now;
       if (document.hidden) return;
-      this.acc += dt * this.world.speed;
+      this.acc += this.world.flags.buildMode ? 0 : dt * this.world.speed;
       let guard = 0;
       while (this.acc >= TICK_MS && guard++ < 40) {
         stepSim(this.world, this.rt);
