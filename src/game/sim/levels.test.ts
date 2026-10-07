@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
 import { createRuntime, stepSim } from './sim';
 import { commandRetrieve } from './commands';
+import { addRobot } from './world';
+import { lockedStacks, pickStackWithRoom } from './robots';
 import { upgradeLevels, upgradeBinCapacity, upgradeCargo } from './shop';
 import { deserialize, serialize } from './save';
 import { LEVELS, SAVE } from '../data/balance';
@@ -133,5 +135,51 @@ describe('M6 save/load', () => {
       expect(res.world.trucks).toEqual([]);
       expect(res.world.stats.trucks).toBe(0);
     }
+  });
+});
+
+describe('stack locking while digging (§3.2 livelock fix)', () => {
+  it('nobody stores bins on a stack that is being dug; stores level the heights; the dig completes', () => {
+    const w = createWorld({ seed: 12 });
+    w.coins = 1e6;
+    w.rank = 4;
+    w.nextOrderTick = 1e9;
+    upgradeLevels(w);
+    upgradeLevels(w); // 3 段
+    // スタック0 に [apple(下), book, tshirt] を作る
+    const s0 = w.stacks[0];
+    const take = (item: string) => { const s = w.stacks.find((s) => s.bins.some((id) => w.bins[id].item === item))!; const id = s.bins.find((id) => w.bins[id].item === item)!; s.bins.splice(s.bins.indexOf(id), 1); return id; };
+    const apple = s0.bins[0];
+    s0.bins.push(take('book'), take('tshirt'));
+    expect(s0.bins).toHaveLength(3);
+    const rt = createRuntime();
+    const digger = w.robots.find((r) => r.kind === 'shelf')!;
+    const helper = addRobot(w, 'shelf', w.stacks[11].x, w.stacks[11].z);
+    commandRetrieve(w, rt, digger.id, s0.id, apple);
+    expect(lockedStacks(w).has(s0.id)).toBe(true);
+    expect(pickStackWithRoom(w, s0)?.id).not.toBe(s0.id);
+    // 掘っている間、返却ビンを絶え間なくポートに流す（helper が格納する）
+    let maxHeightDuringDig = s0.bins.length;
+    let fed = 0;
+    const port = w.ports[0];
+    until(w, rt, () => {
+      if (port.returns.length === 0 && fed < 6) {
+        const empty = Object.values(w.bins).find((b) => b.item === null && w.stacks.some((s) => s.bins.includes(b.id)));
+        if (empty) {
+          const s = w.stacks.find((s) => s.bins.includes(empty.id))!;
+          s.bins.splice(s.bins.indexOf(empty.id), 1);
+          port.returns.push(empty.id);
+          fed++;
+        }
+      }
+      if (digger.job?.type === 'retrieve') maxHeightDuringDig = Math.max(maxHeightDuringDig, s0.bins.length);
+      return port.outbound.includes(apple);
+    }, 4000);
+    expect(port.outbound).toContain(apple);
+    expect(maxHeightDuringDig).toBe(3); // 掘っている最中に誰も上に積まなかった
+    expect(helper.job === null || helper.job.type !== 'retrieve').toBe(true);
+    // 格納は低いスタックへ（最大と最小の差が小さい）
+    const heights = w.stacks.map((s) => s.bins.length);
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(2);
   });
 });

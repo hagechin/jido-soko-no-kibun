@@ -120,6 +120,9 @@ export const ROBOT = {
   loadTicksPerBin: sec(0.5),
   /** 1台あたりの指示予約数の上限（§7.2） */
   maxQueuedCommands: 3,
+  /** ビンを置くスタックの選び方: 低さの重み（1 段 = この値ぶんの距離）。返却の格納は平準化を強く、掘り出しの退避は近さを優先 */
+  storeLevelWeight: 3,
+  digLevelWeight: 1,
   /**
    * 積載 Lv → 積載ビン数 / 占有マス。
    * ★ 仕様 §4.2 の「底面積が増える」から変更: ビンを積み重ねて運び、占有マスは 1×1 のまま
