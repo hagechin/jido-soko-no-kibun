@@ -17,6 +17,7 @@ import { binLabel, selectedInfoNode } from './ui/selection';
 import { iconImg } from './ui/icons';
 import { $, el, showToast } from './ui/layout';
 import { renderUpgrades } from './ui/upgrades';
+import { renderInventory } from './ui/inventory';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 
@@ -48,6 +49,7 @@ class Game {
     this.orders = new OrderSheet();
     this.popup = new Popup();
     this.orders.onItemTap = (itemId) => this.onOrderItemTap(itemId);
+    this.bar.registerPanel('inventory', (body) => renderInventory(body, this.world, (item) => this.onOrderItemTap(item)));
     this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh() }));
 
     $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
@@ -219,7 +221,10 @@ class Game {
           if (e.delta < 0) showToast(`評判が下がった（${e.reason}）`);
           break;
         case 'notice':
-          showToast(e.text);
+          showToast(e.text, 3500);
+          break;
+        case 'truckArrived':
+          if (this.bar.open === 'inventory') this.bar.refresh();
           break;
         default:
           break;

@@ -4,6 +4,7 @@
  */
 import { PORT, ROBOT } from '../data/balance';
 import { manhattan } from './grid';
+import { visibleOrders } from './orders';
 import { atGoal, sameGoal } from './goals';
 import { moveTicksFor } from './pathfinding';
 import type { Runtime } from './runtime';
@@ -91,6 +92,15 @@ export function stationForBins(w: WorldState, r: Robot): number | null {
     if (s) return s.id;
   }
   return nearestStation(w, r.pose.x, r.pose.z, 'pick')?.id ?? null;
+}
+
+/** 取り出したビンの行き先: 空ビン、または需要が無く入荷待ちがある商品なら入荷ステーション */
+export function defaultPurpose(w: WorldState, bin: { item: string | null; qty: number }): 'pick' | 'inbound' {
+  if (!bin.item || bin.qty <= 0) return 'inbound';
+  const waiting = w.pallets.some((p) => p.item === bin.item);
+  if (!waiting) return 'pick';
+  const needed = visibleOrders(w).some((o) => o.lines.some((l) => l.item === bin.item && l.picked < l.qty));
+  return needed ? 'pick' : 'inbound';
 }
 
 // ------------------------------------------------------------------ movement
@@ -199,7 +209,7 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
       stack.bins.pop();
       r.carrying = [job.binId];
       const bin = w.bins[job.binId];
-      bin.purpose = bin.purpose ?? 'pick';
+      if (!bin.purpose) bin.purpose = defaultPurpose(w, bin);
       r.phase = 'idle';
       r.step = 20;
       setGoal(rt, r, { type: 'cell', x: port.x, z: port.z });

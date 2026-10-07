@@ -72,6 +72,11 @@ function finishWork(w: WorldState, s: Station): void {
       }
       const picked = Math.min(work.count, Math.max(0, work.count - left));
       if (picked > 0) w.events.push({ type: 'pick', stationId: s.id, item: bin.item, count: picked });
+      if (bin.qty <= 0) {
+        bin.qty = 0;
+        bin.item = null; // 空ビンとして残る（§3.1）
+        w.stats.stockouts++;
+      }
       // 完了したオーダーを出荷
       for (const o of [...visibleOrders(w)]) if (isOrderComplete(o)) shipOrder(w, o, s.id);
     } else if (s.kind === 'inbound') {

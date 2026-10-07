@@ -22,7 +22,7 @@ import {
   WebGLRenderer,
   BoxGeometry,
 } from 'three';
-import { RENDER, BIN } from '../data/balance';
+import { RENDER, BIN, INBOUND_WORKER } from '../data/balance';
 import { itemDef } from '../data/items';
 import type { Robot, WorldState } from '../sim/types';
 import { BoxBatch, shade } from './voxel';
@@ -267,7 +267,7 @@ export class WarehouseRenderer {
     // 動的バッチの容量を確保
     this.binBatch.dispose();
     this.robotBatch.dispose();
-    const maxBins = w.stacks.length * Math.max(w.levels, 1) + 64;
+    const maxBins = w.stacks.length * Math.max(w.levels, 1) + 64 + INBOUND_WORKER.dockDisplayMax * w.inboundDock.length * 2;
     this.binBatch = new BoxBatch(maxBins, { castShadow: sh });
     this.robotBatch = new BoxBatch(w.robots.length * 12 + 64, { castShadow: sh });
     this.dynamicGroup.clear();
@@ -311,6 +311,17 @@ export class WarehouseRenderer {
     for (const s of w.stacks) {
       s.bins.forEach((id, level) => {
         this.binBatch.add(s.x + 0.5, RENDER.railBaseHeight + level * bh + bh / 2, s.z + 0.5, bs, bh * 0.92, bs, this.binColor(w, id));
+      });
+    }
+    // 入荷口のパレット（商品の山）。表示は dockDisplayMax 個まで
+    const docks = w.inboundDock;
+    if (docks.length) {
+      w.pallets.slice(0, INBOUND_WORKER.dockDisplayMax * docks.length).forEach((p, i) => {
+        const d = docks[i % docks.length];
+        const layer = Math.floor(i / docks.length);
+        const h = Math.min(0.9, 0.2 + p.qty / 40);
+        this.binBatch.add(d.x + 0.5, 0.05 + layer * 0.5 + h / 2, d.z + 0.5, 0.7, h, 0.7, itemDef(p.item).color);
+        this.binBatch.add(d.x + 0.5, 0.05 + layer * 0.5 + 0.02, d.z + 0.5, 0.86, 0.06, 0.86, '#a0783c');
       });
     }
     for (const p of w.ports) {

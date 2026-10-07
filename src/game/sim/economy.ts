@@ -66,6 +66,9 @@ export function shipOrder(w: WorldState, o: Order, stationId: number): void {
   w.stats.totalShipped++;
   w.stats.recentShipments.push({ tick: w.tick, coins: r.total, items: r.items });
   while (w.stats.recentShipments.length > 200) w.stats.recentShipments.shift();
-  for (const l of o.lines) w.stats.shippedByItem[l.item] = (w.stats.shippedByItem[l.item] ?? 0) + l.qty;
+  for (const l of o.lines) {
+    w.stats.shippedByItem[l.item] = (w.stats.shippedByItem[l.item] ?? 0) + l.qty;
+    w.stats.shippedThisWeek[l.item] = (w.stats.shippedThisWeek[l.item] ?? 0) + l.qty;
+  }
   w.events.push({ type: 'shipped', orderId: o.id, coins: r.total, bonus: r.bonus, stationId });
 }

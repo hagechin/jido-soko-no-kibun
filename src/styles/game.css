@@ -621,3 +621,83 @@ button {
   flex: 0 0 auto;
   min-width: 88px;
 }
+
+/* ---------- 在庫パネル ---------- */
+.inv-summary {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.warn {
+  color: var(--danger);
+  font-weight: 700;
+}
+.inv-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.inv-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  grid-template-areas:
+    'icon name qty'
+    'icon loc dock';
+  align-items: center;
+  gap: 2px 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--panel-2);
+  text-align: left;
+  cursor: pointer;
+}
+.inv-row .item-icon {
+  grid-area: icon;
+}
+.inv-name {
+  grid-area: name;
+  font-weight: 700;
+}
+.inv-qty {
+  grid-area: qty;
+}
+.inv-dock {
+  grid-area: dock;
+  font-size: 11px;
+}
+.inv-loc {
+  grid-area: loc;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.inv-row.is-stockout {
+  border-color: var(--danger);
+}
+.inv-row.is-stockout .inv-qty {
+  color: var(--danger);
+  font-weight: 700;
+}
+.pallet-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--panel-2);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+#hud-dock[hidden] {
+  display: none;
+}

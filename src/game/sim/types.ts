@@ -155,6 +155,13 @@ export interface Pallet {
   arrivedTick: number;
 }
 
+/** 入荷の予定（トラックは少し遅れて着く演出用） */
+export interface Truck {
+  arriveTick: number;
+  pallets: { item: string; qty: number }[];
+  kind: 'weekly' | 'prestock';
+}
+
 export interface Calendar {
   tick: number;
   year: number;
@@ -170,8 +177,13 @@ export interface Stats {
   stockouts: number;
   /** サイバーウィークの成績（年ごと） */
   cyberWeekRecords: CyberWeekRecord[];
-  /** 商品ごとの出荷数（入荷量の自動決定に使う） */
+  /** 商品ごとの出荷数（累計） */
   shippedByItem: Record<string, number>;
+  /** 今週・先週の商品ごとの出荷数（入荷量の自動決定に使う） */
+  shippedThisWeek: Record<string, number>;
+  shippedLastWeek: Record<string, number>;
+  /** 入荷トラックの到着回数 */
+  trucks: number;
 }
 
 export interface CyberWeekRecord {
@@ -206,6 +218,7 @@ export interface WorldState {
   inboundDock: Vec2[];
   outboundDock: Vec2[];
   pallets: Pallet[];
+  trucks: Truck[];
   robots: Robot[];
   orders: Order[]; // 表示中 + キュー（先頭 visibleMax 件が表示）
   nextOrderTick: number;

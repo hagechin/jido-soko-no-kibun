@@ -1,5 +1,6 @@
 import { RANKS } from '../data/balance';
 import { formatDate, SEASON_ICON } from '../sim/calendar';
+import { dockBacklog } from '../sim/inbound';
 import type { WorldState } from '../sim/types';
 import { $ } from './layout';
 
@@ -9,8 +10,10 @@ export class Hud {
   private rep = $('hud-rep').querySelector('b')!;
   private date = $('hud-date').querySelector('b')!;
   private season = $('hud-season');
+  private dock = $('hud-dock');
+  private dockN = this.dock.querySelector('b')!;
   private speedBtns = Array.from($('speed').querySelectorAll<HTMLButtonElement>('.speed-btn'));
-  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN };
+  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN };
 
   private cycleBtn = $('speed-cycle');
   private lastNonZeroSpeed = 1;
@@ -42,6 +45,12 @@ export class Hud {
     if (this.last.rep !== rep) {
       this.last.rep = rep;
       this.rep.textContent = String(rep);
+    }
+    const dock = dockBacklog(w);
+    if (this.last.dock !== dock) {
+      this.last.dock = dock;
+      this.dock.hidden = dock === 0;
+      this.dockN.textContent = String(dock);
     }
     const d = formatDate(w.calendar);
     if (this.last.date !== d) {
