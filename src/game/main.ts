@@ -42,6 +42,7 @@ import { KeyboardCamera } from './render/keyboardCamera';
 import { LayoutEditor } from './ui/layoutEditor';
 import { beginEdit, finishEdit } from './sim/layoutEditor';
 import { helpNode } from './ui/help';
+import { BackgroundTicker, loadBackgroundSetting, saveBackgroundSetting } from './ui/background';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
 import { Sound } from './audio/sound';
@@ -95,6 +96,12 @@ class Game {
   private lastRender = 0;
   private hiddenAt: number | null = null;
   private catchUp = 0;
+  /** バックグラウンド動作（PC 既定オン）: 隠れている間も Worker のタイマーで進める */
+  backgroundMode = loadBackgroundSetting();
+  private ticker = new BackgroundTicker();
+  /** バックグラウンド動作の前回時刻（フレームループの this.last とは別。隠れていてもフレームが走る環境があるため） */
+  private bgLast = 0;
+  private catchupOverlay = $('catchup');
   private stationPanelId: number | null = null;
   private portPanelId: number | null = null;
 
@@ -230,6 +237,11 @@ class Game {
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {
         openHelp: () => this.openHelp(),
+        background: this.backgroundMode,
+        setBackground: (on) => {
+          this.setBackgroundMode(on);
+          this.bar.refresh();
+        },
         difficulty: this.world.difficulty,
         setDifficulty: (d) => {
           this.world.difficulty = d;
@@ -277,10 +289,19 @@ class Game {
     });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        this.hiddenAt = Date.now();
+        if (this.backgroundMode && !this.world.flags.buildMode && !this.editor.open) {
+          // バックグラウンド動作: 戻ったときの追いつきは不要
+          this.hiddenAt = null;
+          this.bgLast = performance.now();
+          this.ticker.start(() => this.backgroundTick());
+        } else {
+          this.hiddenAt = Date.now();
+        }
       } else {
+        const wasRunning = this.ticker.running;
+        this.ticker.stop();
         this.last = performance.now();
-        if (this.hiddenAt !== null) this.onResume(Date.now() - this.hiddenAt);
+        if (!wasRunning && this.hiddenAt !== null) this.onResume(Date.now() - this.hiddenAt);
         this.hiddenAt = null;
       }
     });
@@ -441,6 +462,35 @@ class Game {
       return;
     }
     showToast('表示中のオーダーは全部欠品待ち。入荷口の山をビンに詰めましょう（棚ロボで空ビンを取り出し → 搬送ロボを入荷ステーションへ。自動補充AIなら自動）', 6000, 'triangle-alert');
+  }
+
+  /** バックグラウンド動作の 1 回ぶん: 前回からの実時間 × 速度の tick を進める（1 回の上限を超えたぶんは追いつき計算へ） */
+  private backgroundTick(): void {
+    if (!document.hidden || this.world.flags.buildMode || this.editor.open) return;
+    const now = performance.now();
+    const dt = Math.max(0, now - this.bgLast);
+    this.bgLast = now;
+    this.last = now;
+    this.acc += dt * this.world.speed;
+    let n = 0;
+    while (this.acc >= TICK_MS && n < OFFLINE.backgroundTicksPerMessage) {
+      stepSim(this.world, this.rt);
+      this.acc -= TICK_MS;
+      n++;
+    }
+    if (this.acc >= TICK_MS) {
+      this.catchUp += Math.floor(this.acc / TICK_MS);
+      this.acc = 0;
+    }
+    if (this.world.events.length) {
+      this.handleEvents(this.world.events);
+      this.world.events = [];
+    }
+  }
+
+  setBackgroundMode(on: boolean): void {
+    this.backgroundMode = on;
+    saveBackgroundSetting(on);
   }
 
   /** タブが戻ったとき: 5 分以内なら追いつき計算、それ以上はまとめて計算（§10.3） */
@@ -783,11 +833,22 @@ class Game {
           if (this.statsEl && this.debug.showStats) this.statsEl.textContent = `${this.debug.fps.toFixed(0)} fps / sim ${this.debug.simMs.toFixed(2)} ms/tick / ロボ ${this.world.robots.length} / ${this.world.width}×${this.world.height} / tick ${this.world.tick}`;
         }
       }
-      // 離席からの追いつき計算（1 フレームに少しずつ）
+      // 離席からの追いつき計算（1 フレームに少しずつ。終わるまでは描画せず「反映中」の表示だけ）
       if (this.catchUp >= 1 && !this.world.flags.buildMode && !this.editor.open) {
         const n = Math.min(OFFLINE.catchUpTicksPerFrame, Math.floor(this.catchUp));
         for (let i = 0; i < n; i++) stepSim(this.world, this.rt);
         this.catchUp -= n;
+        if (this.world.events.length) {
+          this.handleEvents(this.world.events);
+          this.world.events = [];
+        }
+        if (this.catchUp >= 1) {
+          this.catchupOverlay.hidden = false;
+          this.catchupOverlay.textContent = `離席中の進行を反映しています… 残り ${Math.ceil(this.catchUp / TICKS_PER_SECOND)} 秒ぶん`;
+          return;
+        }
+        this.catchupOverlay.hidden = true;
+        this.rt.dirty = true;
       }
       if (this.world.events.length) {
         this.handleEvents(this.world.events);

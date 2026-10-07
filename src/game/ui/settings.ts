@@ -19,6 +19,9 @@ export interface SettingsContext {
   setDifficulty?: (d: DifficultyId) => void;
   /** 操作方法を開く */
   openHelp?: () => void;
+  /** バックグラウンド動作（他のタブを見ている間も進める） */
+  background?: boolean;
+  setBackground?: (on: boolean) => void;
 }
 
 export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
@@ -26,6 +29,23 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     const help = el('button', { class: 'btn', type: 'button' }, iconText('info', '操作方法とショートカット（H）'));
     help.addEventListener('click', () => ctx.openHelp!());
     body.append(el('div', { class: 'settings-row' }, help));
+  }
+  if (ctx.setBackground) {
+    body.append(el('h4', { text: 'バックグラウンド動作' }));
+    const row = el('div', { class: 'settings-row' });
+    for (const [on, label] of [
+      [true, 'オン（他のタブを見ている間も進む）'],
+      [false, 'オフ（戻ったときに追いつく／お留守番）'],
+    ] as [boolean, string][]) {
+      const b = el('button', { class: `btn${ctx.background === on ? ' is-active' : ''}`, type: 'button', text: label });
+      b.addEventListener('click', () => {
+        ctx.setBackground!(on);
+        showToast(`バックグラウンド動作: ${on ? 'オン' : 'オフ'}`);
+      });
+      row.append(b);
+    }
+    body.append(row);
+    body.append(el('p', { class: 'muted small', text: 'オンにすると PC で他のタブやアプリを使っている間もシミュレーションが進みます（音も鳴ります）。スマホはスリープやアプリ切替で OS に止められるため、戻ったときに追いつき計算（5 分まで）かお留守番レポート（それ以上）になります。既定: PC はオン、タッチ端末はオフ' }));
   }
   if (ctx.setDifficulty) {
     body.append(el('h4', { text: '難易度（いつでも変更できます）' }));

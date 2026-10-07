@@ -410,6 +410,8 @@ export const OFFLINE = {
   catchUpMaxMs: 5 * 60_000,
   /** 追いつき計算の 1 フレームあたり上限 tick */
   catchUpTicksPerFrame: 600,
+  /** バックグラウンド動作: Worker からの 1 メッセージ（250ms）で進める tick の上限（超えたぶんは追いつき計算へ） */
+  backgroundTicksPerMessage: 300,
   /** まとめて計算する上限（8 時間） */
   maxOfflineMs: 8 * 60 * 60_000,
   /** ペースを見る窓（直近 10 分） */
