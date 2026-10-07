@@ -221,6 +221,8 @@ export const ORDERS = {
   latePenaltyRep: 1,
   /** 到着直後のオーダー生成の初回遅延 */
   firstOrderDelayTicks: sec(5),
+  /** 表示中が全部欠品待ちのとき、キューから完了できるオーダーを前に出す判定の周期 */
+  unblockCheckTicks: sec(5),
 };
 
 export const REWARD = {
@@ -269,8 +271,10 @@ export const AUTOMATION = {
   relocateIdleTicks: sec(8),
   /** 再配置する最小の人気差 */
   relocateMinGain: 3,
-  /** 自動補充で同時に入荷ステーションへ向かわせるビン数の上限 */
+  /** 自動補充で同時に入荷ステーションへ向かわせるビン数の上限（ピック待ちがあるときは 1） */
   maxInboundInFlight: 2,
+  /** 自動補充がポートに残しておく出庫枠 */
+  restockPortHeadroom: 2,
 };
 
 /** 建設コスト（§9.4） */

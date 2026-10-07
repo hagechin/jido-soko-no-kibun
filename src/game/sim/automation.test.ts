@@ -175,3 +175,56 @@ describe('M9 warehouse rank (§9.3)', () => {
     expect(checkRankUp(w)).toBe(false);
   });
 });
+
+describe('mixed destinations at the port', () => {
+  it('an AMR loads only bins bound for the same station, so pick bins reach the picker', () => {
+    const w = createWorld({ seed: 21 });
+    const rt = createRuntime();
+    w.nextOrderTick = 1e9;
+    w.coins = 1e5;
+    w.rank = 1;
+    buyAutomation(w, 'dispatch');
+    const amr = w.robots.find((r) => r.kind === 'amr')!;
+    amr.cargoLevel = 1; // 2 ビン積める
+    order(w, 1, [['apple', 1]]);
+    // ポートに「入荷行き」と「ピッカー行き」を 1 つずつ置く
+    const port = w.ports[0];
+    const empty = Object.values(w.bins).find((b) => b.item === null)!;
+    const apple = Object.values(w.bins).find((b) => b.item === 'apple')!;
+    for (const s of w.stacks) s.bins = s.bins.filter((id) => id !== empty.id && id !== apple.id);
+    empty.purpose = 'inbound';
+    apple.purpose = 'pick';
+    port.outbound.push(empty.id, apple.id);
+    until(w, rt, () => amr.job?.type === 'deliver');
+    expect(amr.carrying).toHaveLength(1);
+    expect(amr.carrying[0]).toBe(empty.id); // 先頭（入荷行き）だけ積む
+    const inbound = w.stations.find((s) => s.kind === 'inbound')!;
+    expect(amr.job).toMatchObject({ type: 'deliver', stationId: inbound.id });
+    // りんごはピッカーへ届いて出荷される
+    until(w, rt, () => w.stats.totalShipped === 1, 4000);
+    expect(w.stats.totalShipped).toBe(1);
+  });
+
+  it('restock AI leaves room at the port and runs one bin at a time while picks are pending', () => {
+    const w = createWorld({ seed: 22 });
+    const rt = createRuntime();
+    w.nextOrderTick = 1e9;
+    w.coins = 1e6;
+    w.rank = 1;
+    buyAutomation(w, 'dispatch');
+    buyAutomation(w, 'restock');
+    upgradeLevels(w);
+    for (let i = 0; i < 6; i++) buyEmptyBin(w);
+    addRobot(w, 'shelf', w.stacks[6].x, w.stacks[6].z);
+    addRobot(w, 'shelf', w.stacks[9].x, w.stacks[9].z);
+    for (const item of ['apple', 'book', 'mug']) addPallet(w, item, 10);
+    order(w, 1, [['apple', 1]]);
+    let maxInbound = 0;
+    for (let t = 0; t < 600; t++) {
+      stepSim(w, rt);
+      const n = Object.values(w.bins).filter((b) => b.purpose === 'inbound').length;
+      maxInbound = Math.max(maxInbound, n);
+    }
+    expect(maxInbound).toBeLessThanOrEqual(1);
+  });
+});

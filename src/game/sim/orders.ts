@@ -91,6 +91,26 @@ export function updateOrders(w: WorldState): void {
   if (queuedCount(w) > ORDERS.queuePenaltyThreshold && w.tick % ORDERS.queuePenaltyIntervalTicks === 0) {
     changeReputation(w, -1, 'オーダーが溜まりすぎ');
   }
+  if (w.tick % ORDERS.unblockCheckTicks === 0) unblockVisible(w);
+}
+
+/**
+ * 表示中の 5 件がすべて欠品待ちで、キューに在庫だけで完了できるオーダーがあれば先頭に出す（★）。
+ * 欠品待ちのオーダーは消えず（キャンセルされない）、キューの先頭で待つ。
+ */
+export function unblockVisible(w: WorldState): boolean {
+  const visible = visibleOrders(w);
+  if (visible.length < ORDERS.visibleMax || w.orders.length <= ORDERS.visibleMax) return false;
+  const inStock = new Set<string>();
+  for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) inStock.add(b.item);
+  const blocked = (o: Order) => o.lines.some((l) => l.picked < l.qty && !inStock.has(l.item));
+  if (!visible.every(blocked)) return false;
+  const idx = w.orders.findIndex((o, i) => i >= ORDERS.visibleMax && !blocked(o));
+  if (idx < 0) return false;
+  const [o] = w.orders.splice(idx, 1);
+  w.orders.unshift(o);
+  w.events.push({ type: 'notice', text: `#${o.id} を先に処理します（表示中のオーダーが全部欠品待ちのため）` });
+  return true;
 }
 
 /** 商品が倉庫内のどこかに在庫として存在するか（欠品判定 §2.4） */

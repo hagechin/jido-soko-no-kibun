@@ -113,7 +113,12 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
   // 自動補充: 入荷口の山に合うビン（同じ商品で空きあり）か空ビンを入荷ステーションへ
   if (auto.restock && w.pallets.length) {
     const inboundInFlight = [...inFlight].filter((id) => w.bins[id]?.purpose === 'inbound').length;
-    if (inboundInFlight < AUTOMATION.maxInboundInFlight) {
+    // ピッカー向けの仕事（在庫のある未ピック行）があるときは補充を控えめに（同時 1 ビン）
+    const stockNow = new Set<string>();
+    for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) stockNow.add(b.item);
+    const pickPending = visibleOrders(w).some((o) => o.lines.some((l) => l.picked < l.qty && stockNow.has(l.item)));
+    const cap = pickPending ? 1 : AUTOMATION.maxInboundInFlight;
+    if (inboundInFlight < cap) {
       const palletItems = new Set(w.pallets.map((p) => p.item));
       // 表示中オーダーが待っている欠品商品が入荷口にあるなら、空ビンを優先して使う
       const inStock = new Set<string>();
@@ -125,7 +130,8 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
       if (!options.length) options = urgent ? partial() : empties();
       if (options.length) {
         const pick = options[0];
-        const port = nearestPort(w, pick.stack.x, pick.stack.z, (p) => outboundLoad(w, p.id) < PORT.outboundCapacity);
+        // ポートにはピッカー向けの出庫ぶんの空きを残す
+        const port = nearestPort(w, pick.stack.x, pick.stack.z, (p) => outboundLoad(w, p.id) <= PORT.outboundCapacity - AUTOMATION.restockPortHeadroom);
         if (port) {
           w.bins[pick.binId].purpose = 'inbound';
           r.job = { type: 'retrieve', stackId: pick.stack.id, binId: pick.binId, portId: port.id, manual: false };

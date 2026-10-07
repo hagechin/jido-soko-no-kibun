@@ -34,6 +34,7 @@ import { AutoCamera } from './render/autoCamera';
 import { registerServiceWorker } from './ui/pwa';
 import { Sound } from './audio/sound';
 import { isCyberWeek } from './sim/events';
+import { visibleOrders } from './sim/orders';
 import { exportSaveFile, importSaveFile } from './ui/storage';
 import type { QualityLevel } from './render/quality';
 
@@ -58,6 +59,7 @@ class Game {
   private focusItem: string | null = null;
   private highlightTimer = 0;
   private infoSig = '';
+  private lastStockoutHint = 0;
   private lastSavedAt: number | null = null;
   private quality: QualityLevel;
   private build: BuildUiState = { tool: 'stack', held: null };
@@ -209,6 +211,22 @@ class Game {
     }
   }
 
+  /** 表示中のオーダーが全部欠品待ちで、誰も動いていないときに知らせる（60 秒に 1 回） */
+  private checkStockoutHint(now: number): void {
+    if (now - this.lastStockoutHint < 60_000 || this.world.speed === 0) return;
+    const w = this.world;
+    const visible = visibleOrders(w);
+    if (!visible.length) return;
+    const inStock = new Set<string>();
+    for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) inStock.add(b.item);
+    const allBlocked = visible.every((o) => o.lines.some((l) => l.picked < l.qty && !inStock.has(l.item)));
+    const anyBusy = w.robots.some((r) => r.job && r.job.type !== 'park');
+    if (!allBlocked || anyBusy) return;
+    this.lastStockoutHint = now;
+    const dock = w.pallets.reduce((a, p) => a + p.qty, 0);
+    showToast(dock > 0 ? '⚠️ 表示中のオーダーは全部欠品待ち。入荷口の山をビンに詰めましょう（棚ロボで空ビンを取り出し → 搬送ロボを入荷ステーションへ。自動補充AIなら自動）' : '⚠️ 表示中のオーダーは全部欠品待ち。次の入荷トラック（週 1 回）を待っています', 6000);
+  }
+
   /** タブが戻ったとき: 5 分以内なら追いつき計算、それ以上はまとめて計算（§10.3） */
   private onResume(hiddenMs: number): void {
     if (this.world.flags.buildMode) return;
@@ -313,7 +331,7 @@ class Game {
       this.popup.hide();
       return;
     }
-    const hit = this.renderer.pick(this.world, x, y, this.alpha);
+    const hit = this.renderer.pick(this.world, x, y, this.alpha, this.selectedRobotId !== null || this.world.flags.buildMode);
     if (!hit) return;
     if (this.world.flags.buildMode) return this.onBuildTap(hit.x, hit.z);
     const r = this.selectedRobot;
@@ -522,6 +540,7 @@ class Game {
         return;
       }
       this.lastRender = now;
+      this.checkStockoutHint(now);
       this.hud.update(this.world);
       this.banner.update(this.world);
       this.orders.update(this.world);

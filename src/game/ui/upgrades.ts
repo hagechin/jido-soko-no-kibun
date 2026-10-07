@@ -81,7 +81,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
 
   body.append(el('h4', { text: '自動化 AI' }));
   const ai: [string, string, number | null, string][] = [
-    ['dispatch', `自動配車AI Lv${w.automation.dispatch + 1}`, w.automation.dispatch < 3 ? AUTOMATION.dispatchCosts[w.automation.dispatch] : null, ['搬送ロボがポートのビンを自動で取りに行く', '棚ロボがオーダーを見て自動で取り出す', '同じ商品を含むオーダーをまとめる'][w.automation.dispatch] ?? ''],
+    ['dispatch', `自動配車AI Lv${w.automation.dispatch + 1}`, w.automation.dispatch < 3 ? AUTOMATION.dispatchCosts[w.automation.dispatch] : null, ['搬送ロボがポートのビンを自動で運ぶ（棚ロボの取り出しはまだ手動）', '棚ロボがオーダーを見て自動で取り出す。ここから放置できる', '同じ商品を含むオーダーをまとめて取り出す（バッチ最適化）'][w.automation.dispatch] ?? ''],
     ['restock', '自動補充AI', w.automation.restock ? null : AUTOMATION.restockCost, '入荷があると該当ビンを自動で入荷ステーションへ'],
     ['relocate', '在庫再配置AI', w.automation.relocate ? null : AUTOMATION.relocateCost, '暇なときに人気商品を上段へ並べ替える'],
   ];

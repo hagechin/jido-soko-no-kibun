@@ -505,7 +505,7 @@ export class WarehouseRenderer {
    * タップ位置から対象を拾う（§2.2: 一番近い対象）。
    * 地面との交点を求め、そのセル周辺の設備・ロボを距離で選ぶ。
    */
-  pick(w: WorldState, clientX: number, clientY: number, alpha: number): PickResult | null {
+  pick(w: WorldState, clientX: number, clientY: number, alpha: number, preferStatic = false): PickResult | null {
     const rect = this.canvas.getBoundingClientRect();
     const ndc = new Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.camera);
@@ -526,6 +526,8 @@ export class WarehouseRenderer {
       if (!best || d < best.d) best = { res, d };
     };
     for (const r of w.robots) {
+      // 指示中（preferStatic）は、通りかかった動いているロボにタップを横取りされないようにする
+      if (preferStatic && r.moveTo) continue;
       this.robotWorldPos(r, alpha, this.tmpPos);
       consider({ kind: 'robot', id: r.id, x: r.pose.x, z: r.pose.z }, this.tmpPos.x, this.tmpPos.z, r.kind === 'shelf' ? rail : ground, 0.25);
     }

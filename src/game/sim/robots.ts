@@ -400,7 +400,9 @@ function amrFetch(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { t
     case 0: {
       setGoal(rt, r, { type: 'adjacent', x: port.x, z: port.z });
       if (!atGoal(w, r)) return;
-      if (port.outbound.length && r.carrying.length < cargoCapacity(r)) {
+      // 行き先（ピッカー／入荷）が同じビンだけを積む。混載すると片方が届かない
+      const loadable = nextLoadableBin(w, r, port);
+      if (loadable !== null && r.carrying.length < cargoCapacity(r)) {
         beginAction(r, 'loading', ROBOT.loadTicksPerBin, 1);
         return;
       }
@@ -416,7 +418,8 @@ function amrFetch(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { t
       return; // 手動: ビンが来るまで待つ
     }
     case 1: {
-      r.carrying.push(port.outbound.shift()!);
+      const idx = nextLoadableBin(w, r, port);
+      if (idx !== null) r.carrying.push(port.outbound.splice(idx, 1)[0]);
       r.phase = 'idle';
       r.step = 0;
       return;
@@ -424,6 +427,19 @@ function amrFetch(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { t
     default:
       finishJob(w, rt, r);
   }
+}
+
+function purposeOf(w: WorldState, binId: number): 'pick' | 'inbound' {
+  return w.bins[binId]?.purpose === 'inbound' ? 'inbound' : 'pick';
+}
+
+/** ポートの出庫ビンのうち、今の積荷と同じ行き先のものの添字。無ければ null */
+function nextLoadableBin(w: WorldState, r: Robot, port: WorldState['ports'][number]): number | null {
+  if (!port.outbound.length) return null;
+  if (!r.carrying.length) return 0;
+  const want = purposeOf(w, r.carrying[0]);
+  const idx = port.outbound.findIndex((id) => purposeOf(w, id) === want);
+  return idx >= 0 ? idx : null;
 }
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
 import { stepWorld } from './step';
-import { generateOrder, isOrderComplete, orderInterval, queuedCount, visibleOrders } from './orders';
+import { generateOrder, isOrderComplete, orderInterval, queuedCount, unblockVisible, visibleOrders } from './orders';
 import { ORDERS, TICKS_PER_SECOND } from '../data/balance';
 import { rewardFor, speedBonus } from './economy';
 
@@ -71,5 +71,19 @@ describe('economy', () => {
     w.tick = 20 * TICKS_PER_SECOND;
     const r = rewardFor(w, o);
     expect(r.total).toBe(Math.round(3 * 10 * 1.4 * 2.0));
+  });
+});
+
+describe('head-of-line blocking', () => {
+  it('brings a completable queued order forward when every visible order waits for stock', () => {
+    const w = createWorld({ seed: 5 });
+    const mk = (id: number, item: string) => ({ id, lines: [{ item, qty: 1, picked: 0 }], arrivedTick: id, shownTick: null, penalized: false });
+    for (let i = 1; i <= 5; i++) w.orders.push(mk(i, 'cake')); // ケーキは在庫なし
+    w.orders.push(mk(6, 'apple'));
+    expect(unblockVisible(w)).toBe(true);
+    expect(visibleOrders(w).map((o) => o.id)).toEqual([6, 1, 2, 3, 4]);
+    expect(w.orders).toHaveLength(6);
+    // 1 件でも完了できる表示中オーダーがあれば動かさない
+    expect(unblockVisible(w)).toBe(false);
   });
 });
