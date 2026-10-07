@@ -436,6 +436,13 @@ export const CAMERA = {
   keyZoomSpeed: 0.9,
 };
 
+/** サウンド（★）: マスター音量と、オン／オフ切替のフェード秒数（ﾌｯと消えて、ﾌｯと聞こえてくる） */
+export const AUDIO = {
+  masterVolume: 0.5,
+  fadeOutSec: 0.6,
+  fadeInSec: 0.9,
+};
+
 export const RENDER = {
   maxPixelRatio: 2,
   lowQualityPixelRatio: 1.5,

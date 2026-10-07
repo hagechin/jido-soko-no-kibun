@@ -1,3 +1,4 @@
+import { AUDIO } from '../data/balance';
 /**
  * サウンド（§10）。外部ファイルなし。WebAudio で合成する。
  *  - 初回のタップで AudioContext を作る（スマホのブラウザ制限）
@@ -34,7 +35,7 @@ export class Sound {
     try {
       this.ctx = new AC();
       this.master = this.ctx.createGain();
-      this.master.gain.value = this.enabled ? 0.5 : 0;
+      this.master.gain.value = this.enabled ? AUDIO.masterVolume : 0;
       this.master.connect(this.ctx.destination);
       this.unlocked = true;
       void this.ctx.resume();
@@ -52,7 +53,25 @@ export class Sound {
     } catch {
       /* ignore */
     }
-    if (this.master && this.ctx) this.master.gain.setTargetAtTime(on ? 0.5 : 0, this.ctx.currentTime, 0.05);
+    this.fadeMaster(on ? AUDIO.masterVolume : 0, on ? AUDIO.fadeInSec : AUDIO.fadeOutSec);
+  }
+
+  /** マスター音量をなめらかに目標へ（等ラウドネス寄りの曲線: 下げるときは最初ゆっくり後半速く、上げるときは逆） */
+  private fadeMaster(target: number, seconds: number): void {
+    if (!this.master || !this.ctx) return;
+    const g = this.master.gain;
+    const now = this.ctx.currentTime;
+    const from = g.value;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(from, now);
+    // 8 分割の折れ線で指数カーブに近づける（exponentialRamp は 0 を扱えないため）
+    const steps = 8;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      // 上げるとき: 進み具合 1-(1-t)^2（最初速く、最後ゆっくり）。下げるとき: 残り (1-t)^1.6（ﾌｯと消える）
+      const v = target > from ? from + (target - from) * (1 - Math.pow(1 - t, 2)) : target + (from - target) * Math.pow(1 - t, 1.6);
+      g.linearRampToValueAtTime(Math.max(0, v), now + seconds * t);
+    }
   }
 
   setTempo(t: 'normal' | 'cyber' | 'calm'): void {
