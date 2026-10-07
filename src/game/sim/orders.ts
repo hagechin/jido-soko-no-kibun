@@ -1,0 +1,107 @@
+/** オーダー生成・表示・キュー（§2.4 / §9.1） */
+import { ORDERS, TICKS_PER_SECOND } from '../data/balance';
+import { ITEMS } from '../data/items';
+import { activeEvents, demandFor, type SeasonEvent } from '../data/seasons';
+import { changeReputation } from './economy';
+import { rand, randInt } from './rng';
+import type { Order, WorldState } from './types';
+
+export function availableItemIds(w: WorldState): string[] {
+  const kinds = ORDERS.itemKindsByRank[Math.min(w.rank, ORDERS.itemKindsByRank.length - 1)];
+  return ITEMS.slice(0, kinds).map((i) => i.id);
+}
+
+export function currentEvents(w: WorldState): SeasonEvent[] {
+  return activeEvents(w.calendar.month, w.calendar.week);
+}
+
+/** 現在の到着間隔（tick）。ランクとイベントで変わる */
+export function orderInterval(w: WorldState): number {
+  const base = ORDERS.intervalByRank[Math.min(w.rank, ORDERS.intervalByRank.length - 1)];
+  let f = 1;
+  for (const e of currentEvents(w)) f *= e.intervalFactor;
+  return Math.max(TICKS_PER_SECOND, Math.round(base * f));
+}
+
+/** 商品の重み（季節需要 × イベント強調） */
+export function itemWeight(w: WorldState, itemId: string): number {
+  let weight = demandFor(itemId, w.calendar.month);
+  const def = ITEMS.find((i) => i.id === itemId)!;
+  for (const e of currentEvents(w)) {
+    weight *= e.boostCategories?.[def.category] ?? 1;
+    weight *= e.boostItems?.[itemId] ?? 1;
+  }
+  return weight;
+}
+
+export function generateOrder(w: WorldState): Order {
+  const rank = Math.min(w.rank, ORDERS.linesByRank.length - 1);
+  const ids = availableItemIds(w);
+  let linesFactor = 1;
+  for (const e of currentEvents(w)) linesFactor *= e.linesFactor;
+  const [lmin, lmax] = ORDERS.linesByRank[rank];
+  const [qmin, qmax] = ORDERS.qtyByRank[rank];
+  let lineCount = Math.round(randInt(w.rng, lmin, lmax) * linesFactor);
+  lineCount = Math.max(1, Math.min(ORDERS.maxLinesPerOrder, ids.length, lineCount));
+
+  // 重み付きで重複なく選ぶ
+  const pool = ids.map((id) => ({ id, wgt: itemWeight(w, id) }));
+  const lines: Order['lines'] = [];
+  for (let i = 0; i < lineCount && pool.length; i++) {
+    const total = pool.reduce((a, p) => a + p.wgt, 0);
+    let r = rand(w.rng) * total;
+    let idx = 0;
+    for (; idx < pool.length - 1; idx++) {
+      r -= pool[idx].wgt;
+      if (r <= 0) break;
+    }
+    const [chosen] = pool.splice(idx, 1);
+    lines.push({ item: chosen.id, qty: randInt(w.rng, qmin, qmax), picked: 0 });
+  }
+  return { id: w.nextIds.order++, lines, arrivedTick: w.tick, shownTick: null, penalized: false };
+}
+
+export function visibleOrders(w: WorldState): Order[] {
+  return w.orders.slice(0, ORDERS.visibleMax);
+}
+
+export function queuedCount(w: WorldState): number {
+  return Math.max(0, w.orders.length - ORDERS.visibleMax);
+}
+
+export function isOrderComplete(o: Order): boolean {
+  return o.lines.every((l) => l.picked >= l.qty);
+}
+
+/** 毎 tick: 到着・表示枠の更新・遅延／キュー超過のペナルティ */
+export function updateOrders(w: WorldState): void {
+  if (w.tick >= w.nextOrderTick) {
+    const o = generateOrder(w);
+    w.orders.push(o);
+    w.events.push({ type: 'orderArrived', orderId: o.id });
+    w.nextOrderTick = w.tick + orderInterval(w);
+  }
+  for (const o of visibleOrders(w)) {
+    if (o.shownTick === null) o.shownTick = w.tick;
+    if (!o.penalized && w.tick - o.arrivedTick > ORDERS.latePenaltyTicks) {
+      o.penalized = true;
+      changeReputation(w, -ORDERS.latePenaltyRep, '出荷が遅れた');
+    }
+  }
+  if (queuedCount(w) > ORDERS.queuePenaltyThreshold && w.tick % ORDERS.queuePenaltyIntervalTicks === 0) {
+    changeReputation(w, -1, 'オーダーが溜まりすぎ');
+  }
+}
+
+/** 商品が倉庫内のどこかに在庫として存在するか（欠品判定 §2.4） */
+export function itemInStock(w: WorldState, itemId: string): boolean {
+  for (const b of Object.values(w.bins)) if (b.item === itemId && b.qty > 0) return true;
+  return false;
+}
+
+/** 表示中オーダー全体で、この商品の未ピック数（バッチピッキング用 §5.1） */
+export function neededAcrossVisible(w: WorldState, itemId: string): number {
+  let n = 0;
+  for (const o of visibleOrders(w)) for (const l of o.lines) if (l.item === itemId) n += Math.max(0, l.qty - l.picked);
+  return n;
+}
