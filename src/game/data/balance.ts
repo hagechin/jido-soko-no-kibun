@@ -278,8 +278,10 @@ export const AUTOMATION = {
   relocateMinGain: 3,
   /** 同時に再配置する棚ロボの台数 */
   maxRelocating: 1,
-  /** 自動補充で同時に入荷ステーションへ向かわせるビン数の上限（ピック待ちがあるときは 1） */
-  maxInboundInFlight: 2,
+  /** 自動補充の同時ビン数の下限（ピック待ちがあるときは棚ロボの 1/3 かこの値の大きいほう。無ければ全員） */
+  maxInboundInFlight: 1,
+  /** 入荷口の滞留がビン容量の何倍以上なら空ビンを優先して補充するか */
+  preferEmptyBacklogBins: 2,
   /** 自動補充がポートに残しておく出庫枠 */
   restockPortHeadroom: 2,
 };

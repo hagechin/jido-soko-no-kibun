@@ -114,26 +114,27 @@ function assignShelfJob(w: WorldState, r: Robot): boolean {
   // 自動補充: 入荷口の山に合うビン（同じ商品で空きあり）か空ビンを入荷ステーションへ
   if (auto.restock && w.pallets.length) {
     const inboundInFlight = [...inFlight].filter((id) => w.bins[id]?.purpose === 'inbound').length;
-    // ピッカー向けの仕事（在庫のある未ピック行）があるときは補充を控えめに（同時 1 ビン）
     const stockNow = new Set<string>();
     for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) stockNow.add(b.item);
     const pickPending = visibleOrders(w).some((o) => o.lines.some((l) => l.picked < l.qty && stockNow.has(l.item)));
-    const cap = pickPending ? 1 : AUTOMATION.maxInboundInFlight;
+    // ピッカー向けの仕事があるときは棚ロボの 1/3 だけ補充に回す。無ければ暇な棚ロボ全員で補充する
+    const shelfCount = w.robots.filter((o) => o.kind === 'shelf').length;
+    const cap = pickPending ? Math.max(AUTOMATION.maxInboundInFlight, Math.ceil(shelfCount / 3)) : shelfCount;
+    const headroom = pickPending ? AUTOMATION.restockPortHeadroom : 1;
     if (inboundInFlight < cap) {
       const palletItems = new Set(w.pallets.map((p) => p.item));
-      // 表示中オーダーが待っている欠品商品が入荷口にあるなら、空ビンを優先して使う
-      const inStock = new Set<string>();
-      for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) inStock.add(b.item);
-      const urgent = visibleOrders(w).some((o) => o.lines.some((l) => l.picked < l.qty && !inStock.has(l.item) && palletItems.has(l.item)));
+      const backlog = w.pallets.reduce((a, p) => a + p.qty, 0);
+      // 表示中オーダーが待っている欠品商品が入荷口にあるとき、または滞留が多いときは空ビン（1 往復で満杯にできる）を優先
+      const urgent = visibleOrders(w).some((o) => o.lines.some((l) => l.picked < l.qty && !stockNow.has(l.item) && palletItems.has(l.item)));
+      const bigBacklog = backlog >= w.binCapacity * AUTOMATION.preferEmptyBacklogBins;
       const empties = () => stackedBinsOf(w, (b) => b.item === null).filter((o) => !inFlight.has(o.binId));
       const partial = () => stackedBinsOf(w, (b) => b.item !== null && palletItems.has(b.item) && b.qty < w.binCapacity).filter((o) => !inFlight.has(o.binId));
-      let options = urgent ? empties() : partial();
-      if (!options.length) options = urgent ? partial() : empties();
+      let options = urgent || bigBacklog ? empties() : partial();
+      if (!options.length) options = urgent || bigBacklog ? partial() : empties();
       if (options.length) {
         const pick = options[0];
-        // ポートにはピッカー向けの出庫ぶんの空きを残す。入荷ステーションに近いポートを選ぶ
         const inboundSt = w.stations.find((s) => s.kind === 'inbound') ?? null;
-        const port = bestPort(w, pick.stack, inboundSt, (p) => outboundLoad(w, p.id) <= PORT.outboundCapacity - AUTOMATION.restockPortHeadroom);
+        const port = bestPort(w, pick.stack, inboundSt, (p) => outboundLoad(w, p.id) <= PORT.outboundCapacity - headroom);
         if (port) {
           w.bins[pick.binId].purpose = 'inbound';
           r.job = { type: 'retrieve', stackId: pick.stack.id, binId: pick.binId, portId: port.id, manual: false };

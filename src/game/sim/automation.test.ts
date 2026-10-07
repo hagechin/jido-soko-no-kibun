@@ -227,4 +227,30 @@ describe('mixed destinations at the port', () => {
     }
     expect(maxInbound).toBeLessThanOrEqual(1);
   });
+
+  it('when nothing is waiting for pickers, every idle shelf robot restocks and the backlog drains', () => {
+    const w = createWorld({ seed: 23 });
+    const rt = createRuntime();
+    w.nextOrderTick = 1e9;
+    w.coins = 1e6;
+    w.rank = 1;
+    buyAutomation(w, 'dispatch');
+    buyAutomation(w, 'restock');
+    upgradeLevels(w);
+    for (let i = 0; i < 6; i++) buyEmptyBin(w);
+    addRobot(w, 'shelf', w.stacks[6].x, w.stacks[6].z);
+    addRobot(w, 'shelf', w.stacks[9].x, w.stacks[9].z);
+    addRobot(w, 'amr', w.waitSpots[1].x, w.waitSpots[1].z);
+    for (const item of ['apple', 'book', 'mug', 'shoes']) addPallet(w, item, 60);
+    const backlog0 = w.pallets.reduce((a, p) => a + p.qty, 0);
+    let maxInbound = 0;
+    for (let t = 0; t < 1500; t++) {
+      stepSim(w, rt);
+      const n = Object.values(w.bins).filter((b) => b.purpose === 'inbound').length;
+      maxInbound = Math.max(maxInbound, n);
+    }
+    expect(maxInbound).toBeGreaterThanOrEqual(2); // 暇な棚ロボが複数同時に補充へ
+    const backlog1 = w.pallets.reduce((a, p) => a + p.qty, 0);
+    expect(backlog1).toBeLessThan(backlog0 * 0.6);
+  });
 });
