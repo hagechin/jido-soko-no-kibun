@@ -159,6 +159,8 @@ export function updateJob(w: WorldState, rt: Runtime, r: Robot): void {
       return shelfRetrieve(w, rt, r, job);
     case 'store':
       return shelfStore(w, rt, r, job);
+    case 'relocate':
+      return shelfRelocate(w, rt, r, job);
     case 'fetch':
       return amrFetch(w, rt, r, job);
     case 'deliver':
@@ -259,6 +261,57 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
       port.outbound.push(r.carrying.pop()!);
       r.phase = 'idle';
       finishJob(w, rt, r);
+      return;
+    }
+    default:
+      finishJob(w, rt, r);
+  }
+}
+
+/**
+ * 棚ロボ: 再配置。目的のビンが頂上になるまで上のビンを隣へ退避する（取り出しの掘り出し部分と同じ）
+ *  0: 対象へ → 頂上なら完了。違えば頂上を持ち上げ(→11) / 11: 退避先へ(→12) / 12: 降ろす(→13) / 13: 戻る(→0)
+ */
+function shelfRelocate(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob, { type: 'relocate' }>): void {
+  const stack = w.stacks.find((s) => s.id === job.stackId);
+  if (!stack || !stack.bins.includes(job.binId)) return finishJob(w, rt, r);
+  const lt = liftTicks(r);
+  switch (r.step) {
+    case 0: {
+      if (stack.bins[stack.bins.length - 1] === job.binId) return finishJob(w, rt, r);
+      setGoal(rt, r, { type: 'cell', x: stack.x, z: stack.z });
+      if (!atGoal(w, r)) return;
+      const temp = pickStackWithRoom(w, stack, stack.id);
+      if (!temp) return finishJob(w, rt, r);
+      r.digging = { targetStackId: stack.id, movedBins: r.digging?.movedBins ?? [], tempStackId: temp.id };
+      beginAction(r, 'lifting', lt, 11);
+      return;
+    }
+    case 11: {
+      r.carrying = [stack.bins.pop()!];
+      r.phase = 'idle';
+      r.step = 12;
+      const temp = w.stacks.find((s) => s.id === r.digging!.tempStackId)!;
+      setGoal(rt, r, { type: 'cell', x: temp.x, z: temp.z });
+      return;
+    }
+    case 12: {
+      let temp = w.stacks.find((s) => s.id === r.digging?.tempStackId) ?? null;
+      if (!temp || temp.bins.length >= w.levels) {
+        temp = pickStackWithRoom(w, r.pose, stack.id);
+        if (!temp) return;
+        r.digging!.tempStackId = temp.id;
+      }
+      setGoal(rt, r, { type: 'cell', x: temp.x, z: temp.z });
+      if (!atGoal(w, r)) return;
+      beginAction(r, 'lifting', lt, 13);
+      return;
+    }
+    case 13: {
+      const temp = w.stacks.find((s) => s.id === r.digging!.tempStackId)!;
+      temp.bins.push(r.carrying.pop()!);
+      r.phase = 'idle';
+      r.step = 0;
       return;
     }
     default:
@@ -437,6 +490,8 @@ export function describeRobot(w: WorldState, r: Robot): string {
     }
     case 'store':
       return r.carrying.length ? '棚へ格納中' : 'ポートで返却ビンを回収';
+    case 'relocate':
+      return '在庫を並べ替え中';
     case 'fetch':
       return r.phase === 'loading' ? '積み込み中' : 'ポートへ';
     case 'deliver':

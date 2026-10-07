@@ -1,7 +1,7 @@
 /** 購入・アップグレード（§4.4 / §9.4）。コインの確認と上限チェックはすべてここで行う */
 import { ROBOT } from '../data/balance';
 import { cellAt, isFloorWalkable } from './grid';
-import { addRobot } from './world';
+import { addRobot, createBin } from './world';
 import type { Robot, WorldState } from './types';
 
 export type ShopResult = { ok: true } | { ok: false; reason: string };
@@ -159,6 +159,16 @@ export function upgradeCargo(w: WorldState, robotId: number): ShopResult {
   return { ok: true };
 }
 
+/** 空ビンを買って、空きのあるスタックの頂上に置く（★） */
+export function buyEmptyBin(w: WorldState): ShopResult {
+  const stack = w.stacks.find((s) => s.bins.length < w.levels);
+  if (!stack) return { ok: false, reason: '空きのあるスタックがありません（段数を増やすかスタックを置く）' };
+  const p = pay(w, BIN.emptyBinCost);
+  if (!p.ok) return p;
+  stack.bins.push(createBin(w, null, 0).id);
+  return { ok: true };
+}
+
 export function pickerUpgradeCost(s: { level: number }): number | null {
   if (s.level >= PICKER.maxLevel) return null;
   return PICKER.upgradeCosts[Math.min(s.level, PICKER.upgradeCosts.length - 1)];
@@ -173,4 +183,37 @@ export function upgradePicker(w: WorldState, stationId: number): ShopResult {
   if (!p.ok) return p;
   s.level++;
   return { ok: true };
+}
+
+// ---------------------------------------------------------------- 自動化 AI（§7.3）
+import { AUTOMATION } from '../data/balance';
+
+export function buyAutomation(w: WorldState, id: string): ShopResult {
+  const a = w.automation;
+  if (id === 'dispatch') {
+    if (a.dispatch >= AUTOMATION.dispatchCosts.length) return { ok: false, reason: '自動配車AI は最大です' };
+    const need = [AUTOMATION.unlockRank.dispatch1, AUTOMATION.unlockRank.dispatch2, AUTOMATION.unlockRank.dispatch3][a.dispatch];
+    if (w.rank < need) return { ok: false, reason: `ランク${need + 1}で解放` };
+    const p = pay(w, AUTOMATION.dispatchCosts[a.dispatch]);
+    if (!p.ok) return p;
+    a.dispatch++;
+    return { ok: true };
+  }
+  if (id === 'restock') {
+    if (a.restock) return { ok: false, reason: '購入済み' };
+    if (w.rank < AUTOMATION.unlockRank.restock) return { ok: false, reason: `ランク${AUTOMATION.unlockRank.restock + 1}で解放` };
+    const p = pay(w, AUTOMATION.restockCost);
+    if (!p.ok) return p;
+    a.restock = true;
+    return { ok: true };
+  }
+  if (id === 'relocate') {
+    if (a.relocate) return { ok: false, reason: '購入済み' };
+    if (w.rank < AUTOMATION.unlockRank.relocate) return { ok: false, reason: `ランク${AUTOMATION.unlockRank.relocate + 1}で解放` };
+    const p = pay(w, AUTOMATION.relocateCost);
+    if (!p.ok) return p;
+    a.relocate = true;
+    return { ok: true };
+  }
+  return { ok: false, reason: '不明なAI' };
 }

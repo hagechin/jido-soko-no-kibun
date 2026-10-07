@@ -57,7 +57,7 @@ export function createWorld(opts: WorldOptions = {}): WorldState {
     reputation: REPUTATION.initial,
     rank: 0,
     expansions: 0,
-    automation: { dispatch: 0, restock: false, relocate: false },
+    automation: { dispatch: 0, restock: false, relocate: false, lastRetrieveTick: 0 },
     season: { active: [], cyberNoticeYear: 0, cyber: null, pendingReport: null },
     calendar: { tick: 0, year: CALENDAR.startYear, month: CALENDAR.startMonth, week: 1 },
     stats: {

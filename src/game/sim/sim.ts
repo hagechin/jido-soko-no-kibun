@@ -7,6 +7,7 @@ import { updateAutomation } from './automation';
 import { updateCalendar } from './calendar';
 import { onNewWeek, updateInbound } from './inbound';
 import { updateEvents } from './events';
+import { checkRankUp } from './rank';
 import { updateOrders } from './orders';
 import { updateStations } from './pickers';
 import { replanAll } from './planner';
@@ -31,6 +32,7 @@ export function stepSim(w: WorldState, rt: Runtime): void {
     updateStuck(w, r);
   }
   updateStations(w);
+  checkRankUp(w);
   if (rt.dirty || w.tick - rt.lastPlanTick >= PATHING.replanIntervalTicks) replanAll(w, rt);
 }
 

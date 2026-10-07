@@ -23,6 +23,8 @@ import { renderBuild, type BuildUiState } from './ui/buildMode';
 import { renderStationPanel } from './ui/stationPanel';
 import { EventBanner, Modal, cyberReportNode } from './ui/eventBanner';
 import { expand, move as moveObject, place, remove } from './sim/build';
+import { buyAutomation } from './sim/shop';
+import { rankName, unlockSummary } from './sim/rank';
 import { clearStorage, loadFromStorage, saveToStorage } from './ui/storage';
 import { SAVE } from './data/balance';
 import type { QualityLevel } from './render/quality';
@@ -119,7 +121,7 @@ class Game {
         },
       }),
     );
-    this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh() }));
+    this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh(), buyAutomation: (id) => buyAutomation(this.world, id) }));
 
     $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
     $('btn-calm').addEventListener('click', () => showToast('眺めモードは M10 で実装予定'));
@@ -358,6 +360,13 @@ class Game {
         case 'eventStart':
           showToast(e.banner, 4000);
           break;
+        case 'rankUp': {
+          const list = el('ul');
+          for (const u of unlockSummary(this.world)) list.append(el('li', { text: u }));
+          this.modal.show(`🎉 ランクアップ: ${rankName(this.world)}`, el('p', { text: '倉庫が昇格しました。アンロック:' }), list);
+          if (this.bar.open) this.bar.refresh();
+          break;
+        }
         case 'cyberWeekReport':
           this.modal.show('サイバーウィーク成績表', cyberReportNode(e.record, this.world.stats.cyberWeekRecords));
           this.world.season.pendingReport = null;

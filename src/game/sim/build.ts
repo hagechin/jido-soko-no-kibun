@@ -7,7 +7,7 @@ import { BUILD, EXPANSION, GRID, RANKS } from '../data/balance';
 import type { CellKind } from '../data/balance';
 import { cellAt, inBounds, isAdjacentToStack, isFacingFloor, isRailWalkable, neighbors4 } from './grid';
 import { footprint, shapeFor } from './footprint';
-import { placeCell, removeCell } from './world';
+import { createBin, placeCell, removeCell } from './world';
 import type { WorldState } from './types';
 
 export type BuildKind = 'stack' | 'port' | 'pickStation' | 'inboundStation' | 'waitSpot';
@@ -98,6 +98,11 @@ export function place(w: WorldState, kind: BuildKind, x: number, z: number, free
   if (why) return { ok: false, reason: why };
   if (!free) w.coins -= BUILD_COST[kind];
   placeCell(w, x, z, kind as CellKind);
+  if (kind === 'stack' && !free) {
+    // 「スタック 1 基（空ビン付き）」§9.4
+    const st = w.stacks.find((s) => s.x === x && s.z === z);
+    if (st) st.bins.push(createBin(w, null, 0).id);
+  }
   return { ok: true };
 }
 

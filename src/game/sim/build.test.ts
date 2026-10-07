@@ -23,7 +23,11 @@ describe('M7 build mode (§8)', () => {
     w.coins = 1000;
     expect(place(w, 'stack', 3, 5)).toEqual({ ok: true });
     expect(w.coins).toBe(1000 - BUILD.stackCost);
-    expect(w.stacks.some((s) => s.x === 3 && s.z === 5)).toBe(true);
+    const placed = w.stacks.find((s) => s.x === 3 && s.z === 5)!;
+    expect(placed.bins).toHaveLength(1); // 空ビン付き（§9.4）
+    expect(w.bins[placed.bins[0]].item).toBeNull();
+    expect(remove(w, 3, 5).ok).toBe(false); // ビンが入っている
+    placed.bins = [];
     expect(remove(w, 3, 5)).toEqual({ ok: true });
     expect(w.coins).toBe(1000 - BUILD.stackCost);
     expect(cellAt(w, 3, 5)).toBe('floor');

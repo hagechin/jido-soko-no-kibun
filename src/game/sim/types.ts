@@ -75,7 +75,9 @@ export interface Pose {
 /** 棚ロボの仕事 */
 export type ShelfJob =
   | { type: 'retrieve'; stackId: number; binId: number; portId: number; manual: boolean }
-  | { type: 'store'; portId: number; binId: number | null; stackId: number | null; manual: boolean };
+  | { type: 'store'; portId: number; binId: number | null; stackId: number | null; manual: boolean }
+  /** 在庫再配置: 上のビンを退避して目的のビンを頂上にする（§7.3） */
+  | { type: 'relocate'; stackId: number; binId: number; manual: boolean };
 
 /** 搬送ロボの仕事 */
 export type AmrJob =
@@ -217,6 +219,8 @@ export interface Automation {
   dispatch: number; // 0-3
   restock: boolean;
   relocate: boolean;
+  /** 最後に取り出し仕事を割り当てた tick（再配置 AI の「暇」判定） */
+  lastRetrieveTick: number;
 }
 
 export interface WorldState {

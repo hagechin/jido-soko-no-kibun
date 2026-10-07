@@ -83,6 +83,8 @@ export const LAYOUT_CHARS: Record<string, CellKind> = {
 export const BIN = {
   /** 1ビンの容量（初期）。アップグレードで +10 ずつ */
   baseCapacity: 20,
+  /** 空ビン 1 個の価格（★ 段数を増やしたぶんのビンを買い足す） */
+  emptyBinCost: 15,
   capacityUpgradeStep: 10,
   capacityUpgradeCosts: [400, 1000],
   /** 在庫が少ないと色を変える閾値（割合） */
@@ -262,6 +264,10 @@ export const AUTOMATION = {
   unlockRank: { dispatch1: 0, dispatch2: 1, dispatch3: 2, restock: 1, relocate: 2 },
   /** 在庫再配置AIが動く「暇」判定の tick */
   relocateIdleTicks: sec(8),
+  /** 再配置する最小の人気差 */
+  relocateMinGain: 3,
+  /** 自動補充で同時に入荷ステーションへ向かわせるビン数の上限 */
+  maxInboundInFlight: 2,
 };
 
 /** 建設コスト（§9.4） */

@@ -30,9 +30,20 @@ export function stuffableCount(w: WorldState, binId: number): { count: number; i
     const p = w.pallets.find((p) => p.item === bin.item);
     return { count: p ? Math.min(room, p.qty) : 0, item: bin.item };
   }
-  // 空ビン: 一番多く滞留している商品を詰める
+  // 空ビン: 表示中オーダーが待っている欠品商品を優先、次に一番多く滞留している商品
+  const wanted = new Set<string>();
+  for (const o of visibleOrders(w)) for (const l of o.lines) if (l.picked < l.qty) wanted.add(l.item);
+  const inStock = new Set<string>();
+  for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) inStock.add(b.item);
   let best = null as { item: string; qty: number } | null;
-  for (const p of w.pallets) if (!best || p.qty > best.qty) best = p;
+  let bestScore = -Infinity;
+  for (const p of w.pallets) {
+    const score = (wanted.has(p.item) && !inStock.has(p.item) ? 1e6 : 0) + (wanted.has(p.item) ? 1e3 : 0) + p.qty;
+    if (score > bestScore) {
+      bestScore = score;
+      best = p;
+    }
+  }
   return best ? { count: Math.min(room, best.qty), item: best.item } : { count: 0, item: null };
 }
 
