@@ -131,8 +131,8 @@ class Game {
           this.renderer.highlightCells = [];
           this.bar.refresh();
         },
-        onExpand: () => {
-          const r = expand(this.world);
+        onExpand: (dir) => {
+          const r = expand(this.world, dir);
           showToast(r.ok ? `倉庫を ${this.world.width}×${this.world.height} マスに広げました` : r.reason);
           this.bar.refresh();
         },

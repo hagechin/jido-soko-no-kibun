@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
-import { assignItem, canPlace, canRemove, expand, move, place, railConnected, remove } from './build';
+import { assignItem, canPlace, canRemove, expand, expansionCost, move, place, railConnected, remove } from './build';
 import { BUILD, EXPANSION, GRID } from '../data/balance';
 import { cellAt } from './grid';
 import { createRuntime, stepMany } from './sim';
@@ -87,6 +87,34 @@ describe('M7 build mode (§8)', () => {
     commandRetrieve(w, rt, shelf.id, st.id, st.bins[0]);
     stepMany(w, rt, 400);
     expect(w.ports[0].outbound).toHaveLength(1);
+  });
+
+  it('expands south by 4 rows; cost scales with the number of cells added', () => {
+    const w = createWorld({ seed: 3 });
+    w.coins = 1e5;
+    w.rank = 4;
+    const h0 = w.height;
+    const east = expansionCost(w, 'east')!;
+    const south = expansionCost(w, 'south')!;
+    expect(east).toBe(EXPANSION.costs[0]); // 4×12 = 48 マス = 基準
+    expect(south).toBe(Math.round((EXPANSION.costs[0] * 4 * 16) / EXPANSION.baseCells)); // 4×16 = 64 マス
+    expect(expand(w, 'south')).toEqual({ ok: true });
+    expect(w.height).toBe(h0 + GRID.expandStep);
+    expect(w.cells).toHaveLength(w.width * w.height);
+    expect(w.coins).toBe(1e5 - south);
+    for (let z = h0; z < w.height; z++) for (let x = 0; x < w.width; x++) expect(cellAt(w, x, z)).toBe('floor');
+    expect(w.outboundDock.every((d) => d.x === w.width - 1)).toBe(true);
+    // 2 回目は費用表の次の段 × マス数
+    expect(expansionCost(w, 'east')).toBe(Math.round((EXPANSION.costs[1] * 4 * w.height) / EXPANSION.baseCells));
+    const rt = createRuntime();
+    const amr = w.robots.find((r) => r.kind === 'amr')!;
+    amr.job = { type: 'park', x: 5, z: w.height - 1, manual: true };
+    let reached = false;
+    for (let t = 0; t < 300 && !reached; t++) {
+      stepMany(w, rt, 1);
+      if (amr.pose.z === w.height - 1 && amr.moveTo === null) reached = true;
+    }
+    expect(reached).toBe(true); // 増えた行まで走れる
   });
 
   it('expansion is gated by rank', () => {

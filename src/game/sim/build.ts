@@ -205,38 +205,55 @@ export function move(w: WorldState, fromX: number, fromZ: number, toX: number, t
   return { ok: true };
 }
 
-export function expansionCost(w: WorldState): number | null {
-  if (w.width + GRID.expandStep > GRID.maxWidth) return null;
-  return EXPANSION.costs[Math.min(w.expansions, EXPANSION.costs.length - 1)];
+export type ExpandDir = 'east' | 'south';
+
+/** 拡張で増えるマス数 */
+export function expansionCells(w: WorldState, dir: ExpandDir): number {
+  return dir === 'east' ? GRID.expandStep * w.height : GRID.expandStep * w.width;
+}
+
+/** 費用 = 基準費用（拡張回数で上がる） × 増えるマス数 / 基準マス数。広げられなければ null */
+export function expansionCost(w: WorldState, dir: ExpandDir = 'east'): number | null {
+  if (dir === 'east' && w.width + GRID.expandStep > GRID.maxWidth) return null;
+  if (dir === 'south' && w.height + GRID.expandStep > GRID.maxHeight) return null;
+  const base = EXPANSION.costs[Math.min(w.expansions, EXPANSION.costs.length - 1)];
+  return Math.round((base * expansionCells(w, dir)) / EXPANSION.baseCells);
 }
 
 export function maxExpansionsForRank(w: WorldState): number {
   return RANKS[Math.min(w.rank, RANKS.length - 1)].maxExpansions;
 }
 
-/** 面積拡張: 幅 +4（東側）。出荷口は新しい東壁へ移す */
-export function expand(w: WorldState): BuildResult {
-  const cost = expansionCost(w);
-  if (cost === null) return { ok: false, reason: 'これ以上広げられません' };
+/** 面積拡張: 東へ +4 列（出荷口は新しい東壁へ移す）または南へ +4 行 */
+export function expand(w: WorldState, dir: ExpandDir = 'east'): BuildResult {
+  const cost = expansionCost(w, dir);
+  if (cost === null) return { ok: false, reason: dir === 'east' ? 'これ以上東へは広げられません' : 'これ以上南へは広げられません' };
   if (w.expansions >= maxExpansionsForRank(w)) return { ok: false, reason: `面積拡張はランクアップで解放（あと ${maxExpansionsForRank(w) - w.expansions} 回）` };
   if (w.coins < cost) return { ok: false, reason: `コインが足りません（${cost} 必要）` };
   w.coins -= cost;
-  const oldW = w.width;
-  const newW = oldW + GRID.expandStep;
-  const cells: CellKind[] = new Array(newW * w.height).fill('floor');
-  for (let z = 0; z < w.height; z++) {
-    for (let x = 0; x < oldW; x++) cells[z * newW + x] = w.cells[z * oldW + x];
-  }
-  // 東壁の出荷口を移す
-  for (const d of w.outboundDock) {
-    if (d.x === oldW - 1) {
-      cells[d.z * newW + d.x] = 'floor';
-      d.x = newW - 1;
-      cells[d.z * newW + d.x] = 'outboundDock';
+  if (dir === 'east') {
+    const oldW = w.width;
+    const newW = oldW + GRID.expandStep;
+    const cells: CellKind[] = new Array(newW * w.height).fill('floor');
+    for (let z = 0; z < w.height; z++) {
+      for (let x = 0; x < oldW; x++) cells[z * newW + x] = w.cells[z * oldW + x];
     }
+    // 東壁の出荷口を移す
+    for (const d of w.outboundDock) {
+      if (d.x === oldW - 1) {
+        cells[d.z * newW + d.x] = 'floor';
+        d.x = newW - 1;
+        cells[d.z * newW + d.x] = 'outboundDock';
+      }
+    }
+    w.cells = cells;
+    w.width = newW;
+  } else {
+    const add = GRID.expandStep;
+    const cells: CellKind[] = [...w.cells, ...new Array<CellKind>(w.width * add).fill('floor')];
+    w.cells = cells;
+    w.height += add;
   }
-  w.cells = cells;
-  w.width = newW;
   w.expansions++;
   return { ok: true };
 }

@@ -1,5 +1,5 @@
 /** 建設モード UI（§8）。ツールを選んで 3D ビューのセルをタップする */
-import { BUILD_COST, BUILD_LABEL, expansionCost, maxExpansionsForRank, type BuildKind } from '../sim/build';
+import { BUILD_COST, BUILD_LABEL, expansionCells, expansionCost, maxExpansionsForRank, type BuildKind, type ExpandDir } from '../sim/build';
 import type { WorldState } from '../sim/types';
 import { el } from './layout';
 
@@ -15,7 +15,7 @@ export interface BuildContext {
   world: WorldState;
   state: BuildUiState;
   onToolChange: (tool: BuildTool) => void;
-  onExpand: () => void;
+  onExpand: (dir: ExpandDir) => void;
   refresh: () => void;
 }
 
@@ -40,12 +40,17 @@ export function renderBuild(body: HTMLElement, ctx: BuildContext): void {
     b.addEventListener('click', () => ctx.onToolChange(t));
     tools.append(b);
   }
-  const exCost = expansionCost(w);
   const left = maxExpansionsForRank(w) - w.expansions;
-  const ex = el('button', { class: 'btn build-tool', type: 'button' }, el('span', { class: 'ico', text: '↔️' }), el('span', { class: 'lbl', text: `面積 +4` }), el('span', { class: 'cost', text: exCost === null ? 'MAX' : left <= 0 ? 'ランク' : `${exCost}🪙` }));
-  if (exCost === null || left <= 0 || w.coins < exCost) ex.setAttribute('disabled', 'true');
-  ex.addEventListener('click', () => ctx.onExpand());
-  tools.append(ex);
+  for (const [dir, ico, lbl] of [
+    ['east', '↔️', '東へ +4列'],
+    ['south', '↕️', '南へ +4行'],
+  ] as [ExpandDir, string, string][]) {
+    const exCost = expansionCost(w, dir);
+    const ex = el('button', { class: 'btn build-tool', type: 'button', title: exCost === null ? '' : `${expansionCells(w, dir)} マス増える` }, el('span', { class: 'ico', text: ico }), el('span', { class: 'lbl', text: lbl }), el('span', { class: 'cost', text: exCost === null ? 'MAX' : left <= 0 ? 'ランク' : `${exCost}🪙` }));
+    if (exCost === null || left <= 0 || w.coins < exCost) ex.setAttribute('disabled', 'true');
+    ex.addEventListener('click', () => ctx.onExpand(dir));
+    tools.append(ex);
+  }
   body.append(tools);
   const hint = ctx.state.tool === 'erase' ? '撤去する設備をタップ（無料）' : ctx.state.tool === 'move' ? (ctx.state.held ? '移動先のセルをタップ' : '動かす設備をタップ') : `${BUILD_LABEL[ctx.state.tool]} を置くセルをタップ`;
   body.append(el('div', { class: 'build-hint' }, el('span', { text: hint }), el('span', { class: 'muted small', text: `　${w.width}×${w.height} マス / 建設中はシミュレーション停止` })));
