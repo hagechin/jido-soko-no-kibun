@@ -1,0 +1,17 @@
+{
+  "name": "自動倉庫の気分",
+  "short_name": "自動倉庫",
+  "description": "物流倉庫を自動化して眺めるシミュレーションゲーム",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1d2733",
+  "theme_color": "#1d2733",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

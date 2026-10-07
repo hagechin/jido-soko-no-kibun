@@ -26,7 +26,13 @@ import { expand, move as moveObject, place, remove } from './sim/build';
 import { buyAutomation } from './sim/shop';
 import { rankName, unlockSummary } from './sim/rank';
 import { clearStorage, loadFromStorage, saveToStorage } from './ui/storage';
-import { SAVE } from './data/balance';
+import { OFFLINE, SAVE } from './data/balance';
+import { applyOffline } from './sim/offline';
+import { offlineReportNode } from './ui/offlineReport';
+import { CalmMode } from './ui/calmMode';
+import { AutoCamera } from './render/autoCamera';
+import { registerServiceWorker } from './ui/pwa';
+import { exportSaveFile, importSaveFile } from './ui/storage';
 import type { QualityLevel } from './render/quality';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
@@ -53,13 +59,22 @@ class Game {
   private lastSavedAt: number | null = null;
   private quality: QualityLevel;
   private build: BuildUiState = { tool: 'stack', held: null };
+  calm = new CalmMode();
+  private autoCam: AutoCamera;
+  private lastRender = 0;
+  private hiddenAt: number | null = null;
+  private catchUp = 0;
   private stationPanelId: number | null = null;
 
   constructor() {
     const loaded = loadFromStorage();
+    let offlineReport: ReturnType<typeof applyOffline> | null = null;
     if (loaded?.ok) {
       this.world = loaded.world;
       this.lastSavedAt = loaded.savedAt;
+      const away = Date.now() - loaded.savedAt;
+      if (away > OFFLINE.catchUpMaxMs) offlineReport = applyOffline(this.world, away);
+      else this.catchUp = Math.min(OFFLINE.catchUpMaxMs, Math.max(0, away)) / TICK_MS;
       setTimeout(() => showToast(loaded.migrated ? 'セーブデータを新しい形式に移行しました' : '続きから再開しました'), 300);
     } else {
       if (loaded && !loaded.ok) setTimeout(() => showToast(`セーブデータを読めませんでした: ${loaded.reason}`), 300);
@@ -70,6 +85,19 @@ class Game {
     const q = detectQuality();
     this.quality = q.level;
     this.renderer = new WarehouseRenderer(canvas, q);
+    this.autoCam = new AutoCamera(this.renderer.controls);
+    this.calm.onEnter = () => {
+      this.bar.close();
+      this.popup.hide();
+      this.renderer.controls.enabled = false;
+      this.autoCam.start(this.world);
+    };
+    this.calm.onExit = () => {
+      this.renderer.controls.enabled = true;
+    };
+    this.renderer.controls.onInteract = () => {
+      if (this.calm.active) this.calm.exit();
+    };
     this.hud = new Hud((s) => this.setSpeed(s));
     this.bar = new BottomBar();
     this.orders = new OrderSheet();
@@ -112,6 +140,9 @@ class Game {
       renderSettings(body, {
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
+        exportSave: () => exportSaveFile(this.world),
+        importSave: (file) => this.importSave(file),
+        extra: (body) => this.calm.renderSettings(body),
         saveNow: () => this.save(),
         newGame: () => this.newGame(),
         setQuality: (lv) => {
@@ -124,7 +155,8 @@ class Game {
     this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh(), buyAutomation: (id) => buyAutomation(this.world, id) }));
 
     $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
-    $('btn-calm').addEventListener('click', () => showToast('眺めモードは M10 で実装予定'));
+    $('btn-calm').addEventListener('click', () => this.calm.enter());
+    $('mini-hud').addEventListener('click', () => this.calm.exit());
     this.renderer.controls.onTap = (x, y) => this.onTap(x, y);
 
     window.addEventListener('resize', () => this.renderer.resize());
@@ -135,15 +167,53 @@ class Game {
       if (document.hidden) this.save();
     });
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) this.last = performance.now();
+      if (document.hidden) {
+        this.hiddenAt = Date.now();
+      } else {
+        this.last = performance.now();
+        if (this.hiddenAt !== null) this.onResume(Date.now() - this.hiddenAt);
+        this.hiddenAt = null;
+      }
     });
+    if (import.meta.env.PROD) registerServiceWorker();
     this.renderer.resize();
     this.refreshSelectedInfo(true);
+    if (offlineReport && offlineReport.elapsedMs > 0) {
+      this.modal.show('🏠 お留守番レポート', offlineReportNode(offlineReport));
+      this.save();
+    }
     if (this.world.season.pendingReport) {
       const rec = this.world.season.pendingReport;
       this.modal.show('サイバーウィーク成績表', cyberReportNode(rec, this.world.stats.cyberWeekRecords));
       this.world.season.pendingReport = null;
     }
+  }
+
+  /** タブが戻ったとき: 5 分以内なら追いつき計算、それ以上はまとめて計算（§10.3） */
+  private onResume(hiddenMs: number): void {
+    if (this.world.flags.buildMode) return;
+    if (hiddenMs <= OFFLINE.catchUpMaxMs) {
+      this.catchUp += (hiddenMs / TICK_MS) * this.world.speed;
+    } else {
+      const r = applyOffline(this.world, hiddenMs);
+      if (r.elapsedMs > 0) this.modal.show('🏠 お留守番レポート', offlineReportNode(r));
+      this.rt.dirty = true;
+      this.save();
+    }
+  }
+
+  private async importSave(file: File): Promise<void> {
+    const res = await importSaveFile(file);
+    if (!res.ok) {
+      showToast(`読み込めませんでした: ${res.reason}`);
+      return;
+    }
+    this.world = res.world;
+    this.rt = createRuntime();
+    this.select(null);
+    this.bar.close();
+    this.save();
+    showToast('セーブデータを読み込みました');
   }
 
   save(): boolean {
@@ -390,11 +460,28 @@ class Game {
         stepSim(this.world, this.rt);
         this.acc -= TICK_MS;
       }
+      // 離席からの追いつき計算（1 フレームに少しずつ）
+      if (this.catchUp >= 1 && !this.world.flags.buildMode) {
+        const n = Math.min(OFFLINE.catchUpTicksPerFrame, Math.floor(this.catchUp));
+        for (let i = 0; i < n; i++) stepSim(this.world, this.rt);
+        this.catchUp -= n;
+      }
       if (this.world.events.length) {
         this.handleEvents(this.world.events);
         this.world.events = [];
       }
       this.alpha = this.world.speed > 0 ? this.acc / TICK_MS : 0;
+      this.calm.update(this.world, now);
+      if (this.calm.active) {
+        // 眺めモード: 描画を 30/15fps に落とす（§10.1）
+        const minInterval = 1000 / this.calm.settings.fps;
+        if (now - this.lastRender < minInterval) return;
+        this.autoCam.update(this.world, Math.min(0.25, (now - this.lastRender) / 1000));
+        this.lastRender = now;
+        this.renderer.render(this.world, this.alpha);
+        return;
+      }
+      this.lastRender = now;
       this.hud.update(this.world);
       this.banner.update(this.world);
       this.orders.update(this.world);

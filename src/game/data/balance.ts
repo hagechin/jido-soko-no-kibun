@@ -279,6 +279,20 @@ export const BUILD = {
   waitSpotCost: 0,
 };
 
+// ---- 放置中の進行（§10.2） -----------------------------------------------
+export const OFFLINE = {
+  /** これ以下の離席は tick を追いつき計算する */
+  catchUpMaxMs: 5 * 60_000,
+  /** 追いつき計算の 1 フレームあたり上限 tick */
+  catchUpTicksPerFrame: 600,
+  /** まとめて計算する上限（8 時間） */
+  maxOfflineMs: 8 * 60 * 60_000,
+  /** ペースを見る窓（直近 10 分） */
+  windowTicks: sec(10 * 60),
+  /** 出荷実績が無いときの最低ペース（1分あたり）: 自動化が揃っていなければ 0 */
+  fallbackShipmentsPerMinute: 0,
+};
+
 // ---- セーブ（§11.2） -----------------------------------------------------
 export const SAVE = {
   key: 'jido-soko-no-kibun:save',

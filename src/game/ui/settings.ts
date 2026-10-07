@@ -4,6 +4,8 @@ import { el, showToast } from './layout';
 
 export interface SettingsContext {
   quality: QualityLevel;
+  /** 追加セクション（眺めモードなど） */
+  extra?: (body: HTMLElement) => void;
   saveNow: () => boolean;
   newGame: () => void;
   setQuality: (q: QualityLevel) => void;
@@ -49,4 +51,5 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
   }
   body.append(qRow);
   body.append(el('p', { class: 'muted small', text: `端末の自動判定: ${settingsFor(ctx.quality).pixelRatio.toFixed(1)}x 描画` }));
+  ctx.extra?.(body);
 }

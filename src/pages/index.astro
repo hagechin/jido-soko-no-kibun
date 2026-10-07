@@ -11,6 +11,11 @@ import '../styles/game.css';
     <meta name="description" content="自動倉庫の気分 — 物流倉庫を自動化して眺めるシミュレーションゲーム" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="自動倉庫" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <title>自動倉庫の気分</title>
   </head>
   <body>
@@ -48,6 +53,8 @@ import '../styles/game.css';
         </div>
         <div class="banner" id="banner" hidden></div>
         <div class="toasts" id="toasts" aria-live="polite"></div>
+        <button class="btn calm-suggest" id="calm-suggest" hidden>🔥 眺めモードにする？</button>
+        <button class="btn update-banner" id="update-banner" hidden>🔄 更新があります（タップで再読み込み）</button>
       </main>
 
       <nav id="bottombar" class="bottombar" aria-label="操作">
@@ -69,6 +76,7 @@ import '../styles/game.css';
         <div class="sheet-body" id="sheet-body"></div>
       </div>
       <div id="popup" class="popup" hidden></div>
+      <div id="mini-hud" class="mini-hud"></div>
       <div id="modal" class="modal" hidden>
         <div class="modal-card" role="dialog" aria-modal="true">
           <div class="modal-head"><span id="modal-title">お知らせ</span><button class="btn icon-btn" id="modal-close" aria-label="閉じる">✕</button></div>

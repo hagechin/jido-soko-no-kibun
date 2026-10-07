@@ -37,7 +37,14 @@ export class Modal {
     });
   }
 
+  private queue: { title: string; content: Node[] }[] = [];
+
+  /** 表示中なら順番待ちにする（お留守番レポート → ランクアップ の順で見せる） */
   show(title: string, ...content: Node[]): void {
+    if (this.visible) {
+      this.queue.push({ title, content });
+      return;
+    }
     this.title.textContent = title;
     this.body.replaceChildren(...content);
     this.root.hidden = false;
@@ -46,6 +53,8 @@ export class Modal {
   hide(): void {
     this.root.hidden = true;
     this.onClose?.();
+    const next = this.queue.shift();
+    if (next) this.show(next.title, ...next.content);
   }
 
   get visible(): boolean {
