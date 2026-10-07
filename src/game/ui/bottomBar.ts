@@ -1,6 +1,6 @@
 import { $, el } from './layout';
 
-export type PanelId = 'build' | 'upgrades' | 'inventory' | 'settings' | 'station' | 'debug';
+export type PanelId = 'build' | 'upgrades' | 'inventory' | 'settings' | 'station' | 'debug' | 'robots';
 
 export class BottomBar {
   private sheet = $('sheet');
@@ -41,7 +41,7 @@ export class BottomBar {
 
   show(id: PanelId): void {
     this.current = id;
-    const titles: Record<PanelId, string> = { build: '建設モード', upgrades: 'アップグレード', inventory: '在庫', settings: '設定', station: 'ステーション', debug: '🐞 デバッグ' };
+    const titles: Record<PanelId, string> = { build: '建設モード', upgrades: 'アップグレード', inventory: '在庫', settings: '設定', station: 'ステーション', debug: '🐞 デバッグ', robots: 'ロボ一覧' };
     this.sheetTitle.textContent = titles[id];
     this.sheet.classList.toggle('is-compact', id === 'build');
     this.refresh();

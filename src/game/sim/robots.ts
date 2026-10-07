@@ -439,7 +439,16 @@ function purposeOf(w: WorldState, binId: number): 'pick' | 'inbound' {
 /** ポートの出庫ビンのうち、今の積荷と同じ行き先のものの添字。無ければ null */
 function nextLoadableBin(w: WorldState, r: Robot, port: WorldState['ports'][number]): number | null {
   if (!port.outbound.length) return null;
-  if (!r.carrying.length) return 0;
+  if (!r.carrying.length) {
+    // 最初の 1 個は優先設定（ピック／補充）に合うものから
+    const pri = w.automation.amrPriority;
+    if (pri !== 'balanced') {
+      const want = pri === 'pick' ? 'pick' : 'inbound';
+      const idx = port.outbound.findIndex((id) => purposeOf(w, id) === want);
+      if (idx >= 0) return idx;
+    }
+    return 0;
+  }
   const want = purposeOf(w, r.carrying[0]);
   const idx = port.outbound.findIndex((id) => purposeOf(w, id) === want);
   return idx >= 0 ? idx : null;

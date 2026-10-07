@@ -374,7 +374,11 @@ button {
     display: none;
   }
   .bar-btn {
-    padding: 0 6px;
+    padding: 0 4px;
+    min-width: 44px;
+  }
+  .bottom-actions {
+    gap: 3px;
   }
   .selected {
     font-size: 12px;
@@ -951,4 +955,27 @@ body.is-calm .mini-hud {
 }
 .debug-stats[hidden] {
   display: none;
+}
+
+/* ---------- ロボ一覧 ---------- */
+.robot-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.robot-row.is-active .robot-pick {
+  border-color: var(--accent);
+}
+.robot-pick {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  text-align: left;
+  padding: 6px 10px;
+}
+.robot-pick .sel-status {
+  display: inline;
 }

@@ -87,6 +87,7 @@ export class WarehouseRenderer {
   private ground: Mesh;
   private sun: DirectionalLight;
   private layoutKey = '';
+  private sizeKey = '';
   private lastTick = -1;
   private quality: QualitySettings;
   private groundPlane: Mesh;
@@ -308,10 +309,15 @@ export class WarehouseRenderer {
   render(w: WorldState, alpha: number): void {
     const key = this.layoutKeyOf(w);
     if (key !== this.layoutKey) {
+      const sizeChanged = !this.layoutKey || this.sizeKey !== `${w.width}x${w.height}`;
       this.layoutKey = key;
+      this.sizeKey = `${w.width}x${w.height}`;
       this.rebuildStatic(w);
-      this.controls.setWarehouse(w.width, w.height);
-      this.controls.fitForAspect(this.camera.aspect);
+      // 倉庫の大きさが変わったときだけカメラを合わせ直す（建設でスタックを置いただけなら視点はそのまま）
+      if (sizeChanged) {
+        this.controls.setWarehouse(w.width, w.height);
+        this.controls.fitForAspect(this.camera.aspect);
+      }
       this.lastTick = -1;
     }
     if (w.tick !== this.lastTick || this.robotBatch.mesh.count === 0) {

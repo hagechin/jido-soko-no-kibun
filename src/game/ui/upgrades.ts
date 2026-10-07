@@ -55,7 +55,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   body.append(row(`棚の段数 ${w.levels} → ${Math.min(LEVELS.max, w.levels + 1)}`, lvCost, () => upgradeLevels(w), ctx, '全スタックに +1 段。保管量が増える代わりに掘り出しが発生する', lvLocked));
   body.append(row(`ビン容量 ${w.binCapacity} → ${w.binCapacity + 10}`, binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, '1 ビンに入る個数'));
   body.append(row('空ビン 1 個', BIN.emptyBinCost, () => buyEmptyBin(w), ctx, `空きのあるスタックの頂上に置く（買えるのはあと ${Math.max(0, freeBinSlots(w) - reservedSlots(w))} 個。掘り出し用に ${reservedSlots(w)} スロットは空けておく）`));
-  body.append(row('面積拡張（+4 マス幅）', null, null, ctx, 'M7 の建設モードで行います', '建設'));
+  body.append(row('面積拡張（東へ +4 列／南へ +4 行）', null, null, ctx, '建設モードのツールバーから行います', '建設'));
   body.append(el('p', { class: 'muted small', text: `スタック ${BUILD.stackCost}🪙 / ポート ${BUILD.portCost}🪙 / ステーション ${BUILD.pickStationCost}🪙 は「建設」で配置します` }));
 
   body.append(el('h4', { text: 'ロボット' }));
@@ -90,5 +90,21 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
     const locked = cost !== null && w.rank < unlockRank ? `ランク${unlockRank + 1}で解放` : ctx.buyAutomation ? undefined : 'M9';
     body.append(row(label, cost, ctx.buyAutomation ? () => ctx.buyAutomation!(id) : null, ctx, desc, locked));
   }
+  body.append(el('h4', { text: '搬送ロボの優先' }));
+  const priRow = el('div', { class: 'settings-row' });
+  for (const [id, label, desc] of [
+    ['balanced', '均等', '近いポートから順に運ぶ'],
+    ['pick', 'ピック優先', 'ピッカー行きのビンを先に運ぶ'],
+    ['restock', '補充優先', '入荷ステーション行きのビンを先に運ぶ'],
+  ] as const) {
+    const b = el('button', { class: `btn${w.automation.amrPriority === id ? ' is-active' : ''}`, type: 'button', text: label, title: desc });
+    b.addEventListener('click', () => {
+      w.automation.amrPriority = id;
+      showToast(`搬送ロボ: ${label}（${desc}）`);
+      ctx.refresh();
+    });
+    priRow.append(b);
+  }
+  body.append(priRow);
   body.append(el('p', { class: 'muted small', text: `現在のランク: ${rank.name}` }));
 }

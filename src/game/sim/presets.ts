@@ -97,7 +97,7 @@ export function buildPreset(id: PresetId, opts: PresetOptions = {}): WorldState 
   w.coins = mega ? 50_000 : 5_000;
   w.reputation = mega ? 90 : 70;
   w.stats.totalShipped = RANKS[rank].shipped;
-  w.automation = { dispatch: mega ? 3 : 2, restock: true, relocate: mega, lastRetrieveTick: 0 };
+  w.automation = { dispatch: mega ? 3 : 2, restock: true, relocate: mega, amrPriority: 'balanced', lastRetrieveTick: 0 };
 
   // ロボを増やす（既定の 1+1 に追加）
   const shelfTarget = mega ? 12 : 3;

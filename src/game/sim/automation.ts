@@ -251,10 +251,16 @@ function unblockStuck(w: WorldState, rt: Runtime): void {
 // ------------------------------------------------------------------ 搬送ロボ
 function assignAmrJob(w: WorldState, r: Robot): boolean {
   if (w.automation.dispatch < 1) return false;
-  // ポートごとに「向かっている搬送ロボの数」を数え、出庫ビンがそれより多いポートへ
+  // ポートごとに「向かっている搬送ロボの数」を数え、出庫ビンがそれより多いポートへ。
+  // 優先設定（ピック／補充）があれば、その行き先のビンがあるポートを先に選ぶ
   const targeting = new Map<number, number>();
   for (const o of w.robots) for (const j of [o.job, ...o.queue]) if (j?.type === 'fetch') targeting.set(j.portId, (targeting.get(j.portId) ?? 0) + 1);
-  const port = nearestPort(w, r.pose.x, r.pose.z, (p) => p.outbound.length > (targeting.get(p.id) ?? 0));
+  const pri = w.automation.amrPriority;
+  const hasPurpose = (p: WorldState['ports'][number], purpose: 'pick' | 'inbound') => p.outbound.some((id) => (w.bins[id]?.purpose === 'inbound' ? 'inbound' : 'pick') === purpose);
+  const avail = (p: WorldState['ports'][number]) => p.outbound.length > (targeting.get(p.id) ?? 0);
+  let port = null as WorldState['ports'][number] | null;
+  if (pri !== 'balanced') port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, pri === 'pick' ? 'pick' : 'inbound'));
+  if (!port) port = nearestPort(w, r.pose.x, r.pose.z, avail);
   if (!port) return false;
   r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false };
   r.step = 0;

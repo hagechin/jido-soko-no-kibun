@@ -254,3 +254,31 @@ describe('mixed destinations at the port', () => {
     expect(backlog1).toBeLessThan(backlog0 * 0.6);
   });
 });
+
+describe('AMR priority setting', () => {
+  function portWithBoth(w: ReturnType<typeof createWorld>) {
+    const port = w.ports[0];
+    const empty = Object.values(w.bins).find((b) => b.item === null)!;
+    const apple = Object.values(w.bins).find((b) => b.item === 'apple')!;
+    for (const s of w.stacks) s.bins = s.bins.filter((id) => id !== empty.id && id !== apple.id);
+    empty.purpose = 'inbound';
+    apple.purpose = 'pick';
+    port.outbound.push(empty.id, apple.id); // 入荷行きが先に置かれている
+    return { empty, apple };
+  }
+  for (const [pri, expectFirst] of [['pick', 'apple'], ['restock', 'empty'], ['balanced', 'empty']] as const) {
+    it(`${pri}: loads the ${expectFirst} bin first`, () => {
+      const w = createWorld({ seed: 31 });
+      const rt = createRuntime();
+      w.nextOrderTick = 1e9;
+      w.coins = 1e5;
+      w.rank = 1;
+      buyAutomation(w, 'dispatch');
+      w.automation.amrPriority = pri;
+      const { empty, apple } = portWithBoth(w);
+      const amr = w.robots.find((r) => r.kind === 'amr')!;
+      until(w, rt, () => amr.job?.type === 'deliver');
+      expect(amr.carrying[0]).toBe(expectFirst === 'apple' ? apple.id : empty.id);
+    });
+  }
+});

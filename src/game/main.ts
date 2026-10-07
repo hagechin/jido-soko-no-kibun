@@ -34,6 +34,7 @@ import { AutoCamera } from './render/autoCamera';
 import { registerServiceWorker } from './ui/pwa';
 import { Sound } from './audio/sound';
 import { renderDebug } from './ui/debugPanel';
+import { renderRobotList } from './ui/robotList';
 import { isCyberWeek } from './sim/events';
 import { visibleOrders } from './sim/orders';
 import { exportSaveFile, importSaveFile } from './ui/storage';
@@ -120,6 +121,21 @@ class Game {
     this.orders = new OrderSheet();
     this.popup = new Popup();
     this.orders.onItemTap = (itemId) => this.onOrderItemTap(itemId);
+    this.bar.registerPanel('robots', (body) =>
+      renderRobotList(
+        body,
+        this.world,
+        this.selectedRobotId,
+        (id) => {
+          this.select(id);
+          this.bar.refresh();
+        },
+        (id) => {
+          this.select(id);
+          this.bar.show('upgrades');
+        },
+      ),
+    );
     this.bar.registerPanel('inventory', (body) => renderInventory(body, this.world, (item) => this.onOrderItemTap(item)));
     this.bar.registerPanel('build', (body) =>
       renderBuild(body, {

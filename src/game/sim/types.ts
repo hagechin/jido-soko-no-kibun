@@ -215,10 +215,14 @@ export interface SeasonState {
   pendingReport: CyberWeekRecord | null;
 }
 
+export type AmrPriority = 'balanced' | 'pick' | 'restock';
+
 export interface Automation {
   dispatch: number; // 0-3
   restock: boolean;
   relocate: boolean;
+  /** 搬送ロボがポートのビンを選ぶ優先: ピッカー行き／入荷行き／近い順 */
+  amrPriority: AmrPriority;
   /** 最後に取り出し仕事を割り当てた tick（再配置 AI の「暇」判定） */
   lastRetrieveTick: number;
 }
