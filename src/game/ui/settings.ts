@@ -52,4 +52,6 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
   body.append(qRow);
   body.append(el('p', { class: 'muted small', text: `端末の自動判定: ${settingsFor(ctx.quality).pixelRatio.toFixed(1)}x 描画` }));
   ctx.extra?.(body);
+  const build = document.querySelector('meta[name="build"]')?.getAttribute('content') ?? '';
+  body.append(el('p', { class: 'muted small', text: `ビルド: ${build}　デバッグ画面: URL に ?debug を付けて開く` }));
 }

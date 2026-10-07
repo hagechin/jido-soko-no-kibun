@@ -24,9 +24,20 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  // ナビゲーションは index.html（キャッシュ優先、無ければネットワーク）
+  // ナビゲーション（HTML）はネットワーク優先: オンラインなら常に最新の版、オフラインならキャッシュ（機内モードで起動できる）
   if (req.mode === 'navigate') {
-    event.respondWith(caches.match('./index.html').then((r) => r || fetch(req).catch(() => caches.match('./index.html'))));
+    event.respondWith(
+      Promise.race([
+        fetch(req).then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put('./index.html', copy));
+          }
+          return res;
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+      ]).catch(() => caches.match('./index.html').then((r) => r || fetch(req))),
+    );
     return;
   }
   event.respondWith(

@@ -30,6 +30,9 @@ function serviceWorkerIntegration() {
         const version = hash.digest('hex').slice(0, 10);
         const tpl = readFileSync(new URL('./scripts/sw-template.js', import.meta.url), 'utf8');
         writeFileSync(join(root, 'sw.js'), tpl.replace('__VERSION__', version).replace('__PRECACHE__', JSON.stringify(list, null, 0)));
+        // ページにビルド番号を埋め込む（設定画面に表示）
+        const indexPath = join(root, 'index.html');
+        writeFileSync(indexPath, readFileSync(indexPath, 'utf8').replace('__BUILD__', `${version} ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`));
         console.log(`[sw] generated sw.js (${list.length} files, v${version})`);
       },
     },
