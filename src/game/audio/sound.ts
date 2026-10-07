@@ -9,7 +9,8 @@ const KEY = 'jido-soko-no-kibun:sound';
 export class Sound {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  private hum: { osc: OscillatorNode; gain: GainNode } | null = null;
+  /** ロボの駆動音: ブラウンノイズ（モーター／ファン）＋ 低い三角波（わずかなビブラート） */
+  private hum: { gain: GainNode; osc: OscillatorNode; lfo: OscillatorNode } | null = null;
   private bgmGain: GainNode | null = null;
   private bgmTimer = 0;
   private bgmStep = 0;
@@ -58,26 +59,61 @@ export class Sound {
     this.tempo = t;
   }
 
-  /** 動いているロボの台数 → ハムの音量 */
+  /** 動いているロボの台数 → 駆動音の音量とピッチ（台数が多いほど少し高く） */
   setActivity(movingRobots: number): void {
     if (!this.hum || !this.ctx) return;
-    const target = Math.min(0.12, movingRobots * 0.03) * (this.tempo === 'calm' ? 0.5 : 1);
-    this.hum.gain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.2);
+    const t = this.ctx.currentTime;
+    const target = Math.min(0.045, movingRobots * 0.012) * (this.tempo === 'calm' ? 0.5 : 1);
+    this.hum.gain.gain.setTargetAtTime(target, t, 0.4);
+    this.hum.osc.frequency.setTargetAtTime(90 + Math.min(40, movingRobots * 4), t, 0.6);
   }
 
   private startHum(): void {
     if (!this.ctx || !this.master) return;
-    const osc = this.ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = 55;
-    const filt = this.ctx.createBiquadFilter();
-    filt.type = 'lowpass';
-    filt.frequency.value = 180;
-    const gain = this.ctx.createGain();
+    const ctx = this.ctx;
+    const gain = ctx.createGain();
     gain.gain.value = 0;
-    osc.connect(filt).connect(gain).connect(this.master);
+    gain.connect(this.master);
+    // ブラウンノイズ（2 秒ループ）→ ローパス: モーターとファンの空気感
+    const len = ctx.sampleRate * 2;
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + 0.02 * white) / 1.02;
+      data[i] = last * 3.5;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+    noise.loop = true;
+    const nf = ctx.createBiquadFilter();
+    nf.type = 'lowpass';
+    nf.frequency.value = 600;
+    nf.Q.value = 0.5;
+    const ng = ctx.createGain();
+    ng.gain.value = 0.7;
+    noise.connect(nf).connect(ng).connect(gain);
+    noise.start();
+    // 低い三角波に遅いビブラートをかけて「回っている」感じに（音量は控えめ）
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = 90;
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 3.3;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 4;
+    lfo.connect(lfoGain).connect(osc.frequency);
+    const of = ctx.createBiquadFilter();
+    of.type = 'lowpass';
+    of.frequency.value = 300;
+    const og = ctx.createGain();
+    og.gain.value = 0.35;
+    osc.connect(of).connect(og).connect(gain);
     osc.start();
-    this.hum = { osc, gain };
+    lfo.start();
+    this.hum = { gain, osc, lfo };
   }
 
   private tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 0.15, when = 0): void {
