@@ -599,6 +599,7 @@ function amrDeliver(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, {
   if (!job.done) job.done = [];
   if (!r.carrying.length) return finishJob(w, rt, r);
   let st = w.stations.find((s) => s.id === job.stationId);
+  if (!st && r.phase === 'working') r.phase = 'idle'; // 作業中にステーションが撤去された → 作業待ちのまま固まらない
   if (!st || !cargoForStation(w, r, st.id).length) {
     // このステーションでやることが無い → 次のステーション、無ければ返却
     const next = nextStationFor(w, r);

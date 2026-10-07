@@ -23,7 +23,7 @@ import { renderBuild, type BuildUiState } from './ui/buildMode';
 import { renderPortPanel, renderStationPanel } from './ui/stationPanel';
 import { EventBanner, Modal, cyberReportNode } from './ui/eventBanner';
 import { expand, move as moveObject, place, remove } from './sim/build';
-import { buyAutomation } from './sim/shop';
+import { buyAutomation, freeBinSlots, reservedSlots } from './sim/shop';
 import { rankName, unlockSummary } from './sim/rank';
 import { clearStorage, loadFromStorage, saveToStorage } from './ui/storage';
 import { OFFLINE, SAVE } from './data/balance';
@@ -268,7 +268,19 @@ class Game {
     if (!allBlocked || anyBusy) return;
     this.lastStockoutHint = now;
     const dock = w.pallets.reduce((a, p) => a + p.qty, 0);
-    showToast(dock > 0 ? '⚠️ 表示中のオーダーは全部欠品待ち。入荷口の山をビンに詰めましょう（棚ロボで空ビンを取り出し → 搬送ロボを入荷ステーションへ。自動補充AIなら自動）' : '⚠️ 表示中のオーダーは全部欠品待ち。次の入荷トラック（週 1 回）を待っています', 6000);
+    if (dock <= 0) {
+      showToast('⚠️ 表示中のオーダーは全部欠品待ち。次の入荷トラック（週 1 回）を待っています', 6000);
+      return;
+    }
+    // 入荷口に山はあるのに詰められるビンが無い（空ビンも、同じ商品の空きのあるビンも無い）→ 補充AIも動けない
+    const palletItems = new Set(w.pallets.map((p) => p.item));
+    const canStuff = Object.values(w.bins).some((b) => b.item === null || (palletItems.has(b.item) && b.qty < w.binCapacity));
+    if (!canStuff) {
+      const slot = freeBinSlots(w) > reservedSlots(w);
+      showToast(slot ? '⚠️ 欠品の商品は入荷口にありますが、詰められる空きビンがありません。ショップで空ビンを買うと補充が動きます（ビン容量アップも有効）' : '⚠️ 欠品の商品は入荷口にありますが、空きビンも棚の空きもありません。スタックを増やすか段数を上げてから空ビンを買ってください', 8000);
+      return;
+    }
+    showToast('⚠️ 表示中のオーダーは全部欠品待ち。入荷口の山をビンに詰めましょう（棚ロボで空ビンを取り出し → 搬送ロボを入荷ステーションへ。自動補充AIなら自動）', 6000);
   }
 
   /** タブが戻ったとき: 5 分以内なら追いつき計算、それ以上はまとめて計算（§10.3） */

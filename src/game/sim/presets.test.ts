@@ -156,3 +156,34 @@ describe('inbound surge on the mega preset (crowding control)', () => {
     expect(w.stats.totalShipped - 1000).toBeGreaterThan(3); // 入荷ラッシュ中も出荷は続く
   });
 });
+
+describe('crowded single-port rail (livelock regression)', () => {
+  // 初期倉庫（4×3 の棚、ポート 1）に棚ロボ 4 台。以前は 3 台がポートへ、1 台が退避先へ向かう形で
+  // 全員が 2 マスを往復し続けるライブロックになり、2 時間で 1 件しか出荷できなかった
+  it('4 shelf robots sharing one port keep shipping for 20 minutes', () => {
+    const w = buildPreset('initial');
+    w.rank = 2;
+    w.levels = 3;
+    w.coins = 100_000;
+    w.automation = { dispatch: 3, restock: true, relocate: true, amrPriority: 'pick', lastRetrieveTick: 0 };
+    const occ = new Set(w.robots.map((r) => `${r.pose.x},${r.pose.z}`));
+    for (let i = w.robots.filter((r) => r.kind === 'shelf').length; i < 4; i++) {
+      const s = w.stacks.find((s) => !occ.has(`${s.x},${s.z}`))!;
+      occ.add(`${s.x},${s.z}`);
+      addRobot(w, 'shelf', s.x, s.z);
+    }
+    for (let i = w.robots.filter((r) => r.kind === 'amr').length; i < 5; i++) addRobot(w, 'amr', 8 + i, 10);
+    const rt = createRuntime();
+    let maxGap = 0;
+    let lastShip = 0;
+    for (let t = 0; t < 12000; t++) {
+      stepSim(w, rt);
+      if (w.stats.totalShipped > 0 && w.tick - lastShip > maxGap) maxGap = w.tick - lastShip;
+      if (w.events.some((e) => e.type === 'shipped')) lastShip = w.tick;
+      w.events.length = 0;
+    }
+    console.log('single-port shipped', w.stats.totalShipped, 'maxGap', maxGap);
+    expect(w.stats.totalShipped).toBeGreaterThanOrEqual(8);
+    expect(maxGap).toBeLessThan(3000); // 5 分以上止まらない
+  });
+});

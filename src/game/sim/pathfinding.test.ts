@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PATHING } from '../data/balance';
 import { findPath, reservePath, type PlanRequest } from './pathfinding';
 import { ReservationTable } from './reservation';
 import type { Pose } from './types';
@@ -80,5 +81,66 @@ describe('findPath (space-time A*)', () => {
     // 隙間を 2 マスにすれば通れる
     r.passable = (x, z) => x >= 0 && x < 8 && z >= 0 && z < 4 && !(x === 3 && z > 1);
     expect(findPath(r)).not.toBeNull();
+  });
+});
+
+describe('no oscillation livelock (waiting beats pacing back and forth)', () => {
+  // 1 本道の通路 (z=0) の先 (4,0) を他ロボが tick 0..60 まで塞いでいる。
+  // 待機は 1 tick ごとにペナルティが付くため、以前は「行って戻る」往復のほうが安く評価され、
+  // 窓付き計画がその往復を部分経路として返し続けて 2 マスを永久に往復するライブロックになった
+  function corridorReq(table: ReservationTable, extra: Partial<PlanRequest> = {}): PlanRequest {
+    const W = 8;
+    return {
+      robotId: 1,
+      start: { x: 1, z: 0, dir: 0 },
+      startTick: 0,
+      shape: { w: 1, l: 1 },
+      moveTicks: 5,
+      turnTicks: 3,
+      passable: (x, z) => z === 0 && x >= 0 && x < W,
+      isGoal: (p) => p.x === 6 && p.z === 0,
+      goalCells: [{ x: 6, z: 0 }],
+      width: W,
+      table,
+      holdTicks: 10,
+      ...extra,
+    };
+  }
+  function neverBacktracks(path: { type: string; from: Pose; to: Pose }[]): boolean {
+    return path.every((s) => s.type !== 'move' || s.to.x > s.from.x);
+  }
+
+  it('waits in place for a long block instead of pacing', () => {
+    const table = new ReservationTable();
+    table.reserve(4, 0, 60, 2);
+    const path = findPath(corridorReq(table))!;
+    expect(path).not.toBeNull();
+    expect(neverBacktracks(path)).toBe(true);
+    expect(path[path.length - 1].to.x).toBeGreaterThanOrEqual(3); // 窓の端で止まって待つか、通れるようになってから進む
+  });
+
+  it('while moving away from the goal, a partial path must get closer than the current cell too', () => {
+    // ロボは (2,0) に居て (1,0) へ移動中（start = 移動先）。(3,0) 以降が長く塞がれている。
+    // 「(1,0) → (2,0)」で終わる部分経路は開始点より近いが現在地と同じなので、進歩ではない → 経路なし（その場で待つ）
+    const table = new ReservationTable();
+    table.reserve(3, 0, 400, 2);
+    const path = findPath(corridorReq(table, { start: { x: 1, z: 0, dir: 0 }, pose: { x: 2, z: 0, dir: 0 }, horizon: 100, window: 2 }));
+    expect(path === null || path[path.length - 1].to.x >= 3).toBe(true);
+  });
+
+  it('old constants reproduce the pacing (documents why waitPenalty must stay tiny)', () => {
+    const saved = { wait: PATHING.waitPenalty, away: PATHING.awayMovePenalty };
+    PATHING.waitPenalty = 0.5;
+    PATHING.awayMovePenalty = 0;
+    try {
+      const table = new ReservationTable();
+      table.reserve(4, 0, 60, 2);
+      const path = findPath(corridorReq(table))!;
+      expect(path).not.toBeNull();
+      expect(neverBacktracks(path)).toBe(false);
+    } finally {
+      PATHING.waitPenalty = saved.wait;
+      PATHING.awayMovePenalty = saved.away;
+    }
   });
 });

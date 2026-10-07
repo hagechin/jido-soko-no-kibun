@@ -121,6 +121,7 @@ function planOne(w: WorldState, rt: Runtime, r: Robot): void {
   const req: PlanRequest = {
     robotId: r.id,
     start,
+    pose: r.pose,
     startTick,
     shape: shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel),
     moveTicks: moveTicksFor(r.speedLevel),

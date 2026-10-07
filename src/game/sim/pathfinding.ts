@@ -37,6 +37,8 @@ export interface PlanRequest {
   horizon?: number;
   /** 窓付き計画のマス数（省略時は PATHING.windowCells。Infinity で全経路） */
   window?: number;
+  /** ロボの現在の姿勢（移動中は start = 移動先と異なる）。部分経路は現在地より確実にゴールへ近づくものだけ採用する */
+  pose?: Pose;
 }
 
 interface Node {
@@ -226,6 +228,9 @@ function findPathInner(req: PlanRequest): PlanStep[] | null {
   let best: Node = startNode;
   // 窓付き計画: 開始から windowCells マス以上離れたら、そこまでの部分経路で返す（先は近づいてから引く）
   const windowTicks = (req.window ?? PATHING.windowCells) * req.moveTicks;
+  // 部分経路が「近づいた」と言える基準: 計画の開始点（移動先）と現在地の両方より近いこと。
+  // 移動中に「いま居た所へ戻る」経路を進歩とみなすと、2 マスを往復し続けるライブロックになる
+  const progressH = progressBaseline(req, startNode);
 
   while (open.size) {
     const n = open.pop()!;
@@ -235,11 +240,11 @@ function findPathInner(req: PlanRequest): PlanStep[] | null {
     if (n.h < best.h || (n.h === best.h && n.t < best.t)) best = n;
     if (++expansions > maxExp) {
       pathStats.exhausted++;
-      return partialPath(req, best, startNode);
+      return partialPath(req, best, startNode, progressH);
     }
-    if (n.t - req.startTick >= windowTicks && n.h < startNode.h && n !== startNode) {
+    if (n.t - req.startTick >= windowTicks && n.h < progressH && n !== startNode) {
       // 窓の端まで来た: ここまでで返す（ゴールに近づいていること）
-      const p = partialPath(req, n, startNode);
+      const p = partialPath(req, n, startNode, progressH);
       if (p) {
         pathStats.windowed++;
         return p;
@@ -325,8 +330,8 @@ function staticallyReachable(req: PlanRequest): boolean {
  * 探索を打ち切ったとき、ゴールに最も近づける途中の節点までを経路にする（部分計画）。
  * 次の再計画でそこから続きを探す。終点に留まれない（他ロボが通る）なら諦める。
  */
-function partialPath(req: PlanRequest, best: Node, start: Node): PlanStep[] | null {
-  if (best === start || best.h >= start.h) return null;
+function partialPath(req: PlanRequest, best: Node, start: Node, progressH = start.h): PlanStep[] | null {
+  if (best === start || best.h >= progressH) return null;
   // 待機で終わる部分は切り落とす（動いた所で止まる）
   let n: Node = best;
   while (n.parent && n.step === 'wait') n = n.parent;
@@ -335,6 +340,12 @@ function partialPath(req: PlanRequest, best: Node, start: Node): PlanStep[] | nu
   if (!cellsFree(req, fpA, n.t, n.t + req.holdTicks)) return null;
   pathStats.partial++;
   return reconstruct(n);
+}
+
+/** 部分経路の「近づいた」判定の基準値: 開始点と現在地のヒューリスティックの小さいほう */
+function progressBaseline(req: PlanRequest, start: Node): number {
+  if (!req.pose) return start.h;
+  return Math.min(start.h, heuristic(req, req.pose));
 }
 
 /**
@@ -393,9 +404,12 @@ function isGoalAnyDir(req: PlanRequest, x: number, z: number): boolean {
 }
 
 function push(open: Heap, parent: Node, pose: Pose, t: number, step: PlanStep['type'], req: PlanRequest): void {
-  // g は tick ではなく「順位付け用コスト」。待機にはわずかなペナルティを付けて、動ける経路を先に試す
-  const g = parent.g + (t - parent.t) + (step === 'wait' ? PATHING.waitPenalty : 0);
+  // g は tick ではなく「順位付け用コスト」。待機にはわずかなペナルティを付けて、動ける経路を先に試す。
+  // ゴールから遠ざかる移動は待機より高くする（譲るための後退はできるが、往復して居座るより待つほうを選ぶ）
   const h = heuristic(req, pose);
+  let g = parent.g + (t - parent.t);
+  if (step === 'wait') g += PATHING.waitPenalty;
+  else if (step === 'move' && h > parent.h) g += req.moveTicks * PATHING.awayMovePenalty;
   open.push({ pose, t, g, f: g + h, h, parent, step });
 }
 
