@@ -70,7 +70,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
     if (r.kind === 'amr') {
       const c = ROBOT.cargo[r.cargoLevel];
       const n = ROBOT.cargo[Math.min(r.cargoLevel + 1, ROBOT.cargo.length - 1)];
-      body.append(row(`積載 ${c.bins} → ${n.bins} ビン`, cargoUpgradeCost(r), () => upgradeCargo(w, r.id), ctx, `底面積 ${c.w}×${c.l} → ${n.w}×${n.l}。大きいほど小回りが利かない`));
+      body.append(row(`積載 ${c.bins} → ${n.bins} ビン`, cargoUpgradeCost(r), () => upgradeCargo(w, r.id), ctx, 'ビンを積み重ねて運び、必要なステーションを順に回る'));
     }
   }
 

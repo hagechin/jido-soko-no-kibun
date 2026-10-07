@@ -131,27 +131,24 @@ export function cargoUpgradeCost(r: Robot): number | null {
   return ROBOT.cargoUpgradeCosts[r.cargoLevel];
 }
 
-/** 積載量 Lv アップ（機体ごと）。底面積が増えるので、今の位置で新しい占有マスが空いている必要がある */
+/** 積載量 Lv アップ（機体ごと）。ビンを積み重ねて運ぶ（占有マスは変わらない） */
 export function upgradeCargo(w: WorldState, robotId: number): ShopResult {
   const r = w.robots.find((r) => r.id === robotId);
   if (!r) return { ok: false, reason: 'ロボがいません' };
   const cost = cargoUpgradeCost(r);
   if (cost === null) return { ok: false, reason: '積載量は最大です' };
-  if (r.moveTo || r.actRemaining > 0 || r.carrying.length) return { ok: false, reason: '停車中で積荷の無いときだけ改造できます' };
   const newShape = shapeFor(r.cargoLevel + 1);
-  const cells = footprint(r.pose, newShape, []);
-  const occ = occupiedCells(w);
-  occ.delete(`${r.pose.x},${r.pose.z}`);
-  for (const c of cells) {
-    if (!isFloorWalkable(cellAt(w, c.x, c.z))) return { ok: false, reason: '周りに広い床が必要です（改造後の大きさぶん）' };
-    if (occ.has(`${c.x},${c.z}`)) return { ok: false, reason: '隣に他のロボがいます' };
-  }
-  // 他ロボの占有（複数マス）とも重ならないか
-  for (const o of w.robots) {
-    if (o.id === r.id || o.kind !== 'amr') continue;
-    const oc = footprint(o.pose, shapeFor(o.cargoLevel), []);
-    if (o.moveTo) oc.push(...footprint(o.moveTo, shapeFor(o.cargoLevel), []));
-    if (oc.some((a) => cells.some((b) => a.x === b.x && a.z === b.z))) return { ok: false, reason: '隣に他のロボがいます' };
+  const oldShape = shapeFor(r.cargoLevel);
+  if (newShape.w !== oldShape.w || newShape.l !== oldShape.l) {
+    // 底面積が変わる設定のときだけ、今の位置で新しい占有マスが空いている必要がある
+    if (r.moveTo || r.actRemaining > 0) return { ok: false, reason: '停車中のときだけ改造できます' };
+    const cells = footprint(r.pose, newShape, []);
+    const occ = occupiedCells(w);
+    occ.delete(`${r.pose.x},${r.pose.z}`);
+    for (const c of cells) {
+      if (!isFloorWalkable(cellAt(w, c.x, c.z))) return { ok: false, reason: '周りに広い床が必要です（改造後の大きさぶん）' };
+      if (occ.has(`${c.x},${c.z}`)) return { ok: false, reason: '隣に他のロボがいます' };
+    }
   }
   const p = pay(w, cost);
   if (!p.ok) return p;

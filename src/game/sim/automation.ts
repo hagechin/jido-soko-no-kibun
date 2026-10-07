@@ -191,7 +191,7 @@ function bestPort(w: WorldState, stack: { x: number; z: number }, station: { x: 
   let best = null as WorldState['ports'][number] | null;
   let bd = Infinity;
   for (const p of w.ports) {
-    if (!ok(p)) continue;
+    if (p.closed || !ok(p)) continue;
     const d = manhattan(stack, p) + (station ? manhattan(p, station) : 0);
     if (d < bd) {
       bd = d;
@@ -259,8 +259,8 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
   const hasPurpose = (p: WorldState['ports'][number], purpose: 'pick' | 'inbound') => p.outbound.some((id) => (w.bins[id]?.purpose === 'inbound' ? 'inbound' : 'pick') === purpose);
   const avail = (p: WorldState['ports'][number]) => p.outbound.length > (targeting.get(p.id) ?? 0);
   let port = null as WorldState['ports'][number] | null;
-  if (pri !== 'balanced') port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, pri === 'pick' ? 'pick' : 'inbound'));
-  if (!port) port = nearestPort(w, r.pose.x, r.pose.z, avail);
+  if (pri !== 'balanced') port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, pri === 'pick' ? 'pick' : 'inbound'), true);
+  if (!port) port = nearestPort(w, r.pose.x, r.pose.z, avail, true); // 停止中のポートの出庫ビンも運ぶ
   if (!port) return false;
   r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false };
   r.step = 0;
@@ -274,7 +274,7 @@ export function updateAutomation(w: WorldState, rt: Runtime): void {
   for (const r of w.robots) if (r.job?.type === 'store') storeTargets.add(r.job.portId);
   for (const r of w.robots) {
     if (r.kind !== 'shelf' || !idle(r)) continue;
-    const port = nearestPort(w, r.pose.x, r.pose.z, (p) => p.returns.length > 0 && !storeTargets.has(p.id));
+    const port = nearestPort(w, r.pose.x, r.pose.z, (p) => p.returns.length > 0 && !storeTargets.has(p.id), true); // 停止中のポートも片付ける
     if (port) {
       r.job = { type: 'store', portId: port.id, binId: null, stackId: null, manual: false };
       r.step = 0;

@@ -3,7 +3,7 @@ import { createWorld } from './world';
 import { assignItem, canPlace, canRemove, expand, expansionCost, move, place, railConnected, remove } from './build';
 import { BUILD, EXPANSION, GRID } from '../data/balance';
 import { cellAt } from './grid';
-import { createRuntime, stepMany } from './sim';
+import { createRuntime, stepMany, stepSim } from './sim';
 import { commandRetrieve } from './commands';
 
 describe('M7 build mode (§8)', () => {
@@ -131,5 +131,41 @@ describe('M7 build mode (§8)', () => {
     expect(b.assignedItems).toContain('apple');
     assignItem(w, b.id, 'apple', false);
     expect(b.assignedItems).not.toContain('apple');
+  });
+});
+
+describe('closed ports', () => {
+  it('a closed port receives no new bins, drains, and can then be moved', () => {
+    const w = createWorld({ seed: 9 });
+    w.coins = 1e5;
+    expect(place(w, 'port', 7, 4)).toEqual({ ok: true }); // 2 つ目のポート
+    const [p1, p2] = w.ports;
+    p1.closed = true;
+    const rt = createRuntime();
+    const shelf = w.robots.find((r) => r.kind === 'shelf')!;
+    const stack = w.stacks.find((s) => s.bins.some((id) => w.bins[id].item === 'apple'))!;
+    expect(commandRetrieve(w, rt, shelf.id, stack.id, stack.bins[0])).toEqual({ ok: true });
+    expect((shelf.job as { portId: number }).portId).toBe(p2.id); // 停止中のポートは選ばれない
+    // 停止中のポートに残っていた返却ビンは棚ロボが片付ける
+    const book = Object.values(w.bins).find((b) => b.item === 'book')!;
+    for (const s of w.stacks) s.bins = s.bins.filter((id) => id !== book.id);
+    p1.returns.push(book.id);
+    let n = 0;
+    while (p1.returns.length && n++ < 2000) stepSim(w, rt);
+    expect(p1.returns).toHaveLength(0);
+    // 空になれば移設できる
+    while (shelf.job && n++ < 3000) stepSim(w, rt);
+    w.robots = w.robots.filter((r) => r.kind === 'amr');
+    expect(move(w, p1.x, p1.z, 7, 2)).toEqual({ ok: true });
+    expect(p1.closed).toBe(true); // 設定は引き継ぐ
+  });
+
+  it('refuses a manual retrieve when every port is closed', () => {
+    const w = createWorld({ seed: 9 });
+    w.ports[0].closed = true;
+    const rt = createRuntime();
+    const shelf = w.robots.find((r) => r.kind === 'shelf')!;
+    const stack = w.stacks[0];
+    expect(commandRetrieve(w, rt, shelf.id, stack.id, stack.bins[0]).ok).toBe(false);
   });
 });

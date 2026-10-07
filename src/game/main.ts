@@ -20,7 +20,7 @@ import { renderUpgrades } from './ui/upgrades';
 import { renderInventory } from './ui/inventory';
 import { renderSettings } from './ui/settings';
 import { renderBuild, type BuildUiState } from './ui/buildMode';
-import { renderStationPanel } from './ui/stationPanel';
+import { renderPortPanel, renderStationPanel } from './ui/stationPanel';
 import { EventBanner, Modal, cyberReportNode } from './ui/eventBanner';
 import { expand, move as moveObject, place, remove } from './sim/build';
 import { buyAutomation } from './sim/shop';
@@ -75,6 +75,7 @@ class Game {
   private hiddenAt: number | null = null;
   private catchUp = 0;
   private stationPanelId: number | null = null;
+  private portPanelId: number | null = null;
 
   constructor() {
     const loaded = loadFromStorage();
@@ -155,6 +156,9 @@ class Game {
         refresh: () => this.bar.refresh(),
       }),
     );
+    this.bar.registerPanel('port', (body) => {
+      if (this.portPanelId !== null) renderPortPanel(body, this.world, this.portPanelId, () => this.bar.refresh());
+    });
     this.bar.registerPanel('station', (body) => {
       if (this.stationPanelId !== null) renderStationPanel(body, this.world, this.stationPanelId, () => this.bar.refresh());
     });
@@ -457,8 +461,8 @@ class Game {
       const names = s.bins.map((id) => binLabel(w, id));
       showToast(names.length ? `スタック: ${names.join(' / ')}` : '空のスタック');
     } else if (hit.kind === 'port') {
-      const p = w.ports.find((p) => p.id === hit.id)!;
-      showToast(`ポート: 出庫待ち ${p.outbound.length} / 返却待ち ${p.returns.length}`);
+      this.portPanelId = hit.id;
+      this.bar.show('port');
     } else if (hit.kind === 'station') {
       this.stationPanelId = hit.id;
       this.bar.show('station');

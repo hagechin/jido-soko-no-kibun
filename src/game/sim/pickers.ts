@@ -2,6 +2,7 @@
 import { INBOUND_WORKER, PICKER } from '../data/balance';
 import { shipOrder } from './economy';
 import { isOrderComplete, visibleOrders } from './orders';
+import { cargoForStation } from './robots';
 import type { Robot, Station, WorldState } from './types';
 
 export function pickTicks(s: Station): number {
@@ -47,8 +48,7 @@ export function stuffableCount(w: WorldState, binId: number): { count: number; i
   return best ? { count: Math.min(room, best.qty), item: best.item } : { count: 0, item: null };
 }
 
-function startWork(w: WorldState, s: Station, r: Robot): void {
-  const binId = r.carrying[r.step - 1];
+function startWork(w: WorldState, s: Station, r: Robot, binId: number): void {
   const bin = w.bins[binId];
   let count = 0;
   let ticks = 1;
@@ -103,8 +103,8 @@ function finishWork(w: WorldState, s: Station): void {
   }
   s.work = null;
   if (r && r.phase === 'working') {
-    r.step++;
-    if (r.step - 1 >= r.carrying.length) r.phase = 'idle';
+    if (r.job?.type === 'deliver') (r.job.done ??= []).push(work.binId);
+    if (!r.job || r.job.type !== 'deliver' || !cargoForStation(w, r, s.id).length) r.phase = 'idle';
   }
 }
 
@@ -116,7 +116,9 @@ export function updateStations(w: WorldState): void {
       continue;
     }
     const r = workingRobotAt(w, s);
-    if (r && r.step >= 1 && r.step - 1 < r.carrying.length) startWork(w, s, r);
-    else if (r) r.phase = 'idle';
+    if (!r) continue;
+    const next = cargoForStation(w, r, s.id)[0];
+    if (next !== undefined) startWork(w, s, r, next);
+    else r.phase = 'idle';
   }
 }

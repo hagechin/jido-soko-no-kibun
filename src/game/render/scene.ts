@@ -32,6 +32,7 @@ import { ICONS, ICON_SIZE, PALETTE } from '../data/icons';
 import { Effects, groundColorForMonth } from './effects';
 import type { Robot, WorldState } from '../sim/types';
 import { BoxBatch, shade } from './voxel';
+import { shapeFor } from '../sim/footprint';
 import { CameraController } from './camera';
 import type { QualitySettings } from './quality';
 
@@ -47,6 +48,7 @@ const COLORS = {
   floorAlt: '#bfc6cd',
   waitSpot: '#a8c6e6',
   port: '#f2c94c',
+  portClosed: '#8c8c8c',
   stackTile: '#9aa3ad',
   stationTile: '#d7b899',
   inboundTile: '#b7d7a8',
@@ -168,7 +170,7 @@ export class WarehouseRenderer {
 
   // ---------------------------------------------------------------- static
   private layoutKeyOf(w: WorldState): string {
-    return `${w.width}x${w.height}:${w.levels}:${w.cells.join('')}:${w.stations.map((s) => s.id + s.kind).join(',')}:${this.quality.level}`;
+    return `${w.width}x${w.height}:${w.levels}:${w.cells.join('')}:${w.stations.map((s) => s.id + s.kind).join(',')}:${w.ports.map((p) => (p.closed ? 'c' : 'o')).join('')}:${this.quality.level}`;
   }
 
   railHeight(w: WorldState): number {
@@ -193,7 +195,7 @@ export class WarehouseRenderer {
         const k = w.cells[z * w.width + x];
         let color = (x + z) % 2 === 0 ? COLORS.floor : COLORS.floorAlt;
         if (k === 'waitSpot') color = COLORS.waitSpot;
-        else if (k === 'port') color = COLORS.port;
+        else if (k === 'port') color = w.ports.find((p) => p.x === x && p.z === z)?.closed ? COLORS.portClosed : COLORS.port;
         else if (k === 'stack') color = COLORS.stackTile;
         else if (k === 'pickStation') color = COLORS.stationTile;
         else if (k === 'inboundStation') color = COLORS.inboundTile;
@@ -443,7 +445,7 @@ export class WarehouseRenderer {
           this.selectionRing.position.set(x, rh + 0.08, z);
         }
       } else {
-        const cargo = r.cargoLevel;
+        const shape = shapeFor(r.cargoLevel);
         const y = 0.17;
         // 向きベクトル（補間した角度）。1×2 はアンカー（前）から後ろへ伸びる
         const fx = Math.cos(rot);
@@ -453,12 +455,12 @@ export class WarehouseRenderer {
         let bw = 0.8;
         let bl = 0.8;
         let bodyRot = -rot;
-        if (cargo === 1) {
+        if (shape.w === 1 && shape.l === 2) {
           cx -= fx * 0.5;
           cz -= fz * 0.5;
           bw = 1.8; // 長辺が進行方向
           bl = 0.8;
-        } else if (cargo === 2) {
+        } else if (shape.w === 2) {
           cx += 0.5;
           cz += 0.5;
           bw = 1.8;
@@ -468,21 +470,25 @@ export class WarehouseRenderer {
         this.robotBatch.add(cx, y, cz, bw, 0.3, bl, COLORS.amr, bodyRot);
         this.robotBatch.add(cx, y + 0.17, cz, bw * 0.9, 0.06, bl * 0.9, COLORS.amrDark, bodyRot);
         // ライト（進行方向）
-        const lx = cargo === 2 ? cx + fx * 0.85 : x + fx * 0.4;
-        const lz = cargo === 2 ? cz + fz * 0.85 : z + fz * 0.4;
+        const lx = shape.w === 2 ? cx + fx * 0.85 : x + fx * 0.4;
+        const lz = shape.w === 2 ? cz + fz * 0.85 : z + fz * 0.4;
         this.robotBatch.add(lx, 0.2, lz, 0.12, 0.08, 0.12, '#ffe066');
         r.carrying.forEach((id, i) => {
+          // 積み重ねて運ぶ（底面積が広い設定なら横にも並べる）
+          const perLayer = Math.max(1, Math.round(bw / 0.8) * Math.round(bl / 0.8));
+          const layer = Math.floor(i / perLayer);
+          const slot = i % perLayer;
           let ox = 0;
           let oz = 0;
-          if (cargo === 1) {
-            const k = i === 0 ? 0.45 : -0.45;
+          if (perLayer === 2) {
+            const k = slot === 0 ? 0.45 : -0.45;
             ox = fx * k;
             oz = fz * k;
-          } else if (cargo === 2) {
-            ox = ((i % 2) - 0.5) * 0.9;
-            oz = (Math.floor(i / 2) - 0.5) * 0.9;
+          } else if (perLayer >= 4) {
+            ox = ((slot % 2) - 0.5) * 0.9;
+            oz = (Math.floor(slot / 2) - 0.5) * 0.9;
           }
-          const yy = 0.4 + bh / 2;
+          const yy = 0.4 + bh / 2 + layer * bh * 0.95;
           this.robotBatch.add(cx + ox, yy, cz + oz, RENDER.binSize * 0.85, bh * 0.9, RENDER.binSize * 0.85, this.binColor(w, id), bodyRot);
         });
         if (r.id === this.selectedRobotId) {

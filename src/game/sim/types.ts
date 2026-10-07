@@ -35,6 +35,8 @@ export interface Port {
   id: number;
   x: number;
   z: number;
+  /** 使用停止中: 新しいビンを運び込まない（残りが片付けば移設・撤去できる） */
+  closed?: boolean;
   /** 棚ロボが降ろして搬送ロボ待ちのビン */
   outbound: number[];
   /** 搬送ロボが戻して棚ロボ待ちのビン */
@@ -82,7 +84,8 @@ export type ShelfJob =
 /** 搬送ロボの仕事 */
 export type AmrJob =
   | { type: 'fetch'; portId: number; manual: boolean; stationId: number | null }
-  | { type: 'deliver'; stationId: number; manual: boolean }
+  /** done: この便で処理済みのビン。巡回して全部処理したら返却へ */
+  | { type: 'deliver'; stationId: number; manual: boolean; done?: number[] }
   | { type: 'return'; portId: number | null; manual: boolean };
 
 /** 両方: 指定セルへ移動して待機（待機スポット・退避） */

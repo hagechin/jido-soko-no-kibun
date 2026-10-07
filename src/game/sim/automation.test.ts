@@ -177,7 +177,7 @@ describe('M9 warehouse rank (§9.3)', () => {
 });
 
 describe('mixed destinations at the port', () => {
-  it('an AMR loads only bins bound for the same station, so pick bins reach the picker', () => {
+  it('an AMR with stacked cargo loads bins for different stations and tours them: picker then inbound, then returns', () => {
     const w = createWorld({ seed: 21 });
     const rt = createRuntime();
     w.nextOrderTick = 1e9;
@@ -185,9 +185,9 @@ describe('mixed destinations at the port', () => {
     w.rank = 1;
     buyAutomation(w, 'dispatch');
     const amr = w.robots.find((r) => r.kind === 'amr')!;
-    amr.cargoLevel = 1; // 2 ビン積める
+    amr.cargoLevel = 1; // 2 ビン積める（占有マスは 1×1 のまま）
     order(w, 1, [['apple', 1]]);
-    // ポートに「入荷行き」と「ピッカー行き」を 1 つずつ置く
+    addPallet(w, 'book', 10);
     const port = w.ports[0];
     const empty = Object.values(w.bins).find((b) => b.item === null)!;
     const apple = Object.values(w.bins).find((b) => b.item === 'apple')!;
@@ -196,13 +196,16 @@ describe('mixed destinations at the port', () => {
     apple.purpose = 'pick';
     port.outbound.push(empty.id, apple.id);
     until(w, rt, () => amr.job?.type === 'deliver');
-    expect(amr.carrying).toHaveLength(1);
-    expect(amr.carrying[0]).toBe(empty.id); // 先頭（入荷行き）だけ積む
-    const inbound = w.stations.find((s) => s.kind === 'inbound')!;
-    expect(amr.job).toMatchObject({ type: 'deliver', stationId: inbound.id });
-    // りんごはピッカーへ届いて出荷される
-    until(w, rt, () => w.stats.totalShipped === 1, 4000);
+    expect(amr.carrying).toHaveLength(2); // 両方積む
+    const visited = new Set<number>();
+    until(w, rt, () => {
+      if (amr.phase === 'working' && amr.job?.type === 'deliver') visited.add(amr.job.stationId);
+      return amr.job?.type === 'return';
+    }, 4000);
+    const kinds = [...visited].map((id) => w.stations.find((s) => s.id === id)!.kind).sort();
+    expect(kinds).toEqual(['inbound', 'pick']); // 両方のステーションを巡回
     expect(w.stats.totalShipped).toBe(1);
+    expect(w.bins[empty.id]).toMatchObject({ item: 'book', qty: 10 });
   });
 
   it('restock AI leaves room at the port and runs one bin at a time while picks are pending', () => {

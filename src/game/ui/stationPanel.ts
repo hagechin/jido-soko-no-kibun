@@ -30,3 +30,19 @@ export function renderStationPanel(body: HTMLElement, w: WorldState, stationId: 
   }
   body.append(grid);
 }
+
+/** ポートのパネル: 使用停止／再開、置かれているビン */
+export function renderPortPanel(body: HTMLElement, w: WorldState, portId: number, refresh: () => void): void {
+  const p = w.ports.find((p) => p.id === portId);
+  if (!p) return;
+  body.append(el('p', { text: `ポート (${p.x}, ${p.z})　出庫待ち ${p.outbound.length} / 返却待ち ${p.returns.length}` }));
+  const b = el('button', { class: `btn${p.closed ? ' danger' : ''}`, type: 'button', text: p.closed ? '▶ 使用を再開する' : '⛔ 使用を停止する' });
+  b.addEventListener('click', () => {
+    p.closed = !p.closed;
+    refresh();
+  });
+  body.append(el('div', { class: 'settings-row' }, b));
+  body.append(
+    el('p', { class: 'muted small', text: p.closed ? '停止中: 新しいビンは運び込まれません。残っているビンが片付いたら建設モードで移設・撤去できます。' : '停止すると新しいビンを運び込まなくなり、空になれば移設・撤去できます。すべてのポートを停止すると取り出しができません。' }),
+  );
+}

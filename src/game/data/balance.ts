@@ -120,11 +120,15 @@ export const ROBOT = {
   loadTicksPerBin: sec(0.5),
   /** 1台あたりの指示予約数の上限（§7.2） */
   maxQueuedCommands: 3,
-  /** 積載 Lv → 積載ビン数 / 占有マス（§4.2） */
+  /**
+   * 積載 Lv → 積載ビン数 / 占有マス。
+   * ★ 仕様 §4.2 の「底面積が増える」から変更: ビンを積み重ねて運び、占有マスは 1×1 のまま
+   * （経路探索は 1×2 / 2×2 にも対応しているので、w/l を変えれば仕様どおりにも戻せる）
+   */
   cargo: [
     { bins: 1, w: 1, l: 1 },
-    { bins: 2, w: 1, l: 2 },
-    { bins: 4, w: 2, l: 2 },
+    { bins: 2, w: 1, l: 1 },
+    { bins: 4, w: 1, l: 1 },
   ],
   cargoUpgradeCosts: [250, 700],
   speedUpgradeCosts: [150, 350, 800],

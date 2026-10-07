@@ -41,10 +41,12 @@ export function finishJob(w: WorldState, rt: Runtime, r: Robot): void {
   r.phase = 'idle';
 }
 
-export function nearestPort(w: WorldState, x: number, z: number, filter?: (p: WorldState['ports'][number]) => boolean) {
+/** 条件に合う一番近いポート。既定では使用停止中のポートを除く（片付け目的なら includeClosed = true） */
+export function nearestPort(w: WorldState, x: number, z: number, filter?: (p: WorldState['ports'][number]) => boolean, includeClosed = false) {
   let best = null as WorldState['ports'][number] | null;
   let bd = Infinity;
   for (const p of w.ports) {
+    if (p.closed && !includeClosed) continue;
     if (filter && !filter(p)) continue;
     const d = manhattan({ x, z }, p);
     if (d < bd) {
@@ -85,15 +87,48 @@ export function pickStackWithRoom(w: WorldState, near: { x: number; z: number },
   return best;
 }
 
-/** 担当ピッカーのステーション（§7.1）。担当がいなければ一番近いピッキングST */
-export function stationForBins(w: WorldState, r: Robot): number | null {
-  const first = r.carrying.map((id) => w.bins[id]).find((b) => b);
-  if (first?.purpose === 'inbound') return nearestStation(w, r.pose.x, r.pose.z, 'inbound')?.id ?? null;
-  if (first?.item) {
-    const s = w.stations.find((s) => s.kind === 'pick' && s.assignedItems.includes(first.item!));
+/** ビンの行き先ステーション（§7.1）: 入荷行きなら入荷ST、それ以外は担当ピッカー、担当が無ければ一番近いピッキングST */
+export function destinationOf(w: WorldState, r: Robot, binId: number): number | null {
+  const b = w.bins[binId];
+  if (!b) return null;
+  if (b.purpose === 'inbound') return nearestStation(w, r.pose.x, r.pose.z, 'inbound')?.id ?? null;
+  if (b.item) {
+    const s = w.stations.find((s) => s.kind === 'pick' && s.assignedItems.includes(b.item!));
     if (s) return s.id;
   }
   return nearestStation(w, r.pose.x, r.pose.z, 'pick')?.id ?? null;
+}
+
+/** 積荷のうち、この便でまだ処理していないビン */
+export function unprocessedCargo(w: WorldState, r: Robot): number[] {
+  const done = r.job?.type === 'deliver' ? (r.job.done ?? []) : [];
+  return r.carrying.filter((id) => !done.includes(id));
+}
+
+/** 次に向かうステーション: 未処理のビンの行き先のうち一番近いもの（手動指定中は指定先） */
+export function nextStationFor(w: WorldState, r: Robot): number | null {
+  const left = unprocessedCargo(w, r);
+  if (!left.length) return null;
+  let best: number | null = null;
+  let bd = Infinity;
+  for (const id of left) {
+    const sid = destinationOf(w, r, id);
+    const st = w.stations.find((s) => s.id === sid);
+    if (!st) continue;
+    const d = manhattan(r.pose, st);
+    if (d < bd) {
+      bd = d;
+      best = st.id;
+    }
+  }
+  return best;
+}
+
+/** このステーションで処理すべき未処理ビン（手動指定なら全部） */
+export function cargoForStation(w: WorldState, r: Robot, stationId: number): number[] {
+  const left = unprocessedCargo(w, r);
+  if (r.job?.type === 'deliver' && r.job.manual) return left;
+  return left.filter((id) => destinationOf(w, r, id) === stationId);
 }
 
 /** 取り出したビンの行き先: 空ビン、または需要が無く入荷待ちがある商品なら入荷ステーション */
@@ -403,16 +438,18 @@ function amrFetch(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { t
     case 0: {
       setGoal(rt, r, { type: 'adjacent', x: port.x, z: port.z });
       if (!atGoal(w, r)) return;
-      // 行き先（ピッカー／入荷）が同じビンだけを積む。混載すると片方が届かない
       const loadable = nextLoadableBin(w, r, port);
       if (loadable !== null && r.carrying.length < cargoCapacity(r)) {
         beginAction(r, 'loading', ROBOT.loadTicksPerBin, 1);
         return;
       }
       if (r.carrying.length) {
-        const stationId = job.stationId ?? stationForBins(w, r);
-        if (stationId === null) return finishJob(w, rt, r);
-        r.job = { type: 'deliver', stationId, manual: job.manual };
+        r.job = { type: 'deliver', stationId: job.stationId ?? -1, manual: job.manual && job.stationId !== null, done: [] };
+        if (job.stationId === null) {
+          const next = nextStationFor(w, r);
+          if (next === null) return finishJob(w, rt, r);
+          r.job.stationId = next;
+        }
         r.step = 0;
         setGoal(rt, r, null);
         return;
@@ -436,48 +473,52 @@ function purposeOf(w: WorldState, binId: number): 'pick' | 'inbound' {
   return w.bins[binId]?.purpose === 'inbound' ? 'inbound' : 'pick';
 }
 
-/** ポートの出庫ビンのうち、今の積荷と同じ行き先のものの添字。無ければ null */
+/** 次にポートから積むビンの添字（行き先が違っても積み重ねて運び、巡回で届ける）。優先設定に合うものから */
 function nextLoadableBin(w: WorldState, r: Robot, port: WorldState['ports'][number]): number | null {
   if (!port.outbound.length) return null;
-  if (!r.carrying.length) {
-    // 最初の 1 個は優先設定（ピック／補充）に合うものから
-    const pri = w.automation.amrPriority;
-    if (pri !== 'balanced') {
-      const want = pri === 'pick' ? 'pick' : 'inbound';
-      const idx = port.outbound.findIndex((id) => purposeOf(w, id) === want);
-      if (idx >= 0) return idx;
-    }
-    return 0;
+  const pri = w.automation.amrPriority;
+  if (pri !== 'balanced') {
+    const want = pri === 'pick' ? 'pick' : 'inbound';
+    const idx = port.outbound.findIndex((id) => purposeOf(w, id) === want);
+    if (idx >= 0) return idx;
   }
-  const want = purposeOf(w, r.carrying[0]);
-  const idx = port.outbound.findIndex((id) => purposeOf(w, id) === want);
-  return idx >= 0 ? idx : null;
+  return 0;
 }
 
 /**
- * 搬送ロボ: ステーションへ配送し、作業を待つ
- *  0: ステーション隣へ → 積荷が無ければ完了。あれば作業開始(→1: 以降 step-1 が処理済みビン数)
- *  n≥1: ステーション側（pickers.ts）が進める。全ビン処理後に返却へ
+ * 搬送ロボ: ステーションを巡回して配送する
+ *  0: ステーション隣へ → ここで処理するビンが無ければ次のステーションへ。あれば作業開始(→1)
+ *  1: ステーション側（pickers.ts）が処理し、done に積む。このステーションのぶんが終わったら次へ、全部終われば返却へ
  */
 function amrDeliver(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { type: 'deliver' }>): void {
-  const st = w.stations.find((s) => s.id === job.stationId);
-  if (!st) return finishJob(w, rt, r);
+  if (!job.done) job.done = [];
+  if (!r.carrying.length) return finishJob(w, rt, r);
+  let st = w.stations.find((s) => s.id === job.stationId);
+  if (!st || !cargoForStation(w, r, st.id).length) {
+    // このステーションでやることが無い → 次のステーション、無ければ返却
+    const next = nextStationFor(w, r);
+    if (next === null) {
+      r.job = { type: 'return', portId: null, manual: job.manual };
+      r.step = 0;
+      setGoal(rt, r, null);
+      return;
+    }
+    job.stationId = next;
+    job.manual = false;
+    r.step = 0;
+    st = w.stations.find((s) => s.id === next)!;
+  }
   if (r.step === 0) {
     setGoal(rt, r, { type: 'adjacent', x: st.x, z: st.z });
     if (!atGoal(w, r)) return;
-    if (!r.carrying.length) return finishJob(w, rt, r);
     if (st.work && st.work.robotId !== r.id) return; // 他のロボを処理中 → 待つ
     r.phase = 'working';
     r.step = 1;
     return;
   }
   if (r.phase === 'working') return; // ステーション待ち
-  // 全ビン処理済み → 返却
-  if (r.step - 1 >= r.carrying.length) {
-    r.job = { type: 'return', portId: null, manual: job.manual };
-    r.step = 0;
-    setGoal(rt, r, null);
-  }
+  // ステーション側がこのステーションのぶんを処理し終えた → ループ先頭で次を決める
+  r.step = 0;
 }
 
 /**
@@ -533,8 +574,10 @@ export function describeRobot(w: WorldState, r: Robot): string {
       return '在庫を並べ替え中';
     case 'fetch':
       return r.phase === 'loading' ? '積み込み中' : 'ポートへ';
-    case 'deliver':
-      return r.phase === 'working' ? '作業待ち' : 'ステーションへ配送中';
+    case 'deliver': {
+      const left = unprocessedCargo(w, r).length;
+      return r.phase === 'working' ? '作業待ち' : `ステーションへ配送中（残り ${left} ビン）`;
+    }
     case 'return':
       return 'ポートへ返却中';
     case 'park':

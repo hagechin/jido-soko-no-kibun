@@ -141,7 +141,7 @@ describe('collision avoidance (space-time reservations)', () => {
     for (const r of w.robots) expect(arrivals.get(r.id)!).toBeGreaterThan(5);
   });
 
-  it('mixed footprints (1x1, 1x2, 2x2) avoid each other', () => {
+  it('mixed cargo levels avoid each other (footprints follow ROBOT.cargo; 1x2/2x2 paths are covered in pathfinding.test)', () => {
     const w = createWorld({ seed: 99 });
     w.robots = w.robots.filter((r) => r.kind === 'amr');
     addRobot(w, 'amr', 11, 8).cargoLevel = 1; // 尾は (10,8)

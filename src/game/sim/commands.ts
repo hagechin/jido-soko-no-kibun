@@ -66,7 +66,7 @@ export function commandGoStation(w: WorldState, rt: Runtime, robotId: number, st
   }
   if (r.job?.type === 'deliver' && r.phase !== 'working') {
     r.job.stationId = stationId;
-    r.job.manual = true;
+    r.job.manual = true; // 残りの積荷を全部そこで処理する
     r.step = 0;
     setGoal(rt, r, null);
     return { ok: true };
@@ -76,7 +76,7 @@ export function commandGoStation(w: WorldState, rt: Runtime, robotId: number, st
     queuedFetch.stationId = stationId;
     return { ok: true };
   }
-  return enqueue(w, rt, r, { type: 'deliver', stationId, manual: true });
+  return enqueue(w, rt, r, { type: 'deliver', stationId, manual: true, done: [] });
 }
 
 /** 指示の取り消し（現在の仕事は積荷が無ければ中断） */
