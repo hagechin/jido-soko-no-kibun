@@ -19,6 +19,13 @@ import { iconMarkup } from '../game/ui/icon';
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <title>箱庭！ディストリビューション</title>
+    <script is:inline>
+      // 起動画面: フォトモードで「起動画面にする」とした写真があれば、JS が動く前に背景に出す
+      try {
+        var p = localStorage.getItem('jido-soko-no-kibun:startup-photo');
+        if (p) document.documentElement.style.setProperty('--startup-photo', 'url("' + p + '")');
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="splash" class="splash" aria-hidden="true">

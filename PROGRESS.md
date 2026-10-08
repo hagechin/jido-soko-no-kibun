@@ -806,3 +806,15 @@ npm run preview   # http://localhost:4321 で確認
 
 - `bb64f3d`（11 回目のテストまで通過）をリリース候補 v1.0.0-rc1 とし、`release/1.0` ブランチを切って push。タグ `v1.0.0-rc1` はこの環境から push できなかった（403）ので、Mac で `git tag v1.0.0-rc1 bb64f3d && git push origin v1.0.0-rc1`
 - フォトモードは `feature/photo-mode`、英語対応は `feature/i18n` で開発し、出来上がったら開発の本線（`claude/nifty-feynman-opfzeb`）へ取り込む。実機で見つかった不具合は `release/1.0` に直し、本線へも取り込む。README に運用を記載
+
+---
+
+## フォトモード（feature/photo-mode）
+
+- ★ 入口: 設定「フォトモードを開く」／ P。HUD を隠して下に撮影パネル。カメラは眺めモード MANUAL と同じ（ドラッグ・ピンチ、WASD / Q E / R F / Z X）。画面タップでピント（視線の先の物までの距離、箱の当たり判定を流用）。Enter 撮影、Space 一時停止、Esc で戻る（視点と画角は元に戻す）
+- パラメータ（`render/photo.ts`、localStorage）: 焦点距離 24〜135mm（35mm 換算 → 縦の画角）、絞り F1.4〜F16（BokehPass）、シャッター 1/250〜1/8（ゲーム内時間。動作中のロボの補間 alpha を進めた 4〜16 コマを累積平均。シミュレーションは進めない。ローターも回る）、エフェクト 6 種（色調シェーダ: 彩度・コントラスト・セピア・ビネット・暖色 ＋ FilmPass の粒子／モノクロ）、比率 5 種（プレビューは黒帯、撮影は実寸）
+- 撮影: 長辺 2400px の JPEG（`capturePhoto`。描画サイズを一時的に変えて composer で描き、2D canvas に重ねる）。モーダルで「保存／共有」（iOS は `sharePhoto` → 共有シート、Web はダウンロード）、「起動画面にする」（長辺 1600px に縮小して localStorage ＋ iOS は Documents）
+- 起動画面: index.astro のインラインスクリプトが写真を `--startup-photo` に入れ HTML スプラッシュの背景に。iOS は `ContentView` が Documents の同じ写真を WebView の上に重ね、JS の `ready` で消す
+- 後処理は three の examples/jsm（同梱）。CDN・追加依存なし。Lucide の camera / image アイコンを追加
+- 確認: `photo.test.ts` 4 件（画角・絞り・サイズ・コマ数）、全 143 件通過。ヘッドレス（PC／スマホ）で P → パネル 5 行・HUD 非表示、135mm/F1.4/1/8/モノクロ/3:2 で画角 10.2°・黒帯、タップで「ピント: N m」、Enter で 2400×1600 の JPEG（約 500KB）、「起動画面にする」で localStorage に約 200KB、Esc で視点・画角・HUD が復帰、再読み込みでスプラッシュに写真。コンソールエラー 0。ソフトウェア描画では撮影に 65 秒かかる（GPU なら数秒以内の見込み。実機で確認）
+- 未確認: iOS の共有シートと起動画像のオーバーレイ（Swift。次のラウンドで）
