@@ -46,10 +46,10 @@ export function monthLabel(month: number): string {
 }
 
 export function formatDate(c: Calendar): string {
-  return tr(tr(tr('{0}年目 {1}月 第{2}週')), c.year, monthLabel(c.month), c.week);
+  return tr(tr(tr(tr('{0}年目 {1}月 第{2}週'))), c.year, monthLabel(c.month), c.week);
 }
 
 /** スマホの HUD 用の短い表記（幅が足りないとき）: 3年12月1週 */
 export function formatDateShort(c: Calendar): string {
-  return tr(tr(tr('{0}年{1}月{2}週')), c.year, monthLabel(c.month), c.week);
+  return tr(tr(tr(tr('{0}年{1}月{2}週'))), c.year, monthLabel(c.month), c.week);
 }

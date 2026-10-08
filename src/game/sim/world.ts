@@ -229,7 +229,7 @@ export function addRobot(w: WorldState, kind: RobotKind, x: number, z: number, v
     cargoLevel: 0,
     stuckTicks: 0,
     goal: null,
-    name: variant === 'drone' ? tr(tr(tr('ドローン {0}')), count) : variant === 'double' ? tr(tr(tr('ダブルデッカー {0}')), count) : kind === 'shelf' ? tr(tr(tr('棚ロボ {0}')), count) : tr(tr(tr('搬送ロボ {0}')), count),
+    name: variant === 'drone' ? tr(tr(tr(tr('ドローン {0}'))), count) : variant === 'double' ? tr(tr(tr(tr('ダブルデッカー {0}'))), count) : kind === 'shelf' ? tr(tr(tr(tr('棚ロボ {0}'))), count) : tr(tr(tr(tr('搬送ロボ {0}'))), count),
   };
   w.robots.push(r);
   return r;

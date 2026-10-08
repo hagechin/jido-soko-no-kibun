@@ -728,4 +728,5 @@ export const EN: Record<string, string> = {
   'ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）': 'Robot upgrades (select a robot in the 3D view or the robot list)',
   '移動速度 +20%/Lv。ドローンは飛行で +1 段階（いまの実効 Lv{0}）': 'Movement speed +20%/Lv. Drones get +1 level for flight (effective Lv{0} now)',
   '抑制': 'slow',
+  'オンにすると、眺めモードに限らずアプリを開いている間は自動ロックしません（省電力のため、画面を閉じるかアプリを切り替えると解除され、戻ると再び有効）': 'When on, the screen never auto-locks while the app is open, not only in calm mode (to save power it is released when you close the screen or switch apps, and comes back when you return)',
 };

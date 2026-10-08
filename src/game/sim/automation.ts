@@ -475,66 +475,66 @@ export function diagnoseIdle(w: WorldState): string[] {
   const auto = w.automation;
   const inFlight = binsInFlight(w);
   const locate = (id: number): string => {
-    for (const s of w.stacks) if (s.bins.includes(id)) return tr(tr(tr('棚({0},{1}){2}')), s.x, s.z, s.bins.length - 1 - s.bins.indexOf(id) > 0 ? tr(tr(tr(' {0} 段下')), s.bins.length - 1 - s.bins.indexOf(id)) : tr(tr(tr(' 頂上'))));
+    for (const s of w.stacks) if (s.bins.includes(id)) return tr(tr(tr(tr('棚({0},{1}){2}'))), s.x, s.z, s.bins.length - 1 - s.bins.indexOf(id) > 0 ? tr(tr(tr(tr(' {0} 段下'))), s.bins.length - 1 - s.bins.indexOf(id)) : tr(tr(tr(tr(' 頂上')))));
     for (const p of w.ports) {
-      if (p.outbound.includes(id)) return tr(tr(tr('ポート({0},{1}) 出庫待ち')), p.x, p.z);
-      if (p.returns.includes(id)) return tr(tr(tr('ポート({0},{1}) 返却待ち')), p.x, p.z);
+      if (p.outbound.includes(id)) return tr(tr(tr(tr('ポート({0},{1}) 出庫待ち'))), p.x, p.z);
+      if (p.returns.includes(id)) return tr(tr(tr(tr('ポート({0},{1}) 返却待ち'))), p.x, p.z);
     }
-    for (const r of w.robots) if (r.carrying.includes(id)) return tr(tr(tr('{0} が運搬中')), r.name);
-    for (const r of w.robots) for (const j of [r.job, ...r.queue]) if (j?.type === 'retrieve' && j.binId === id) return tr(tr(tr('{0} が取り出しに向かっている')), r.name);
-    return tr(tr(tr('不明')));
+    for (const r of w.robots) if (r.carrying.includes(id)) return tr(tr(tr(tr('{0} が運搬中'))), r.name);
+    for (const r of w.robots) for (const j of [r.job, ...r.queue]) if (j?.type === 'retrieve' && j.binId === id) return tr(tr(tr(tr('{0} が取り出しに向かっている'))), r.name);
+    return tr(tr(tr(tr('不明'))));
   };
   const idleShelf = w.robots.filter((r) => r.kind === 'shelf' && idle(r)).length;
   const idleAmr = w.robots.filter((r) => r.kind === 'amr' && idle(r)).length;
-  out.push(tr(tr(tr('暇な棚ロボ {0} 台 / 暇な搬送ロボ {1} 台 / 配車AI Lv{2} / 補充AI {3}')), idleShelf, idleAmr, auto.dispatch, auto.restock ? tr(tr(tr('オン'))) : tr(tr(tr('オフ')))));
-  out.push(tr(tr(tr('入荷作業の配分: 在庫率 {0}%{1} 棚ロボ {2} 台 / 搬送ロボ {3} 台（優先: {4}）')), (stockFill(w) * 100).toFixed(0), restockMode(w) ? tr(tr(tr('（入荷モード）'))) : '', restockShelfCap(w), restockAmrCap(w), auto.amrPriority));
+  out.push(tr(tr(tr(tr('暇な棚ロボ {0} 台 / 暇な搬送ロボ {1} 台 / 配車AI Lv{2} / 補充AI {3}'))), idleShelf, idleAmr, auto.dispatch, auto.restock ? tr(tr(tr(tr('オン')))) : tr(tr(tr(tr('オフ'))))));
+  out.push(tr(tr(tr(tr('入荷作業の配分: 在庫率 {0}%{1} 棚ロボ {2} 台 / 搬送ロボ {3} 台（優先: {4}）'))), (stockFill(w) * 100).toFixed(0), restockMode(w) ? tr(tr(tr(tr('（入荷モード）')))) : '', restockShelfCap(w), restockAmrCap(w), auto.amrPriority));
   // 動けていないロボと、同じマスに重なっているロボ（本来起きない。起きていれば自動で解消される）
-  for (const r of w.robots) if (r.stuckTicks >= AUTOMATION.staleRetrieveTicks) out.push(tr(tr(tr('[!] {0} が {1} 秒動けていない: {2} @({3},{4}){5}')), r.name, Math.round(r.stuckTicks / 10), describeRobot(w, r), r.pose.x, r.pose.z, r.carrying.length ? tr(tr(tr('、持っているビン: {0}')), r.carrying.map((id) => tr(tr(tr('{0} {1} 個')), w.bins[id]?.item ?? tr(tr(tr('空'))), w.bins[id]?.qty ?? 0)).join('、')) : ''));
+  for (const r of w.robots) if (r.stuckTicks >= AUTOMATION.staleRetrieveTicks) out.push(tr(tr(tr(tr('[!] {0} が {1} 秒動けていない: {2} @({3},{4}){5}'))), r.name, Math.round(r.stuckTicks / 10), describeRobot(w, r), r.pose.x, r.pose.z, r.carrying.length ? tr(tr(tr(tr('、持っているビン: {0}'))), r.carrying.map((id) => tr(tr(tr(tr('{0} {1} 個'))), w.bins[id]?.item ?? tr(tr(tr(tr('空')))), w.bins[id]?.qty ?? 0)).join('、')) : ''));
   const at = new Map<string, Robot>();
   for (const r of w.robots) {
     const k = `${layerOf(r)}:${r.pose.x},${r.pose.z}`;
     const o = at.get(k);
-    if (o) out.push(tr(tr(tr('[!] {0} と {1} が同じマス ({2},{3}) に重なっている')), o.name, r.name, r.pose.x, r.pose.z));
+    if (o) out.push(tr(tr(tr(tr('[!] {0} と {1} が同じマス ({2},{3}) に重なっている'))), o.name, r.name, r.pose.x, r.pose.z));
     at.set(k, r);
   }
-  for (const p of w.ports) out.push(tr(tr(tr('ポート({0},{1}){2}: 出庫待ち {3}（向かっている取り出し込み {4}/{5}） 返却待ち {6}/{7}')), p.x, p.z, p.closed ? tr(tr(tr(' 停止中'))) : '', p.outbound.length, outboundLoad(w, p.id), PORT.outboundCapacity, p.returns.length, PORT.returnCapacity));
+  for (const p of w.ports) out.push(tr(tr(tr(tr('ポート({0},{1}){2}: 出庫待ち {3}（向かっている取り出し込み {4}/{5}） 返却待ち {6}/{7}'))), p.x, p.z, p.closed ? tr(tr(tr(tr(' 停止中')))) : '', p.outbound.length, outboundLoad(w, p.id), PORT.outboundCapacity, p.returns.length, PORT.returnCapacity));
 
-  if (auto.dispatch < 2) out.push(tr(tr(tr('配車AI が Lv1 以下なので、棚ロボはオーダーを見て自動では取り出しません（手動指示が必要）'))));
+  if (auto.dispatch < 2) out.push(tr(tr(tr(tr('配車AI が Lv1 以下なので、棚ロボはオーダーを見て自動では取り出しません（手動指示が必要）')))));
   const inStock = new Set<string>();
   for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) inStock.add(b.item);
   const need = new Map<string, number>();
   for (const o of visibleOrders(w)) for (const l of o.lines) if (l.picked < l.qty) need.set(l.item, (need.get(l.item) ?? 0) + l.qty - l.picked);
-  if (!need.size) out.push(tr(tr(tr('表示中のオーダーに未ピックの行はありません'))));
+  if (!need.size) out.push(tr(tr(tr(tr('表示中のオーダーに未ピックの行はありません')))));
   for (const [item, qty] of need) {
     const all = Object.entries(w.bins).filter(([, b]) => b.item === item && b.qty > 0).map(([id]) => Number(id));
     if (!all.length) {
       const dock = w.pallets.find((p) => p.item === item)?.qty ?? 0;
-      out.push(tr(tr(tr('{0}: 欠品（在庫ゼロ）{1}')), item, dock ? tr(tr(tr('。入荷口に {0} 個あるので補充待ち')), dock) : tr(tr(tr('。入荷口にも無く、次のトラック待ち')))));
+      out.push(tr(tr(tr(tr('{0}: 欠品（在庫ゼロ）{1}'))), item, dock ? tr(tr(tr(tr('。入荷口に {0} 個あるので補充待ち'))), dock) : tr(tr(tr(tr('。入荷口にも無く、次のトラック待ち'))))));
       continue;
     }
     const masked = all.filter((id) => inFlight.has(id) && w.bins[id].purpose !== 'inbound');
     const maskedQty = masked.reduce((a, id) => a + w.bins[id].qty, 0);
     const toInbound = all.filter((id) => inFlight.has(id) && w.bins[id].purpose === 'inbound');
     const options = stackedBinsOf(w, (b) => b.item === item && b.qty > 0).filter((o) => !inFlight.has(o.binId));
-    let line = tr(tr(tr('{0}: 必要 {1}')), item, qty);
-    if (maskedQty >= qty) line += tr(tr(tr(' → ピッカーへ向かっている分（{0}）でまかなえるので新たに取りに行かない')), masked.map((id) => tr(tr(tr('{0} {1} 個')), locate(id), w.bins[id].qty)).join('、'));
-    else if (!options.length) line += toInbound.length ? tr(tr(tr(' → 棚に残りが無く、在庫のビンは入荷ステーション行き（{0}）。戻って格納されるまで待ち')), toInbound.map((id) => tr(tr(tr('{0} {1} 個')), locate(id), w.bins[id].qty)).join('、')) : tr(tr(tr(' → 棚に取り出せるビンが無い（{0}）')), all.map((id) => tr(tr(tr('{0} {1} 個')), locate(id), w.bins[id].qty)).join('、'));
+    let line = tr(tr(tr(tr('{0}: 必要 {1}'))), item, qty);
+    if (maskedQty >= qty) line += tr(tr(tr(tr(' → ピッカーへ向かっている分（{0}）でまかなえるので新たに取りに行かない'))), masked.map((id) => tr(tr(tr(tr('{0} {1} 個'))), locate(id), w.bins[id].qty)).join('、'));
+    else if (!options.length) line += toInbound.length ? tr(tr(tr(tr(' → 棚に残りが無く、在庫のビンは入荷ステーション行き（{0}）。戻って格納されるまで待ち'))), toInbound.map((id) => tr(tr(tr(tr('{0} {1} 個'))), locate(id), w.bins[id].qty)).join('、')) : tr(tr(tr(tr(' → 棚に取り出せるビンが無い（{0}）'))), all.map((id) => tr(tr(tr(tr('{0} {1} 個'))), locate(id), w.bins[id].qty)).join('、'));
     else {
       const pick = options[0];
       const port = bestPort(w, pick.stack, null, (p) => outboundLoad(w, p.id) < PORT.outboundCapacity);
-      line += port ? tr(tr(tr(' → 取り出せる（{0}）。棚ロボが空けば向かう')), locate(pick.binId)) : tr(tr(tr(' → 取り出せるビンはある（{0}）が、全ポートが出庫待ちで満杯／停止中なので待ち。搬送ロボがポートのビンを運ぶと再開')), locate(pick.binId));
+      line += port ? tr(tr(tr(tr(' → 取り出せる（{0}）。棚ロボが空けば向かう'))), locate(pick.binId)) : tr(tr(tr(tr(' → 取り出せるビンはある（{0}）が、全ポートが出庫待ちで満杯／停止中なので待ち。搬送ロボがポートのビンを運ぶと再開'))), locate(pick.binId));
     }
     out.push(line);
   }
   if (auto.restock) {
-    if (!w.pallets.length) out.push(tr(tr(tr('補充AI: 入荷口に山が無いので何もしない'))));
+    if (!w.pallets.length) out.push(tr(tr(tr(tr('補充AI: 入荷口に山が無いので何もしない')))));
     else {
       const palletItems = new Set(w.pallets.map((p) => p.item));
       const empties = stackedBinsOf(w, (b) => b.item === null).filter((o) => !inFlight.has(o.binId)).length;
       const partial = stackedBinsOf(w, (b) => b.item !== null && palletItems.has(b.item) && b.qty < w.binCapacity).filter((o) => !inFlight.has(o.binId)).length;
       const inboundInFlight = [...inFlight].filter((id) => w.bins[id]?.purpose === 'inbound').length;
-      if (!empties && !partial) out.push(tr(tr(tr('補充AI: 入荷口に {0} 個あるが、空ビンも同じ商品の空きのあるビンも無いので詰められない → 空ビンを買う／ビン容量アップ')), w.pallets.reduce((a, p) => a + p.qty, 0)));
-      else out.push(tr(tr(tr('補充AI: 空ビン {0} / 詰め足せるビン {1} / 入荷ステーション行き {2} 個')), empties, partial, inboundInFlight));
+      if (!empties && !partial) out.push(tr(tr(tr(tr('補充AI: 入荷口に {0} 個あるが、空ビンも同じ商品の空きのあるビンも無いので詰められない → 空ビンを買う／ビン容量アップ'))), w.pallets.reduce((a, p) => a + p.qty, 0)));
+      else out.push(tr(tr(tr(tr('補充AI: 空ビン {0} / 詰め足せるビン {1} / 入荷ステーション行き {2} 個'))), empties, partial, inboundInFlight));
     }
   }
   return out;

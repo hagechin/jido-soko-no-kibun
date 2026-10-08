@@ -74,33 +74,33 @@ export function adviseNext(w: WorldState, st: AdvisorStats, opts: AdvisorOptions
 
   // 1. 自動化は最優先（ランク条件を満たしていれば値段を示す。満たしていなければ何件出荷で解放されるか）
   const nextRankAt = (rank: number) => rankShippedAt(w, rank);
-  if (a.dispatch < 1) return { id: 'dispatch1', text: tr(tr('自動配車AI Lv1（{0} コイン）を買うと、搬送ロボがポートのビンを自動で運びます'), dispatchPrice(w, 0)), panel: 'upgrades' };
+  if (a.dispatch < 1) return { id: 'dispatch1', text: tr(tr(tr('自動配車AI Lv1（{0} コイン）を買うと、搬送ロボがポートのビンを自動で運びます')), dispatchPrice(w, 0)), panel: 'upgrades' };
   if (a.dispatch < 2) {
-    if (unlockedRank(w, AUTOMATION.unlockRank.dispatch2)) return { id: 'dispatch2', text: tr(tr('自動配車AI Lv2（{0} コイン）で棚ロボがオーダーを見て自動で取り出すようになります。手動指示から解放されます'), dispatchPrice(w, 1)), panel: 'upgrades' };
-    return { id: 'rank-dispatch2', text: tr(tr('あと {0} 件出荷するとランクが上がり、自動配車AI Lv2（棚ロボの自動取り出し）が解放されます'), Math.max(0, nextRankAt(AUTOMATION.unlockRank.dispatch2) - w.stats.totalShipped)), panel: 'upgrades' };
+    if (unlockedRank(w, AUTOMATION.unlockRank.dispatch2)) return { id: 'dispatch2', text: tr(tr(tr('自動配車AI Lv2（{0} コイン）で棚ロボがオーダーを見て自動で取り出すようになります。手動指示から解放されます')), dispatchPrice(w, 1)), panel: 'upgrades' };
+    return { id: 'rank-dispatch2', text: tr(tr(tr('あと {0} 件出荷するとランクが上がり、自動配車AI Lv2（棚ロボの自動取り出し）が解放されます')), Math.max(0, nextRankAt(AUTOMATION.unlockRank.dispatch2) - w.stats.totalShipped)), panel: 'upgrades' };
   }
-  if (!a.restock && dock > 0 && unlockedRank(w, AUTOMATION.unlockRank.restock)) return { id: 'restock', text: tr(tr('自動補充AI（{0} コイン）で入荷口の山をロボが自動で棚に取り込みます'), automationPrice(w, AUTOMATION.restockCost)), panel: 'upgrades' };
+  if (!a.restock && dock > 0 && unlockedRank(w, AUTOMATION.unlockRank.restock)) return { id: 'restock', text: tr(tr(tr('自動補充AI（{0} コイン）で入荷口の山をロボが自動で棚に取り込みます')), automationPrice(w, AUTOMATION.restockCost)), panel: 'upgrades' };
   // 2. 空ビンが無いと入荷を取り込めない
   if (dock > 0 && empties === 0) {
-    if (freeBinSlots(w) > reservedSlots(w)) return { id: 'bins', text: tr(tr('空ビンがありません。空ビンを買うと入荷口の山（欠品の商品）を棚に取り込めます')), panel: 'upgrades' };
-    return { id: 'slots', text: tr(tr('空ビンも棚の空きもありません。段数を上げるかスタックを増やしてから空ビンを買いましょう')), panel: 'upgrades' };
+    if (freeBinSlots(w) > reservedSlots(w)) return { id: 'bins', text: tr(tr(tr('空ビンがありません。空ビンを買うと入荷口の山（欠品の商品）を棚に取り込めます'))), panel: 'upgrades' };
+    return { id: 'slots', text: tr(tr(tr('空ビンも棚の空きもありません。段数を上げるかスタックを増やしてから空ビンを買いましょう'))), panel: 'upgrades' };
   }
   if (!warmedUp) return null;
   // 3. ボトルネック
-  if (st.portsFull >= ADVISOR.portsFullRatio) return { id: 'port', text: tr(tr('ポートが満杯で棚ロボが待っています。ポートを増設するか、搬送ロボを増やしてみましょう')), panel: 'build' };
+  if (st.portsFull >= ADVISOR.portsFullRatio) return { id: 'port', text: tr(tr(tr('ポートが満杯で棚ロボが待っています。ポートを増設するか、搬送ロボを増やしてみましょう'))), panel: 'build' };
   // ドローンの買い時: 地上の搬送ロボがポート／ステーションの横付けで順番待ちしている（搬送ロボを増やしても列が伸びるだけ）
   const droneHint = droneBuyTime(w, st, opts);
   if (droneHint) return droneHint;
-  if (st.pickersBusy >= ADVISOR.pickersBusyRatio) return { id: 'picker', text: tr(tr('ピッカーが手一杯です。ピック速度を上げるか、ピッキングステーションを増設してみましょう')), panel: 'upgrades' };
-  if (st.shelfIdle <= ADVISOR.lowIdleRatio && st.amrIdle >= ADVISOR.highIdleRatio) return { id: 'shelf', text: tr(tr('棚ロボが足りません（棚ロボは常に忙しく、搬送ロボは暇）。棚ロボを追加してみましょう（現在 {0} 台）'), shelves), panel: 'upgrades' };
-  if (st.amrIdle <= ADVISOR.lowIdleRatio && st.shelfIdle >= ADVISOR.highIdleRatio) return { id: 'amr', text: tr(tr('搬送ロボが足りません（搬送ロボは常に忙しく、棚ロボは暇）。搬送ロボを追加してみましょう（現在 {0} 台）'), amrs), panel: 'upgrades' };
+  if (st.pickersBusy >= ADVISOR.pickersBusyRatio) return { id: 'picker', text: tr(tr(tr('ピッカーが手一杯です。ピック速度を上げるか、ピッキングステーションを増設してみましょう'))), panel: 'upgrades' };
+  if (st.shelfIdle <= ADVISOR.lowIdleRatio && st.amrIdle >= ADVISOR.highIdleRatio) return { id: 'shelf', text: tr(tr(tr('棚ロボが足りません（棚ロボは常に忙しく、搬送ロボは暇）。棚ロボを追加してみましょう（現在 {0} 台）')), shelves), panel: 'upgrades' };
+  if (st.amrIdle <= ADVISOR.lowIdleRatio && st.shelfIdle >= ADVISOR.highIdleRatio) return { id: 'amr', text: tr(tr(tr('搬送ロボが足りません（搬送ロボは常に忙しく、棚ロボは暇）。搬送ロボを追加してみましょう（現在 {0} 台）')), amrs), panel: 'upgrades' };
   // 4. 残りの自動化
-  if (a.dispatch < 3 && unlockedRank(w, AUTOMATION.unlockRank.dispatch3)) return { id: 'dispatch3', text: tr(tr('自動配車AI Lv3（{0} コイン）で同じ商品のオーダーをまとめて効率が上がります'), dispatchPrice(w, 2)), panel: 'upgrades' };
-  if (!a.relocate && w.levels >= 2 && unlockedRank(w, AUTOMATION.unlockRank.relocate)) return { id: 'relocate', text: tr(tr('在庫再配置AI（{0} コイン）で人気商品が上段に並び、掘り出しが減ります'), automationPrice(w, AUTOMATION.relocateCost)), panel: 'upgrades' };
+  if (a.dispatch < 3 && unlockedRank(w, AUTOMATION.unlockRank.dispatch3)) return { id: 'dispatch3', text: tr(tr(tr('自動配車AI Lv3（{0} コイン）で同じ商品のオーダーをまとめて効率が上がります')), dispatchPrice(w, 2)), panel: 'upgrades' };
+  if (!a.relocate && w.levels >= 2 && unlockedRank(w, AUTOMATION.unlockRank.relocate)) return { id: 'relocate', text: tr(tr(tr('在庫再配置AI（{0} コイン）で人気商品が上段に並び、掘り出しが減ります')), automationPrice(w, AUTOMATION.relocateCost)), panel: 'upgrades' };
   // 5. 溜まっているなら全体の底上げ
   if (queuedCount(w) >= ADVISOR.queueHint && visibleOrders(w).length) {
-    if (st.shelfIdle <= ADVISOR.lowIdleRatio && st.amrIdle <= ADVISOR.lowIdleRatio) return { id: 'both', text: tr(tr('オーダーが溜まっています。ロボを両方とも増やすか、速度アップグレードで回転を上げましょう')), panel: 'upgrades' };
-    return { id: 'speed', text: tr(tr('オーダーが溜まっています。ロボの速度・リフト速度・ピック速度のアップグレードが効きます')), panel: 'upgrades' };
+    if (st.shelfIdle <= ADVISOR.lowIdleRatio && st.amrIdle <= ADVISOR.lowIdleRatio) return { id: 'both', text: tr(tr(tr('オーダーが溜まっています。ロボを両方とも増やすか、速度アップグレードで回転を上げましょう'))), panel: 'upgrades' };
+    return { id: 'speed', text: tr(tr(tr('オーダーが溜まっています。ロボの速度・リフト速度・ピック速度のアップグレードが効きます'))), panel: 'upgrades' };
   }
   return null;
 }
@@ -111,6 +111,6 @@ export function droneBuyTime(w: WorldState, st: AdvisorStats, opts: AdvisorOptio
   if (st.amrStaged < ADVISOR.stagedRatio) return null;
   const drones = w.robots.filter((r) => isDrone(r)).length;
   if (drones >= ROBOT.maxDrones) return null;
-  if (opts.drones === 'locked') return { id: 'drone-locked', text: tr(tr('搬送ロボがポートやステーションの横付けで順番待ちしています。ドローン搬送ロボ（特別ロボパック）なら棚の上を飛び越えてマスの真上に着くので、順番待ちを飛ばして運べます')), panel: 'upgrades' };
-  return { id: 'drone', text: tr(tr('搬送ロボがポートやステーションの横付けで順番待ちしています。ドローン搬送ロボ（{0} コイン）なら棚の上を飛び越えてマスの真上に着くので、順番待ちを飛ばして運べます（現在 {1} 台）'), price(w, ROBOT.droneCost), drones), panel: 'upgrades' };
+  if (opts.drones === 'locked') return { id: 'drone-locked', text: tr(tr(tr('搬送ロボがポートやステーションの横付けで順番待ちしています。ドローン搬送ロボ（特別ロボパック）なら棚の上を飛び越えてマスの真上に着くので、順番待ちを飛ばして運べます'))), panel: 'upgrades' };
+  return { id: 'drone', text: tr(tr(tr('搬送ロボがポートやステーションの横付けで順番待ちしています。ドローン搬送ロボ（{0} コイン）なら棚の上を飛び越えてマスの真上に着くので、順番待ちを飛ばして運べます（現在 {1} 台）')), price(w, ROBOT.droneCost), drones), panel: 'upgrades' };
 }
