@@ -9,9 +9,9 @@ export type Skin = 'standard' | 'gold';
 export type Theme = 'standard' | 'midnight' | 'sand';
 
 export const THEMES: { id: Theme; name: string; desc: string }[] = [
-  { id: 'standard', name: tr('標準'), desc: tr('青みの濃紺') },
-  { id: 'midnight', name: tr('ミッドナイト'), desc: tr('黒に近い紫。夜向け') },
-  { id: 'sand', name: tr('サンド'), desc: tr('明るい砂色。昼向け') },
+  { id: 'standard', name: tr(tr('標準')), desc: tr(tr('青みの濃紺')) },
+  { id: 'midnight', name: tr(tr('ミッドナイト')), desc: tr(tr('黒に近い紫。夜向け')) },
+  { id: 'sand', name: tr(tr('サンド')), desc: tr(tr('明るい砂色。昼向け')) },
 ];
 
 const KEY = 'jido-soko-no-kibun:cosmetics';

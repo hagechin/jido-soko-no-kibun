@@ -3,6 +3,7 @@
  * レイアウトはプログラムで生成し、在庫・ロボ・アップグレード・自動化をまとめて設定する。
  */
 import { ITEMS } from '../data/items';
+import { rankShippedAt } from './pricing';
 import { LEVELS, ORDERS, RANKS } from '../data/balance';
 import { createRng, rand, randInt } from './rng';
 import { addRobot, createBin, createWorld } from './world';
@@ -14,9 +15,9 @@ import { tr } from '../i18n';
 export type PresetId = 'initial' | 'medium' | 'mega';
 
 export const PRESETS: { id: PresetId; name: string; desc: string }[] = [
-  { id: 'initial', name: tr('初期の倉庫'), desc: tr('16×12、スタック 12、ロボ 2 台（ゲーム開始時と同じ）') },
-  { id: 'medium', name: tr('地域の倉庫（中規模）'), desc: tr('24×12、スタック 2 ブロック、ポート 2、ロボ 8 台、段数 3、配車AI Lv2＋補充AI') },
-  { id: 'mega', name: tr('メガDC'), desc: tr('40×24、棚 30×12（360 スタック）、ポート 14、ロボ 28 台、段数 6、全 AI、24 商品') },
+  { id: 'initial', name: tr(tr('初期の倉庫')), desc: tr(tr('16×12、スタック 12、ロボ 2 台（ゲーム開始時と同じ）')) },
+  { id: 'medium', name: tr(tr('地域の倉庫（中規模）')), desc: tr(tr('24×12、スタック 2 ブロック、ポート 2、ロボ 8 台、段数 3、配車AI Lv2＋補充AI')) },
+  { id: 'mega', name: tr(tr('メガDC')), desc: tr(tr('40×24、棚 30×12（360 スタック）、ポート 14、ロボ 28 台、段数 6、全 AI、24 商品')) },
 ];
 
 interface Grid {
@@ -98,7 +99,7 @@ export function buildPreset(id: PresetId, opts: PresetOptions = {}): WorldState 
   w.expansions = mega ? 6 : 2;
   w.coins = mega ? 50_000 : 5_000;
   w.reputation = mega ? 90 : 70;
-  w.stats.totalShipped = RANKS[rank].shipped;
+  w.stats.totalShipped = rankShippedAt(w, rank);
   w.automation = { dispatch: mega ? 3 : 2, restock: true, relocate: mega, amrPriority: 'balanced', lastRetrieveTick: 0 };
 
   // ロボを増やす（既定の 1+1 に追加）

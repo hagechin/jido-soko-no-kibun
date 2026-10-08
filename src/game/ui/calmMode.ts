@@ -48,8 +48,8 @@ export class CalmMode {
   private suggested = false;
   private wakeLock: { release: () => Promise<void> } | null = null;
   private miniText = el('span', { class: 'mini-text' });
-  private miniMode = el('button', { class: 'btn mini-btn', type: 'button', title: tr('カメラ: AUTO（自動）／ MANUAL（WASD・矢印キー・ドラッグ）。M キーでも切替') });
-  private miniExit = el('button', { class: 'btn mini-btn', type: 'button', title: tr('眺めモードを終了（Esc）') }, icon('x', 14));
+  private miniMode = el('button', { class: 'btn mini-btn', type: 'button', title: tr(tr('カメラ: AUTO（自動）／ MANUAL（WASD・矢印キー・ドラッグ）。M キーでも切替')) });
+  private miniExit = el('button', { class: 'btn mini-btn', type: 'button', title: tr(tr('眺めモードを終了（Esc）')) }, icon('x', 14));
   onEnter: (() => void) | null = null;
   onExit: (() => void) | null = null;
   /** カメラモードが変わったとき */
@@ -87,7 +87,7 @@ export class CalmMode {
     saveCalmSettings(this.settings);
     this.renderMiniMode();
     this.onCameraChange?.(mode);
-    if (this.active) showToast(mode === 'manual' ? tr('カメラ MANUAL: WASD・矢印で移動、Q/E 回転、R/F 角度、Z/X ズーム。ドラッグも可') : tr('カメラ AUTO: 自動で見て回ります'), 3000);
+    if (this.active) showToast(mode === 'manual' ? tr(tr('カメラ MANUAL: WASD・矢印で移動、Q/E 回転、R/F 角度、Z/X ズーム。ドラッグも可')) : tr(tr('カメラ AUTO: 自動で見て回ります')), 3000);
   }
 
   private renderMiniMode(): void {
@@ -101,7 +101,7 @@ export class CalmMode {
     this.suggest.hidden = true;
     this.requestWakeLock();
     this.onEnter?.();
-    showToast(this.settings.camera === 'manual' ? tr('眺めモード（MANUAL）。WASD・矢印で視点移動、Esc か右下の × で戻ります') : tr('眺めモード。画面をタップで戻ります'), 3000);
+    showToast(this.settings.camera === 'manual' ? tr(tr('眺めモード（MANUAL）。WASD・矢印で視点移動、Esc か右下の × で戻ります')) : tr(tr('眺めモード。画面をタップで戻ります')), 3000);
   }
 
   exit(): void {
@@ -151,7 +151,7 @@ export class CalmMode {
 
   /** 設定 UI */
   renderSettings(body: HTMLElement): void {
-    body.append(el('h4', { text: tr('眺めモード') }));
+    body.append(el('h4', { text: tr(tr('眺めモード')) }));
     const row = el('div', { class: 'settings-row' });
     for (const fps of [RENDER.calmFps, RENDER.calmFpsLow]) {
       const b = el('button', { class: `btn${this.settings.fps === fps ? ' is-active' : ''}`, type: 'button', text: `${fps} fps` });
@@ -163,7 +163,7 @@ export class CalmMode {
       row.append(b);
     }
     const supported = 'wakeLock' in navigator || native.available;
-    const wl = el('button', { class: `btn${this.settings.wakeLock ? ' is-active' : ''}`, type: 'button' }, iconText('smartphone', supported ? tr('画面を点けっぱなし') : tr('画面点けっぱなし（非対応）')));
+    const wl = el('button', { class: `btn${this.settings.wakeLock ? ' is-active' : ''}`, type: 'button' }, iconText('smartphone', supported ? tr(tr('画面を点けっぱなし')) : tr(tr('画面点けっぱなし（非対応）'))));
     if (!supported) wl.setAttribute('disabled', 'true');
     wl.addEventListener('click', () => {
       this.settings.wakeLock = !this.settings.wakeLock;
@@ -173,7 +173,7 @@ export class CalmMode {
     row.append(wl);
     body.append(row);
     const cam = el('div', { class: 'settings-row' });
-    for (const [mode, label] of [['auto', tr('AUTO（自動カメラ）')], ['manual', tr('MANUAL（キーボード）')]] as [CalmCamera, string][]) {
+    for (const [mode, label] of [['auto', tr(tr('AUTO（自動カメラ）'))], ['manual', tr(tr('MANUAL（キーボード）'))]] as [CalmCamera, string][]) {
       const b = el('button', { class: `btn${this.settings.camera === mode ? ' is-active' : ''}`, type: 'button', text: label });
       b.addEventListener('click', () => {
         this.setCamera(mode);
@@ -182,13 +182,13 @@ export class CalmMode {
       cam.append(b);
     }
     body.append(cam);
-    body.append(el('p', { class: 'muted small', text: tr('MANUAL: W/A/S/D・矢印キーで移動、Q/E で回転、R/F で見下ろし角、Z/X でズーム。ドラッグ・ホイールも使えます。眺めモード中は M キーで AUTO/MANUAL 切替、Esc で終了') }));
-    body.append(el('p', { class: 'muted small', text: tr('眺めモード中は描画を落として省電力にします。90 秒操作が無いと提案が出ます。') }));
+    body.append(el('p', { class: 'muted small', text: tr(tr('MANUAL: W/A/S/D・矢印キーで移動、Q/E で回転、R/F で見下ろし角、Z/X でズーム。ドラッグ・ホイールも使えます。眺めモード中は M キーで AUTO/MANUAL 切替、Esc で終了')) }));
+    body.append(el('p', { class: 'muted small', text: tr(tr('眺めモード中は描画を落として省電力にします。90 秒操作が無いと提案が出ます。')) }));
   }
 
   private renderSettingsInto(body: HTMLElement): void {
     // 自分のセクションだけ描き直す（h4 以降を消して再描画）
-    const h = Array.from(body.querySelectorAll('h4')).find((h) => h.textContent === tr('眺めモード'));
+    const h = Array.from(body.querySelectorAll('h4')).find((h) => h.textContent === tr(tr('眺めモード')));
     if (!h) return;
     let n = h.nextSibling;
     while (n && !(n instanceof HTMLHeadingElement)) {

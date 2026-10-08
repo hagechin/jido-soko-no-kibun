@@ -4,6 +4,7 @@
  * 撤去は無料、配置は有料。ロボが乗っているセルは触れない。
  */
 import { BUILD, EXPANSION, GRID, RANKS } from '../data/balance';
+import { price } from './pricing';
 import type { CellKind } from '../data/balance';
 import { approachCells, cellAt, inBounds, isAdjacentToStack, isFacingFloor, isFloorWalkable, isRailWalkable, neighbors4 } from './grid';
 import { footprint } from './footprint';
@@ -23,6 +24,11 @@ export const BUILD_COST: Record<BuildKind, number> = {
   inboundStation: BUILD.inboundStationCost,
   waitSpot: BUILD.waitSpotCost,
 };
+
+/** 経済モードを掛けた建設費 */
+export function buildCost(w: Pick<WorldState, 'economy'>, kind: BuildKind): number {
+  return price(w, BUILD_COST[kind]);
+}
 
 export const BUILD_LABEL: Record<BuildKind, string> = {
   stack: tr('スタック'),
@@ -75,7 +81,7 @@ export function canPlace(w: WorldState, kind: BuildKind, x: number, z: number, f
   const cur = cellAt(w, x, z);
   if (cur !== 'floor') return tr('そこには何かがあります');
   if (robotOn(w, x, z)) return tr('ロボがいます');
-  if (!free && w.coins < BUILD_COST[kind]) return tr('コインが足りません（{0} 必要）', BUILD_COST[kind]);
+  if (!free && w.coins < buildCost(w, kind)) return tr('コインが足りません（{0} 必要）', buildCost(w, kind));
   // 床でなくなるものを置くとき、隣のポート／ステーションが床に面しなくなる（搬送ロボが横付けできなくなる）なら拒否。
   // 床の通路が分断される（袋小路の島ができて、そこにしか面していないポートへ行けなくなる）置き方も拒否
   if (kind !== 'waitSpot') {
@@ -134,7 +140,7 @@ export function wouldDisconnectFloor(w: WorldState, x: number, z: number): boole
 export function place(w: WorldState, kind: BuildKind, x: number, z: number, free = false): BuildResult {
   const why = canPlace(w, kind, x, z, free);
   if (why) return { ok: false, reason: why };
-  if (!free) w.coins -= BUILD_COST[kind];
+  if (!free) w.coins -= buildCost(w, kind);
   placeCell(w, x, z, kind as CellKind);
   if (kind === 'stack' && !free) {
     // 「スタック 1 基（空ビン付き）」§9.4
@@ -255,7 +261,7 @@ export function expansionCost(w: WorldState, dir: ExpandDir = 'east'): number | 
   if (dir === 'east' && w.width + GRID.expandStep > limitsFor(w).maxWidth) return null;
   if (dir === 'south' && w.height + GRID.expandStep > limitsFor(w).maxHeight) return null;
   const base = EXPANSION.costs[Math.min(w.expansions, EXPANSION.costs.length - 1)];
-  return Math.round((base * expansionCells(w, dir)) / EXPANSION.baseCells);
+  return price(w, Math.round((base * expansionCells(w, dir)) / EXPANSION.baseCells));
 }
 
 export function maxExpansionsForRank(w: WorldState): number {

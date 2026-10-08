@@ -91,6 +91,10 @@ describe('ドローン搬送ロボ（空中レイヤー）', () => {
     const t2 = until(w, rt, () => w.stats.totalShipped === 1, 2500);
     expect(t2).toBeLessThan(2500);
     expect(w.bins[binId].qty).toBe(18);
+    // 運んだ数: 棚ロボはポートに置いた 1 回、ドローンはポートへ返した時点で 1 回
+    expect(shelf.carried).toBe(1);
+    until(w, rt, () => (drone.carried ?? 0) >= 1, 1500);
+    expect(drone.carried).toBe(1);
   });
 
   it('ドローン同士は空中で重ならず、地上・レールのロボとは層が違うので無関係', () => {

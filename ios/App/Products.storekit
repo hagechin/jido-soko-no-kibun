@@ -7,7 +7,7 @@
       "familyShareable" : true,
       "internalID" : "1001",
       "localizations" : [
-        { "description" : "ドローン搬送ロボとダブルデッカー棚ロボ", "displayName" : "特別ロボパック", "locale" : "ja" }
+        { "description" : "ドローン搬送ロボ（大きな倉庫向け）とダブルデッカー棚ロボ（序盤から活躍）", "displayName" : "特別ロボパック", "locale" : "ja" }
       ],
       "productID" : "jp.hatte.hakoniwa.ds.robots",
       "referenceName" : "Special Robots",

@@ -37,6 +37,7 @@ export function createWorld(opts: WorldOptions = {}): WorldState {
     tick: 0,
     speed: 1,
     difficulty: 'normal',
+    economy: 'standard',
     width,
     height,
     cells: new Array<CellKind>(width * height).fill('floor'),
@@ -228,7 +229,7 @@ export function addRobot(w: WorldState, kind: RobotKind, x: number, z: number, v
     cargoLevel: 0,
     stuckTicks: 0,
     goal: null,
-    name: variant === 'drone' ? tr('ドローン {0}', count) : variant === 'double' ? tr('ダブルデッカー {0}', count) : kind === 'shelf' ? tr('棚ロボ {0}', count) : tr('搬送ロボ {0}', count),
+    name: variant === 'drone' ? tr(tr('ドローン {0}'), count) : variant === 'double' ? tr(tr('ダブルデッカー {0}'), count) : kind === 'shelf' ? tr(tr('棚ロボ {0}'), count) : tr(tr('搬送ロボ {0}'), count),
   };
   w.robots.push(r);
   return r;

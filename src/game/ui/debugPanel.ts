@@ -1,5 +1,6 @@
 /** デバッグ画面（`/?debug` で下部バーに虫アイコンが出る）: コイン、プリセット倉庫、ランク、暦ジャンプ、計測 */
 import { CALENDAR, RANKS } from '../data/balance';
+import { rankShippedAt } from '../sim/pricing';
 import { calendarFromTick } from '../sim/calendar';
 import { updateEvents } from '../sim/events';
 import { forecastRestock, scheduleTruck } from '../sim/inbound';
@@ -78,7 +79,7 @@ export function renderDebug(body: HTMLElement, ctx: DebugContext): void {
 
   body.append(el('h4', { text: tr('ランク・自動化') }));
   const rankRow = el('div', { class: 'settings-row' });
-  RANKS.forEach((r, i) => rankRow.append(btn(`${i + 1}: ${r.name}`, () => { w.rank = i; w.stats.totalShipped = Math.max(w.stats.totalShipped, r.shipped); showToast(tr('ランク: {0}', r.name)); ctx.refresh(); }, w.rank === i ? 'is-active' : '')));
+  RANKS.forEach((r, i) => rankRow.append(btn(`${i + 1}: ${r.name}`, () => { w.rank = i; w.stats.totalShipped = Math.max(w.stats.totalShipped, rankShippedAt(w, i)); showToast(tr('ランク: {0}', r.name)); ctx.refresh(); }, w.rank === i ? 'is-active' : '')));
   body.append(rankRow);
   body.append(el('div', { class: 'settings-row' }, btn(tr('全 AI を有効化'), () => { w.automation.dispatch = 3; w.automation.restock = true; w.automation.relocate = true; showToast(tr('自動化AI をすべて有効にしました')); ctx.refresh(); }), btn(tr('AI をすべて無効化'), () => { w.automation.dispatch = 0; w.automation.restock = false; w.automation.relocate = false; ctx.refresh(); })));
 

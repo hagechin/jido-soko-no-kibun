@@ -470,6 +470,7 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
     case 21: {
       const i = r.carrying.indexOf(job.binId);
       port.outbound.push(i >= 0 ? r.carrying.splice(i, 1)[0] : r.carrying.pop()!);
+      r.carried = (r.carried ?? 0) + 1;
       r.phase = 'idle';
       finishJob(w, rt, r);
       return;
@@ -575,6 +576,7 @@ function shelfStore(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob,
       const stack = w.stacks.find((s) => s.id === job.stackId);
       if (stack && stack.bins.length < w.levels && !lockedStacks(w).has(stack.id)) {
         stack.bins.push(r.carrying.pop()!);
+        r.carried = (r.carried ?? 0) + 1;
         r.phase = 'idle';
         finishJob(w, rt, r);
       } else {
@@ -738,6 +740,7 @@ function amrReturn(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { 
       const bin = r.carrying.shift()!;
       w.bins[bin].purpose = null;
       port.returns.push(bin);
+      r.carried = (r.carried ?? 0) + 1; // ポート → ステーション → ポートの 1 往復で 1
       r.phase = 'idle';
       r.step = 0;
       if (!r.carrying.length) finishJob(w, rt, r);
@@ -751,7 +754,8 @@ function amrReturn(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { 
 /** 表示用: ロボの状態を短い日本語に */
 export function describeRobot(w: WorldState, r: Robot): string {
   const job = r.job as RobotJob | null;
-  if (!job) return r.phase === 'moving' ? tr('移動中') : tr('待機中');
+  const overPort = isDrone(r) && w.ports.some((p) => p.x === r.pose.x && p.z === r.pose.z);
+  if (!job) return r.phase === 'moving' ? tr('移動中') : overPort ? tr('ポートの上で待機中') : tr('待機中');
   switch (job.type) {
     case 'retrieve': {
       const b = w.bins[job.binId];
@@ -775,6 +779,7 @@ export function describeRobot(w: WorldState, r: Robot): string {
     case 'return':
       return tr('ポートへ返却中');
     case 'park':
+      if (isDrone(r)) return overPort && job.x === r.pose.x && job.z === r.pose.z ? tr('ポートの上で待機中') : tr('ポートの上へ');
       return tr('待機スポットへ');
   }
 }

@@ -1,6 +1,6 @@
 import { icon, iconText, type IconName } from './icon';
 /** 建設モード UI（§8）。ツールを選んで 3D ビューのセルをタップする */
-import { BUILD_COST, BUILD_LABEL, expansionCells, expansionCost, maxExpansionsForRank, type BuildKind, type ExpandDir } from '../sim/build';
+import { BUILD_LABEL, buildCost, expansionCells, expansionCost, maxExpansionsForRank, type BuildKind, type ExpandDir } from '../sim/build';
 import type { WorldState } from '../sim/types';
 import { el } from './layout';
 import { limitsFor } from '../sim/limits';
@@ -54,7 +54,7 @@ export function renderBuild(body: HTMLElement, ctx: BuildContext): void {
   const list: BuildTool[] = BUILD_TOOL_ORDER;
   list.forEach((t, i) => {
     const label = t === 'erase' ? tr('撤去') : t === 'move' ? tr('移動') : BUILD_LABEL[t];
-    const cost = t === 'erase' || t === 'move' ? el('span', { class: 'cost', text: tr('無料') }) : coinCost(BUILD_COST[t]);
+    const cost = t === 'erase' || t === 'move' ? el('span', { class: 'cost', text: tr('無料') }) : coinCost(buildCost(w, t));
     const b = el('button', { class: `btn build-tool${ctx.state.tool === t ? ' is-active' : ''}`, type: 'button', title: tr('{0}（{1}）', label, i + 1) }, el('span', { class: 'ico' }, icon(ICON[t], 20)), el('span', { class: 'lbl' }, el('kbd', { class: 'key', text: String(i + 1) }), document.createTextNode(label)), cost);
     b.addEventListener('click', () => ctx.onToolChange(t));
     tools.append(b);

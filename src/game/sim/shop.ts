@@ -28,7 +28,7 @@ export function buyShelfRobot(w: WorldState, variant: 'standard' | 'double' = 's
   const occ = occupiedCells(w);
   const spot = w.stacks.find((s) => !occ.has(`${s.x},${s.z}`));
   if (!spot) return { ok: false, reason: tr('置き場所（空いているスタック）がありません') };
-  const p = pay(w, variant === 'double' ? ROBOT.doubleDeckerCost : ROBOT.shelfRobotCost);
+  const p = pay(w, price(w, variant === 'double' ? ROBOT.doubleDeckerCost : ROBOT.shelfRobotCost));
   if (!p.ok) return p;
   addRobot(w, 'shelf', spot.x, spot.z, variant);
   return { ok: true };
@@ -55,7 +55,7 @@ export function buyDrone(w: WorldState): ShopResult {
     }
   }
   if (!spot) return { ok: false, reason: tr('置き場所がありません') };
-  const p = pay(w, ROBOT.droneCost);
+  const p = pay(w, price(w, ROBOT.droneCost));
   if (!p.ok) return p;
   addRobot(w, 'amr', spot.x, spot.z, 'drone');
   return { ok: true };
@@ -77,21 +77,21 @@ export function buyAmr(w: WorldState): ShopResult {
     }
   }
   if (!spot) return { ok: false, reason: tr('置き場所がありません') };
-  const p = pay(w, ROBOT.amrCost);
+  const p = pay(w, price(w, ROBOT.amrCost));
   if (!p.ok) return p;
   addRobot(w, 'amr', spot.x, spot.z);
   return { ok: true };
 }
 
-export function speedUpgradeCost(r: Robot): number | null {
+export function speedUpgradeCost(r: Robot, w?: WorldState): number | null {
   if (r.speedLevel >= ROBOT.maxSpeedLevel) return null;
-  return ROBOT.speedUpgradeCosts[Math.min(r.speedLevel, ROBOT.speedUpgradeCosts.length - 1)];
+  return price(w, ROBOT.speedUpgradeCosts[Math.min(r.speedLevel, ROBOT.speedUpgradeCosts.length - 1)]);
 }
 
 export function upgradeSpeed(w: WorldState, robotId: number): ShopResult {
   const r = w.robots.find((r) => r.id === robotId);
   if (!r) return { ok: false, reason: tr('ロボがいません') };
-  const cost = speedUpgradeCost(r);
+  const cost = speedUpgradeCost(r, w);
   if (cost === null) return { ok: false, reason: tr('速度は最大です') };
   const p = pay(w, cost);
   if (!p.ok) return p;
@@ -99,15 +99,15 @@ export function upgradeSpeed(w: WorldState, robotId: number): ShopResult {
   return { ok: true };
 }
 
-export function liftUpgradeCost(r: Robot): number | null {
+export function liftUpgradeCost(r: Robot, w?: WorldState): number | null {
   if (r.kind !== 'shelf' || r.liftLevel >= ROBOT.maxLiftLevel) return null;
-  return ROBOT.liftUpgradeCosts[Math.min(r.liftLevel, ROBOT.liftUpgradeCosts.length - 1)];
+  return price(w, ROBOT.liftUpgradeCosts[Math.min(r.liftLevel, ROBOT.liftUpgradeCosts.length - 1)]);
 }
 
 export function upgradeLift(w: WorldState, robotId: number): ShopResult {
   const r = w.robots.find((r) => r.id === robotId);
   if (!r) return { ok: false, reason: tr('ロボがいません') };
-  const cost = liftUpgradeCost(r);
+  const cost = liftUpgradeCost(r, w);
   if (cost === null) return { ok: false, reason: tr('リフト速度は最大です') };
   const p = pay(w, cost);
   if (!p.ok) return p;
@@ -145,14 +145,41 @@ export function maxOutRobots(w: WorldState): { upgraded: number; skipped: number
   return { upgraded, skipped };
 }
 
+/** 全ロボを最大まで強化（速度・リフト・積載）したときの合計コイン。全部最大なら null */
+export function upgradeAllRobotsCost(w: WorldState): number | null {
+  let total = 0;
+  for (const r of w.robots) {
+    for (let lv = r.speedLevel; lv < ROBOT.maxSpeedLevel; lv++) total += ROBOT.speedUpgradeCosts[Math.min(lv, ROBOT.speedUpgradeCosts.length - 1)];
+    if (r.kind === 'shelf') for (let lv = r.liftLevel; lv < ROBOT.maxLiftLevel; lv++) total += ROBOT.liftUpgradeCosts[Math.min(lv, ROBOT.liftUpgradeCosts.length - 1)];
+    if (r.kind === 'amr') for (let lv = r.cargoLevel; lv < limitsFor(w).maxCargoLevel; lv++) total += ROBOT.cargoUpgradeCosts[lv];
+  }
+  return total > 0 ? price(w, total) : null;
+}
+
+/** 全ロボを一気に最大まで強化する（コインを払う版。積載は底面積が変わらない設定なので停車中でなくてもよい） */
+export function upgradeAllRobots(w: WorldState): ShopResult {
+  const cost = upgradeAllRobotsCost(w);
+  if (cost === null) return { ok: false, reason: tr('全ロボとも最大です') };
+  const p = pay(w, cost);
+  if (!p.ok) return p;
+  const maxCargo = limitsFor(w).maxCargoLevel;
+  for (const r of w.robots) {
+    r.speedLevel = ROBOT.maxSpeedLevel;
+    if (r.kind === 'shelf') r.liftLevel = ROBOT.maxLiftLevel;
+    if (r.kind === 'amr') r.cargoLevel = Math.max(r.cargoLevel, maxCargo);
+  }
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------- 倉庫のアップグレード（§9.4）
 import { BIN, LEVELS, PICKER, RANKS } from '../data/balance';
 import { footprint, shapeFor } from './footprint';
 import { limitsFor } from './limits';
+import { automationPrice, dispatchPrice, price } from './pricing';
 
 export function levelUpgradeCost(w: WorldState): number | null {
   if (w.levels >= limitsFor(w).maxLevels) return null;
-  return LEVELS.costs[Math.min(w.levels - 1, LEVELS.costs.length - 1)];
+  return price(w, LEVELS.costs[Math.min(w.levels - 1, LEVELS.costs.length - 1)]);
 }
 
 /** ランクで解放される段数。最終ランクでは上限突破の段数（12）まで */
@@ -176,7 +203,7 @@ export function upgradeLevels(w: WorldState): ShopResult {
 export function binCapacityUpgradeCost(w: WorldState): number | null {
   const n = (w.binCapacity - BIN.baseCapacity) / BIN.capacityUpgradeStep;
   if (n >= BIN.capacityUpgradeCosts.length) return null;
-  return BIN.capacityUpgradeCosts[n];
+  return price(w, BIN.capacityUpgradeCosts[n]);
 }
 
 export function upgradeBinCapacity(w: WorldState): ShopResult {
@@ -188,16 +215,16 @@ export function upgradeBinCapacity(w: WorldState): ShopResult {
   return { ok: true };
 }
 
-export function cargoUpgradeCost(r: Robot): number | null {
+export function cargoUpgradeCost(r: Robot, w?: WorldState): number | null {
   if (r.kind !== 'amr' || r.cargoLevel >= limitsFor().maxCargoLevel) return null;
-  return ROBOT.cargoUpgradeCosts[r.cargoLevel];
+  return price(w, ROBOT.cargoUpgradeCosts[r.cargoLevel]);
 }
 
 /** 積載量 Lv アップ（機体ごと）。ビンを積み重ねて運ぶ（占有マスは変わらない） */
 export function upgradeCargo(w: WorldState, robotId: number): ShopResult {
   const r = w.robots.find((r) => r.id === robotId);
   if (!r) return { ok: false, reason: tr('ロボがいません') };
-  const cost = cargoUpgradeCost(r);
+  const cost = cargoUpgradeCost(r, w);
   if (cost === null) return { ok: false, reason: tr('積載量は最大です') };
   const newShape = shapeFor(r.cargoLevel + 1);
   const oldShape = shapeFor(r.cargoLevel);
@@ -234,7 +261,7 @@ export function buyEmptyBin(w: WorldState): ShopResult {
   if (freeBinSlots(w) <= reservedSlots(w)) return { ok: false, reason: tr('掘り出し用に空きスロットを {0} 個残す必要があります。段数を増やすかスタックを置いてください', reservedSlots(w)) };
   const stack = stackForNewEmptyBin(w);
   if (!stack) return { ok: false, reason: tr('今は空いているスタックがありません（運搬中のビンが戻るまで待つ）') };
-  const p = pay(w, BIN.emptyBinCost);
+  const p = pay(w, price(w, BIN.emptyBinCost));
   if (!p.ok) return p;
   stack.bins.push(createBin(w, null, 0).id);
   return { ok: true };
@@ -260,15 +287,15 @@ function stackForNewEmptyBin(w: WorldState): Stack | null {
   return candidates[0] ?? null;
 }
 
-export function pickerUpgradeCost(s: { level: number }): number | null {
+export function pickerUpgradeCost(s: { level: number }, w?: WorldState): number | null {
   if (s.level >= PICKER.maxLevel) return null;
-  return PICKER.upgradeCosts[Math.min(s.level, PICKER.upgradeCosts.length - 1)];
+  return price(w, PICKER.upgradeCosts[Math.min(s.level, PICKER.upgradeCosts.length - 1)]);
 }
 
 export function upgradePicker(w: WorldState, stationId: number): ShopResult {
   const s = w.stations.find((s) => s.id === stationId);
   if (!s || s.kind !== 'pick') return { ok: false, reason: tr('ピッキングステーションがありません') };
-  const cost = pickerUpgradeCost(s);
+  const cost = pickerUpgradeCost(s, w);
   if (cost === null) return { ok: false, reason: tr('ピック速度は最大です') };
   const p = pay(w, cost);
   if (!p.ok) return p;
@@ -286,7 +313,7 @@ export function buyAutomation(w: WorldState, id: string): ShopResult {
     if (a.dispatch >= AUTOMATION.dispatchCosts.length) return { ok: false, reason: tr('自動配車AI は最大です') };
     const need = [AUTOMATION.unlockRank.dispatch1, AUTOMATION.unlockRank.dispatch2, AUTOMATION.unlockRank.dispatch3][a.dispatch];
     if (w.rank < need) return { ok: false, reason: tr('ランク{0}で解放', need + 1) };
-    const p = pay(w, AUTOMATION.dispatchCosts[a.dispatch]);
+    const p = pay(w, dispatchPrice(w, a.dispatch));
     if (!p.ok) return p;
     a.dispatch++;
     return { ok: true };
@@ -294,7 +321,7 @@ export function buyAutomation(w: WorldState, id: string): ShopResult {
   if (id === 'restock') {
     if (a.restock) return { ok: false, reason: tr('購入済み') };
     if (w.rank < AUTOMATION.unlockRank.restock) return { ok: false, reason: tr('ランク{0}で解放', AUTOMATION.unlockRank.restock + 1) };
-    const p = pay(w, AUTOMATION.restockCost);
+    const p = pay(w, automationPrice(w, AUTOMATION.restockCost));
     if (!p.ok) return p;
     a.restock = true;
     return { ok: true };
@@ -302,7 +329,7 @@ export function buyAutomation(w: WorldState, id: string): ShopResult {
   if (id === 'relocate') {
     if (a.relocate) return { ok: false, reason: tr('購入済み') };
     if (w.rank < AUTOMATION.unlockRank.relocate) return { ok: false, reason: tr('ランク{0}で解放', AUTOMATION.unlockRank.relocate + 1) };
-    const p = pay(w, AUTOMATION.relocateCost);
+    const p = pay(w, automationPrice(w, AUTOMATION.relocateCost));
     if (!p.ok) return p;
     a.relocate = true;
     return { ok: true };

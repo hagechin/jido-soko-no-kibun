@@ -1,4 +1,4 @@
-import { DIFFICULTY, RANKS } from '../data/balance';
+import { DIFFICULTY, RANKS, ECONOMY_MODES } from '../data/balance';
 import { formatDate, formatDateShort, SEASON_ICON } from '../sim/calendar';
 import { icon } from './icon';
 import { dockBacklog } from '../sim/inbound';
@@ -27,7 +27,7 @@ export class Hud {
   private sandbox = $('hud-sandbox');
   private dockN = this.dock.querySelector('b')!;
   private speedBtns = Array.from($('speed').querySelectorAll<HTMLButtonElement>('.speed-btn'));
-  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN, difficulty: '', restockMode: false, sandbox: false };
+  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN, difficulty: '', economy: '', restockMode: false, sandbox: false };
 
   private cycleBtn = $('speed-cycle');
   private lastNonZeroSpeed = 1;
@@ -56,12 +56,15 @@ export class Hud {
       this.last.coins = w.coins;
       this.coins.textContent = Math.floor(w.coins).toLocaleString('ja-JP');
     }
-    if (this.last.rank !== w.rank || this.last.difficulty !== w.difficulty) {
+    const eco = w.economy ?? 'standard';
+    if (this.last.rank !== w.rank || this.last.difficulty !== w.difficulty || this.last.economy !== eco) {
       this.last.rank = w.rank;
       this.last.difficulty = w.difficulty;
+      this.last.economy = eco;
       const d = DIFFICULTY[w.difficulty] ?? DIFFICULTY.normal;
-      this.rank.textContent = tr('{0}・{1}', RANKS[w.rank]?.name ?? '—', d.name);
-      this.rank.title = tr('難易度: {0} — {1}（設定で変更できます）', d.name, d.desc);
+      const e = ECONOMY_MODES[eco] ?? ECONOMY_MODES.standard;
+      this.rank.textContent = tr('{0}・{1}{2}', RANKS[w.rank]?.name ?? '—', d.name, eco === 'standard' ? '' : tr('・{0}', e.name));
+      this.rank.title = tr('難易度: {0} — {1}{2}（設定で変更できます）', d.name, d.desc, eco === 'standard' ? '' : tr(' ／ 経済モード: {0} — {1}', e.name, e.desc));
     }
     const rep = Math.round(w.reputation);
     if (this.last.rep !== rep) {

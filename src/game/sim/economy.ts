@@ -2,6 +2,7 @@
 import { difficultyOf } from './orders';
 import { REPUTATION, REWARD, TICKS_PER_SECOND } from '../data/balance';
 import { activeEvents } from '../data/seasons';
+import { coinPerItemAt, economyOf } from './pricing';
 import type { Order, WorldState } from './types';
 import { tr } from '../i18n';
 
@@ -34,7 +35,7 @@ export interface RewardBreakdown {
 
 /** 商品 1 個あたりの単価（ランクで上がる） */
 export function coinPerItem(w: WorldState): number {
-  return REWARD.coinPerItemByRank[Math.min(w.rank, REWARD.coinPerItemByRank.length - 1)];
+  return coinPerItemAt(w);
 }
 
 export function rewardFor(w: WorldState, o: Order, eventMult = 1): RewardBreakdown {
@@ -43,7 +44,7 @@ export function rewardFor(w: WorldState, o: Order, eventMult = 1): RewardBreakdo
   const base = items * coinPerItem(w);
   const repMult = reputationMultiplier(w.reputation);
   const bonus = speedBonus(leadSeconds);
-  const total = Math.round(base * repMult * bonus * eventMult * difficultyOf(w).coinFactor);
+  const total = Math.round(base * repMult * bonus * eventMult * difficultyOf(w).coinFactor * economyOf(w).coinFactor);
   return { items, base, repMult, bonus, eventMult, total, leadSeconds };
 }
 
@@ -69,7 +70,7 @@ export function shipOrder(w: WorldState, o: Order, stationId: number): void {
   for (const e of activeEvents(w.calendar.month, w.calendar.week)) eventMult *= e.rewardFactor;
   const r = rewardFor(w, o, eventMult);
   addCoins(w, r.total);
-  changeReputation(w, REWARD.repGainPerShipment, tr('出荷'));
+  changeReputation(w, REWARD.repGainPerShipment, tr(tr('出荷')));
   w.stats.totalShipped++;
   w.stats.recentShipments.push({ tick: w.tick, coins: r.total, items: r.items });
   if (w.season.cyber) {

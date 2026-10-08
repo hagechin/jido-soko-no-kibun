@@ -25,7 +25,8 @@ export function installDemoSave(): void {
   let n = 0;
   for (const s of w.waitSpots) {
     if (n >= 3) break;
-    addRobot(w, 'amr', s.x, s.z, 'drone');
+    const d = addRobot(w, 'amr', s.x, s.z, 'drone');
+    d.speedLevel = 2; // 地上ロボと同じ Lv（飛行の +1 で実効 Lv3）
     n++;
   }
   n = 0;

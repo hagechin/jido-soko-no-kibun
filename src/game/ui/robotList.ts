@@ -1,5 +1,6 @@
 /** 稼働中ロボ一覧: 動いているロボをタップで捕まえにくいので、ここから選択・強化する */
 import { ROBOT } from '../data/balance';
+import { isDrone, speedLevelOf } from '../sim/layers';
 import { describeRobot } from '../sim/robots';
 import type { WorldState } from '../sim/types';
 import { iconImg } from './icons';
@@ -14,7 +15,29 @@ export function refreshRobotListStatus(body: HTMLElement, w: WorldState): void {
     if (!r || !st) continue;
     const text = describeRobot(w, r);
     if (st.textContent !== text) st.textContent = text;
+    const cargo = row.querySelector<HTMLElement>('.sel-cargo');
+    if (cargo && cargo.dataset.bins !== r.carrying.join(',')) {
+      cargo.dataset.bins = r.carrying.join(',');
+      cargo.replaceChildren(...cargoIcons(w, r));
+    }
+    const meta = row.querySelector<HTMLElement>('.robot-meta');
+    if (meta) {
+      const m = tr('{0} / 運んだ {1}{2}', meta.dataset.lv ?? '', r.carried ?? 0, r.job?.manual ? tr(' / 手動指示中') : '');
+      if (meta.textContent !== m) meta.textContent = m;
+    }
   }
+}
+
+function cargoIcons(w: WorldState, r: WorldState['robots'][number]): HTMLElement[] {
+  return r.carrying.map((id) => {
+    const b = w.bins[id];
+    return b?.item ? iconImg(b.item, 18) : el('span', { class: 'slot-empty', title: tr('空ビン') });
+  });
+}
+
+/** 速度 Lv の表示。ドローンは飛行の上乗せを含めた実効 Lv も */
+export function speedText(r: WorldState['robots'][number]): string {
+  return isDrone(r) ? tr('速度 Lv{0}（飛行 +1 → Lv{1} 相当）', r.speedLevel, speedLevelOf(r)) : tr('速度 Lv{0}', r.speedLevel);
 }
 
 export function renderRobotList(body: HTMLElement, w: WorldState, selectedId: number | null, onSelect: (id: number) => void, onUpgrade: (id: number) => void): void {
@@ -23,16 +46,12 @@ export function renderRobotList(body: HTMLElement, w: WorldState, selectedId: nu
     const list = w.robots.filter((r) => r.kind === kind);
     body.append(el('h4', { text: tr('{0}（{1} 台）', kind === 'shelf' ? tr('棚ロボ') : tr('搬送ロボ'), list.length) }));
     for (const r of list) {
-      const cargo = el('span', { class: 'sel-cargo' });
-      for (const id of r.carrying) {
-        const b = w.bins[id];
-        cargo.append(b?.item ? iconImg(b.item, 18) : el('span', { class: 'slot-empty', title: tr('空ビン') }));
-      }
-      const lv = kind === 'shelf' ? tr('速度 Lv{0} / リフト Lv{1}', r.speedLevel, r.liftLevel) : tr('速度 Lv{0} / 積載 {1}', r.speedLevel, ROBOT.cargo[r.cargoLevel].bins);
+      const cargo = el('span', { class: 'sel-cargo', 'data-bins': r.carrying.join(',') }, ...cargoIcons(w, r));
+      const lv = kind === 'shelf' ? tr('{0} / リフト Lv{1}', speedText(r), r.liftLevel) : tr('{0} / 積載 {1}', speedText(r), ROBOT.cargo[r.cargoLevel].bins);
       const row = el(
         'div',
         { class: `robot-row${r.id === selectedId ? ' is-active' : ''}`, 'data-robot': String(r.id) },
-        el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + r.name })), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small', text: `${lv}${r.job?.manual ? tr(' / 手動指示中') : ''}` })),
+        el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + r.name })), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small robot-meta', 'data-lv': lv, text: tr('{0} / 運んだ {1}{2}', lv, r.carried ?? 0, r.job?.manual ? tr(' / 手動指示中') : '') })),
         el('button', { class: 'btn', type: 'button', text: tr('強化') }),
       );
       row.children[0].addEventListener('click', () => onSelect(r.id));

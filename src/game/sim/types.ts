@@ -2,7 +2,7 @@
  * ゲーム状態の型。state は丸ごと JSON 化できること（§11.3）。
  * 描画や DOM に依存する値は入れない。
  */
-import type { CellKind, DifficultyId } from '../data/balance';
+import type { CellKind, DifficultyId, EconomyId } from '../data/balance';
 import type { RngState } from './rng';
 
 export type { CellKind };
@@ -138,6 +138,8 @@ export interface Robot {
   retreatUntil?: number;
   /** 選択・指示の表示用 */
   name: string;
+  /** 運んだビンの数（目的地に下ろした回数。古いセーブには無い＝0） */
+  carried?: number;
 }
 
 export type Goal =
@@ -247,6 +249,8 @@ export interface WorldState {
   speed: number;
   /** 難易度（受注まわりだけに効く。途中で変更できる） */
   difficulty: DifficultyId;
+  /** 経済モード（省略は標準。古いセーブには無い） */
+  economy?: EconomyId;
   width: number;
   height: number;
   cells: CellKind[];

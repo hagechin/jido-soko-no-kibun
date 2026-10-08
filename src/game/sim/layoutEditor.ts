@@ -10,7 +10,7 @@ import { layerOf } from './layers';
 import { BUILD } from '../data/balance';
 import type { CellKind } from '../data/balance';
 import { approachCells, cellAt, inBounds, isAdjacentToStack, isFacingFloor, isFloorWalkable, isRailWalkable, neighbors4 } from './grid';
-import { railConnected, wouldDisconnectFloor, type BuildKind } from './build';
+import { railConnected, wouldDisconnectFloor, type BuildKind, buildCost } from './build';
 import { pickStackWithRoom } from './robots';
 import type { Port, Stack, Station, Vec2, WorldState } from './types';
 import { tr } from '../i18n';
@@ -183,7 +183,7 @@ export function moveCells(w: WorldState, cells: Vec2[], dx: number, dz: number):
 export function paintCell(w: WorldState, kind: BuildKind, x: number, z: number): EditResult {
   if (!inBounds(w, x, z)) return { ok: false, reason: tr('倉庫の外です') };
   if (cellAt(w, x, z) !== 'floor') return { ok: false, reason: tr('そこには何かがあります') };
-  const cost = BUILD_COST_OF(kind);
+  const cost = buildCost(w, kind);
   if (w.coins < cost) return { ok: false, reason: tr('コインが足りません（{0} 必要）', cost) };
   w.coins -= cost;
   w.cells[z * w.width + x] = kind;
@@ -207,9 +207,6 @@ export function paintCell(w: WorldState, kind: BuildKind, x: number, z: number):
   return { ok: true };
 }
 
-function BUILD_COST_OF(kind: BuildKind): number {
-  return kind === 'stack' ? BUILD.stackCost : kind === 'port' ? BUILD.portCost : kind === 'pickStation' ? BUILD.pickStationCost : kind === 'inboundStation' ? BUILD.inboundStationCost : BUILD.waitSpotCost;
-}
 
 /** 撤去（無料）。ビンの入ったスタック、ビンの置かれたポート、入荷口・出荷口は撤去できない */
 export function eraseCell(w: WorldState, x: number, z: number): EditResult {
