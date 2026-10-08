@@ -189,6 +189,12 @@ button {
   right: 8px;
   top: 8px;
   z-index: 1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.orders-queue[hidden] {
+  display: none;
 }
 .orders-list {
   flex: 1;
@@ -356,11 +362,12 @@ button {
 @media (max-width: 899px) {
   :root {
     --hud-h: 48px;
-    --bar-h: 84px; /* 選択中ロボの行（1 行）＋ボタンの行 */
+    --bar-h: 72px; /* 選択中ロボの行（18px）＋ボタンの行（44px）＋余白。余った高さはオーダー列に回す */
+    --orders-h: 104px; /* 注文票 2 段（6×2 のマス）が個数まで収まる高さ */
   }
   .app {
     grid-template-columns: 1fr;
-    grid-template-rows: calc(var(--hud-h) + var(--sa-top)) 92px 1fr calc(var(--bar-h) + var(--sa-bottom));
+    grid-template-rows: calc(var(--hud-h) + var(--sa-top)) var(--orders-h) 1fr calc(var(--bar-h) + var(--sa-bottom));
     grid-template-areas:
       'hud'
       'orders'
@@ -436,11 +443,13 @@ button {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 0;
     min-width: 36px;
-    margin-left: 4px;
-    padding: 4px 3px;
+    margin: 0 2px 0 6px; /* 右の隙間 = 2px ＋ 一覧の padding 6px = 注文票同士の gap（8px） */
+    padding: 4px 4px;
     font-size: 10px;
     line-height: 1.2;
+    text-align: center;
   }
   .orders-queue[hidden] {
     display: none;
@@ -470,10 +479,11 @@ button {
   /* 文字が切れないよう、選択中の情報はボタンの上の行に */
   .bottombar {
     flex-wrap: wrap;
-    align-content: center;
+    align-content: start;
     justify-content: center;
     row-gap: 4px;
-    padding-top: 4px;
+    padding-top: 3px;
+    padding-bottom: var(--sa-bottom); /* ホームインジケータぶんだけ。余白はオーダー列に回した */
   }
   .selected {
     flex-basis: 100%;

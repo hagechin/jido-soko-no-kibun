@@ -52,8 +52,8 @@ export class OrderSheet {
     const txt = bp > 1 ? `+${q} 受注抑制 ×${bp.toFixed(1)}` : `+${q}`;
     if (this.queueBadge.dataset.txt !== txt) {
       this.queueBadge.dataset.txt = txt;
-      // スマホでは 2 行（+N / 抑制 ×1.1）の小さなチップになる
-      this.queueBadge.replaceChildren(el('span', { text: `+${q}` }), ...(bp > 1 ? [el('small', { text: ` 抑制 ×${bp.toFixed(1)}` })] : []));
+      // PC では横一列（+N 抑制 × 1.1）、スマホでは 4 行の中央揃え（+N / 抑制 / × / 1.1）の小さなチップになる
+      this.queueBadge.replaceChildren(el('span', { text: `+${q}` }), ...(bp > 1 ? [el('small', { text: '抑制' }), el('small', { text: '×' }), el('small', { text: bp.toFixed(1) })] : []));
     }
     this.queueBadge.title = bp > 1 ? 'キューが長いので、新しいオーダーの到着間隔を伸ばしています' : '';
   }
