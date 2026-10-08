@@ -1084,3 +1084,29 @@ iPhone 18 Pro Max で、アプリを起動してから連続で撮影しまし�
 | `ios/screenshots/ipad-13/05-layout-editor.png` | 2064×2752 | 同じ（iPad） |
 
 - **注意:** `ios/screenshots/ipad-13/01-main.png` は第9回（修正前）に撮ったので、右側の「オーダー」の見出しがステータスバーと重なった状態のままです。必要なら撮り直します。
+
+---
+
+# 再テスト（第11回）: コミット `61d3576`（バンドル ID と商品 ID を `jp.hatte.hakoniwa.ds` に統一）に対して
+
+- 実施日: 2026-10-08
+- 対象コミット: `61d3576`（`ios/Web/BUILD_INFO`: `commit=61d3576`, `node=v22.14.0`）
+- 作業ツリーには、ユーザーが手元で編集した未コミットの変更（`project.yml` の `DEVELOPMENT_TEAM: "TTM3VRP3Y3"`、`STORE.md` のプライバシーポリシー URL と著作権）が入った状態でビルドしました。`git pull --rebase --autostash` で取り込み、これらの変更はコミットしていません。
+- 実行環境: Xcode 27.0、自動テストは iPhone 17e (iOS 27.0)、スクリーンショットは iPad Pro 13-inch (M5) (iOS 27.0)
+
+## 結果まとめ（第11回）
+
+| 項目 | 結果 |
+|---|---|
+| 古いアプリ（`jp.hakoniwa.ds`）のアンインストール | **済み**（iPhone 17e (27.0) / iPhone 18 Pro Max / iPad Pro 13-inch (M5) / iPhone 17e (26.5)） |
+| `xcodegen generate` → ビルド | **OK**（entitlements も残っている） |
+| 自動テスト（iPhone 17e, iOS 27.0） | **TEST SUCCEEDED**（17件すべてパス。新しい商品 ID の StoreManagerTests を含む） |
+| iPad の `01-main.png` の撮り直し | **済み** |
+
+## 詳細
+
+- **アンインストール:** 上の 4 台から `jp.hakoniwa.ds` を消し、iPhone 17e (iOS 27.0) からは古い UI テストのランナー `jp.hakoniwa.ds.uitests.xctrunner` も消しました。
+  - iPhone 17e (iOS 26.5) には古いランナー `jp.hakoniwa.ds.uitests.xctrunner` が残っています（害はありません）。
+  - iPhone 17e (iOS 27.0) にあった `jp.hatte.hakoniwa.ds`（第1回で「古いビルドが残っている」と書いたもの）は、新しいバンドル ID と同じなので、今回のビルドで上書きされました。
+- **entitlements:** ビルドしたアプリの `Simulated.xcent` は `application-identifier = TTM3VRP3Y3.jp.hatte.hakoniwa.ds`、`com.apple.developer.ubiquity-kvstore-identifier = TTM3VRP3Y3.jp.hatte.hakoniwa.ds` でした。チームを設定したので、iCloud の KVS の識別子にもチームの接頭辞が付きました。
+- **`ios/screenshots/ipad-13/01-main.png`（2064×2752）:** `-demo` で起動し、照準でリセットして 2x にした全景です。右側の「オーダー」の見出しは {783,40} 53×18 で、ステータスバー（32pt）より下にあり、読めます。パネル・ダイアログ・トーストは写っていません（いつも出ているイベントの帯「新生活シーズン」は写っています）。
