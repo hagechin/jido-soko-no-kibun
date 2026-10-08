@@ -68,6 +68,8 @@ final class Bridge {
             Haptics.play(kind: p["kind"] as? String ?? "light")
             return true
         case "products":
+            // -storeOffline（手動確認 M12 用）: 商品を取れない状態を再現する
+            if CommandLine.arguments.contains("-storeOffline") { return [] }
             return store.productInfos()
         case "purchase":
             guard let pid = p["id"] as? String else { throw BridgeError.badParams }

@@ -264,7 +264,7 @@ class Game {
       setLimitsExpanded(hasFeature('limits'));
       this.bar.refresh();
       // ストア画面での購入・復元は画面側が知らせる。ここで知らせるのは外から変わったとき（承認待ちの完了・返金など）
-      if (this.bar.open !== 'store') showToast('購入状態を反映しました', 2500, 'check');
+      if (this.bar.open !== 'store') showToast('購入状態を反映しました（返金・承認など）', 4000, 'check');
     });
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {

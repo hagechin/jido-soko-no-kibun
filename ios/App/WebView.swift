@@ -24,6 +24,7 @@ struct WebView: UIViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator // confirm() / alert() を出す（無いと confirm は何も出さず false）
         webView.scrollView.isScrollEnabled = false
         webView.scrollView.bounces = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
@@ -40,7 +41,7 @@ struct WebView: UIViewRepresentable {
 
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 
-    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
         private var bridge: Bridge?
         private let store: StoreManager
 
@@ -54,6 +55,29 @@ struct WebView: UIViewRepresentable {
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "native", let body = message.body as? [String: Any] else { return }
             bridge?.handle(body)
+        }
+
+        // JS の confirm() / alert(): WKWebView は既定では何も表示しないので UIAlertController を出す
+        func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+            presentAlert(on: webView, message: message, withCancel: true, done: completionHandler)
+        }
+
+        func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+            presentAlert(on: webView, message: message, withCancel: false) { _ in completionHandler() }
+        }
+
+        private func presentAlert(on webView: WKWebView, message: String, withCancel: Bool, done: @escaping (Bool) -> Void) {
+            guard var vc = webView.window?.rootViewController else {
+                done(!withCancel) // 出せないときは alert は OK 扱い、confirm はキャンセル扱い
+                return
+            }
+            while let presented = vc.presentedViewController { vc = presented }
+            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            if withCancel {
+                alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { _ in done(false) })
+            }
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in done(true) })
+            vc.present(alert, animated: true)
         }
 
         // 外部リンクは開かない（同梱ファイルだけ）
