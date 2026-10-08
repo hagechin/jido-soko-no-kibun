@@ -64,12 +64,12 @@ import { iconMarkup } from '../game/ui/icon';
       <nav id="bottombar" class="bottombar" aria-label="操作">
         <div class="selected" id="selected-info"><span class="muted">ロボをタップして選択</span></div>
         <div class="bottom-actions">
-          <button class="btn bar-btn" data-panel="robots"><span class="ico"><Fragment set:html={iconMarkup('bot', 18)} /></span><span class="lbl">ロボ</span></button>
-          <button class="btn bar-btn" data-panel="build"><span class="ico"><Fragment set:html={iconMarkup('hammer', 18)} /></span><span class="lbl">建設</span></button>
-          <button class="btn bar-btn" data-panel="upgrades"><span class="ico"><Fragment set:html={iconMarkup('trending-up', 18)} /></span><span class="lbl">強化</span></button>
-          <button class="btn bar-btn" data-panel="inventory"><span class="ico"><Fragment set:html={iconMarkup('package', 18)} /></span><span class="lbl">在庫</span></button>
-          <button class="btn bar-btn" data-panel="settings"><span class="ico"><Fragment set:html={iconMarkup('settings', 18)} /></span><span class="lbl">設定</span></button>
-          <button class="btn bar-btn" id="btn-calm"><span class="ico"><Fragment set:html={iconMarkup('flame', 18)} /></span><span class="lbl">眺める</span></button>
+          <button class="btn bar-btn" data-panel="robots" aria-label="ロボ一覧" title="ロボ一覧"><span class="ico"><Fragment set:html={iconMarkup('bot', 18)} /></span><span class="lbl">ロボ</span></button>
+          <button class="btn bar-btn" data-panel="build" aria-label="建設" title="建設"><span class="ico"><Fragment set:html={iconMarkup('hammer', 18)} /></span><span class="lbl">建設</span></button>
+          <button class="btn bar-btn" data-panel="upgrades" aria-label="強化" title="強化"><span class="ico"><Fragment set:html={iconMarkup('trending-up', 18)} /></span><span class="lbl">強化</span></button>
+          <button class="btn bar-btn" data-panel="inventory" aria-label="在庫" title="在庫"><span class="ico"><Fragment set:html={iconMarkup('package', 18)} /></span><span class="lbl">在庫</span></button>
+          <button class="btn bar-btn" data-panel="settings" aria-label="設定" title="設定"><span class="ico"><Fragment set:html={iconMarkup('settings', 18)} /></span><span class="lbl">設定</span></button>
+          <button class="btn bar-btn" id="btn-calm" aria-label="眺めモード" title="眺めモード"><span class="ico"><Fragment set:html={iconMarkup('flame', 18)} /></span><span class="lbl">眺める</span></button>
         </div>
       </nav>
 

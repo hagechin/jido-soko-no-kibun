@@ -17,6 +17,8 @@
   --radius: 10px;
   --sa-top: env(safe-area-inset-top, 0px);
   --sa-bottom: env(safe-area-inset-bottom, 0px);
+  --sa-left: env(safe-area-inset-left, 0px);
+  --sa-right: env(safe-area-inset-right, 0px);
 }
 * {
   box-sizing: border-box;
@@ -92,6 +94,10 @@ button {
     'hud orders'
     'view orders'
     'bar bar';
+  /* 横向きのノッチ・ホームインジケータ（iOS）ぶんを左右に空ける */
+  padding-left: var(--sa-left);
+  padding-right: var(--sa-right);
+  background: var(--bg);
 }
 .hud {
   grid-area: hud;
@@ -364,8 +370,26 @@ button {
     display: none;
   }
   .orders-queue {
-    right: 4px;
-    top: 2px;
+    position: static;
+    align-self: center;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    margin-left: 4px;
+    padding: 4px 3px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+  .orders-queue[hidden] {
+    display: none;
+  }
+  .orders-queue small {
+    font-size: 9px;
+    font-weight: 600;
+    white-space: nowrap;
   }
   .orders-list {
     flex-direction: row;
@@ -388,6 +412,7 @@ button {
   .bottombar {
     flex-wrap: wrap;
     align-content: center;
+    justify-content: center;
     row-gap: 4px;
     padding-top: 4px;
   }
@@ -540,8 +565,8 @@ button {
   /* タップで拡大: 3D ビューの上に重ねて 4×6 で表示 */
   .order-card.is-expanded {
     position: fixed;
-    left: 8px;
-    right: 8px;
+    left: calc(8px + var(--sa-left));
+    right: calc(8px + var(--sa-right));
     top: calc(var(--hud-h) + var(--sa-top) + 100px);
     width: auto;
     max-height: 60vh;

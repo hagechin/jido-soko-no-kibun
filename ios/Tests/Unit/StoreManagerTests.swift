@@ -45,7 +45,7 @@ final class StoreManagerTests: XCTestCase {
     }
 
     func testRestoreFindsTransactionsMadeOutsideTheApp() async throws {
-        try session.buyProduct(identifier: "jp.hakoniwa.ds.supporter")
+        try await session.buyProduct(identifier: "jp.hakoniwa.ds.supporter")
         let store = StoreManager()
         await store.loadProducts()
         await store.restore()

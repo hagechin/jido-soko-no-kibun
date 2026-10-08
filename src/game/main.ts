@@ -1,6 +1,7 @@
 /**
  * エントリポイント。固定タイムステップのシミュレーションと描画ループを束ねる。
  */
+import { Vector3 } from 'three';
 import { SPEED_OPTIONS, TICKS_PER_SECOND } from './data/balance';
 import { itemDef } from './data/items';
 import { createWorld } from './sim/world';
@@ -144,14 +145,27 @@ class Game {
       this.keyCam.enabled = manual;
       if (!manual) this.autoCam.start(this.world);
     };
+    // 眺めモードに入る前のカメラを覚えておき、AUTO で出たときは戻す（自動カメラの寄った位置のままにしない）
+    let cameraBeforeCalm: { target: Vector3; azimuth: number; polar: number; distance: number } | null = null;
     this.calm.onEnter = () => {
       this.bar.close();
       this.popup.hide();
+      const c = this.renderer.controls;
+      cameraBeforeCalm = { target: c.target.clone(), azimuth: c.azimuth, polar: c.polar, distance: c.distance };
       applyCalmCamera();
     };
     this.calm.onExit = () => {
-      this.renderer.controls.enabled = true;
+      const c = this.renderer.controls;
+      c.enabled = true;
       this.keyCam.enabled = false;
+      if (cameraBeforeCalm && this.calm.settings.camera === 'auto') {
+        c.target.copy(cameraBeforeCalm.target);
+        c.azimuth = cameraBeforeCalm.azimuth;
+        c.polar = cameraBeforeCalm.polar;
+        c.distance = cameraBeforeCalm.distance;
+        c.update();
+      }
+      cameraBeforeCalm = null;
     };
     this.calm.onCameraChange = () => {
       if (this.calm.active) applyCalmCamera();

@@ -607,3 +607,22 @@ npm run preview   # http://localhost:4321 で確認
   - `HakoniwaDSUITests`（XCUITest）: 起動して WebView 内に「年目」が出る・5 秒で受注の秒表示が変わる・スクリーンショット添付
   - `ios/TESTPLAN.md`: 準備（`sync-web.sh` → `xcodegen generate`）、`xcodebuild test …` のコマンド、手動確認 M1〜M7、報告形式
 - Swift 側の小修正: `AppSchemeHandler.mimeType / fileURL` を static に切り出し（テストから呼べるように）、`onChange(of:)` を新 API に、`isInspectable` の availability ガードを撤去（iOS 26 以降のため）
+
+---
+
+## iOS テスト結果（1 回目）への対応
+
+- Mac 側エージェントのレポート `ios/test-report/TEST_REPORT.md`（Xcode 27、iOS 26.5 / 27.0）。iOS 26.5 で起動 OK、白画面なし。ユニット 8 件と UI 2 件は通過、StoreManagerTests 4 件が失敗、ビルド設定の不足 2 件、横向きのセーフエリア未対応
+- 直したもの:
+  - `project.yml`: テストターゲット 2 つに `GENERATE_INFOPLIST_FILE: YES`（Info.plist 無しで署名できないエラー）。スキームの Test から StoreKit 構成を外した（SKTestSession が自前で構成を読むので二重になる。`SKInternalErrorDomain Code=3` の疑い ★ 未確定、TESTPLAN に切り分け手順を追加）
+  - `StoreManagerTests.swift`: `session.buyProduct` に `await`
+  - `sync-web.sh`: Node の下限を 22.12 に（Astro 5 の要件。20 で通ってしまい build で落ちていた）。ビルド前に `ios/Web` を消して古い同梱を残さない。`ios/Web/BUILD_INFO` にコミットと日時を書く
+  - `.gitignore`: xcodegen が生成する `ios/App/Info.plist` と xcresult
+  - 横向きのセーフエリア（`--sa-left / --sa-right`）: `.app` の左右 padding で HUD・オーダー・下のバー・3D ビューをまとめてノッチから逃がす。拡大オーダーカードも
+  - スマホの受注抑制バッジ: 最後のカードの秒数に重なっていた → 絶対配置をやめ、カード列の左に 2 行の小さなチップ（+N / 抑制 ×1.6）として置く。PC は従来どおり
+  - 強化パネルの空ビン: 「あと 0 個」のときは購入ボタンを無効に
+  - スマホの下のボタン列を中央揃えに（折り返した 2 段目が左寄せだった）
+  - 下のアイコンボタン 6 個に `aria-label` と `title`（VoiceOver）
+  - 眺めモード（AUTO）を出たとき、入る前のカメラ位置に戻す（自動カメラが寄った位置のまま戻って「ズームしたまま」に見えていた）
+- 未対応（報告のみ）: 起動直後に濃紺の画面が 2〜6 秒続く（Web の読み込み時間。起動画面と同じ色なので真っ黒ではない）、設定パネルの中身が 39pt ずれる場面、M5 振動は実機待ち
+- 確認: ヘッドレス（390×844 / 844×390）でバッジがカードと重ならない・ボタン列が中央・aria-label 6 個、PC で眺めモード出入り後にカメラの距離と方位が元に戻る、空ビン上限でボタン無効、コンソールエラー 0。全 119 件通過

@@ -10,3 +10,5 @@ ios/Web/
 ios/*.xcodeproj
 ios/DerivedData/
 ios/build/
+ios/App/Info.plist
+ios/test-report/*.xcresult
