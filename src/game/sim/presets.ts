@@ -8,6 +8,7 @@ import { createRng, rand, randInt } from './rng';
 import { addRobot, createBin, createWorld } from './world';
 import { reservedSlots } from './shop';
 import type { WorldState } from './types';
+import { limitsFor } from './limits';
 
 export type PresetId = 'initial' | 'medium' | 'mega';
 
@@ -91,7 +92,7 @@ export function buildPreset(id: PresetId, opts: PresetOptions = {}): WorldState 
   const w = createWorld({ seed, layout: mega ? megaLayout() : mediumLayout(), itemKinds: kinds });
   w.rank = rank;
   w.levels = mega ? 6 : 3;
-  w.levels = Math.min(w.levels, LEVELS.max, RANKS[rank].maxLevels);
+  w.levels = Math.min(w.levels, limitsFor(w).maxLevels, RANKS[rank].maxLevels);
   w.binCapacity = mega ? 40 : 30;
   w.expansions = mega ? 6 : 2;
   w.coins = mega ? 50_000 : 5_000;

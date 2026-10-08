@@ -23,7 +23,7 @@ function occupiedCells(w: WorldState): Set<string> {
 
 /** 棚ロボを追加（空いているスタックの上に置く） */
 export function buyShelfRobot(w: WorldState): ShopResult {
-  if (w.robots.filter((r) => r.kind === 'shelf').length >= ROBOT.maxShelfRobots) return { ok: false, reason: '棚ロボはこれ以上増やせません' };
+  if (w.robots.filter((r) => r.kind === 'shelf').length >= limitsFor(w).maxShelfRobots) return { ok: false, reason: `棚ロボはこれ以上増やせません（上限 ${limitsFor(w).maxShelfRobots} 台）` };
   const occ = occupiedCells(w);
   const spot = w.stacks.find((s) => !occ.has(`${s.x},${s.z}`));
   if (!spot) return { ok: false, reason: '置き場所（空いているスタック）がありません' };
@@ -35,7 +35,7 @@ export function buyShelfRobot(w: WorldState): ShopResult {
 
 /** 搬送ロボを追加（空いている待機スポット → 空いている床） */
 export function buyAmr(w: WorldState): ShopResult {
-  if (w.robots.filter((r) => r.kind === 'amr').length >= ROBOT.maxAmrs) return { ok: false, reason: '搬送ロボはこれ以上増やせません' };
+  if (w.robots.filter((r) => r.kind === 'amr').length >= limitsFor(w).maxAmrs) return { ok: false, reason: `搬送ロボはこれ以上増やせません（上限 ${limitsFor(w).maxAmrs} 台）` };
   const occ = occupiedCells(w);
   let spot = w.waitSpots.find((s) => !occ.has(`${s.x},${s.z}`)) ?? null;
   if (!spot) {
@@ -98,7 +98,7 @@ export function maxOutRobots(w: WorldState): { upgraded: number; skipped: number
     r.speedLevel = ROBOT.maxSpeedLevel;
     if (r.kind === 'shelf') r.liftLevel = ROBOT.maxLiftLevel;
     if (r.kind === 'amr') {
-      const maxCargo = ROBOT.cargo.length - 1;
+      const maxCargo = limitsFor(w).maxCargoLevel;
       const newShape = shapeFor(maxCargo);
       const oldShape = shapeFor(r.cargoLevel);
       if (r.cargoLevel < maxCargo && (newShape.w !== oldShape.w || newShape.l !== oldShape.l)) {
@@ -120,14 +120,18 @@ export function maxOutRobots(w: WorldState): { upgraded: number; skipped: number
 // ---------------------------------------------------------------- 倉庫のアップグレード（§9.4）
 import { BIN, LEVELS, PICKER, RANKS } from '../data/balance';
 import { footprint, shapeFor } from './footprint';
+import { limitsFor } from './limits';
 
 export function levelUpgradeCost(w: WorldState): number | null {
-  if (w.levels >= LEVELS.max) return null;
+  if (w.levels >= limitsFor(w).maxLevels) return null;
   return LEVELS.costs[Math.min(w.levels - 1, LEVELS.costs.length - 1)];
 }
 
+/** ランクで解放される段数。最終ランクでは上限突破の段数（12）まで */
 export function maxLevelsForRank(w: WorldState): number {
-  return RANKS[Math.min(w.rank, RANKS.length - 1)].maxLevels;
+  const i = Math.min(w.rank, RANKS.length - 1);
+  const byRank = RANKS[i].maxLevels;
+  return Math.min(i === RANKS.length - 1 ? limitsFor(w).maxLevels : byRank, limitsFor(w).maxLevels);
 }
 
 /** 棚の段数 +1（全スタック） */
@@ -157,7 +161,7 @@ export function upgradeBinCapacity(w: WorldState): ShopResult {
 }
 
 export function cargoUpgradeCost(r: Robot): number | null {
-  if (r.kind !== 'amr' || r.cargoLevel >= ROBOT.cargo.length - 1) return null;
+  if (r.kind !== 'amr' || r.cargoLevel >= limitsFor().maxCargoLevel) return null;
   return ROBOT.cargoUpgradeCosts[r.cargoLevel];
 }
 

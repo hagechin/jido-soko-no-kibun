@@ -9,6 +9,7 @@ import { approachCells, cellAt, inBounds, isAdjacentToStack, isFacingFloor, isFl
 import { footprint, shapeFor } from './footprint';
 import { createBin, placeCell, removeCell } from './world';
 import type { WorldState } from './types';
+import { limitsFor } from './limits';
 
 export type BuildKind = 'stack' | 'port' | 'pickStation' | 'inboundStation' | 'waitSpot';
 export type BuildResult = { ok: true } | { ok: false; reason: string };
@@ -248,8 +249,8 @@ export function expansionCells(w: WorldState, dir: ExpandDir): number {
 
 /** 費用 = 基準費用（拡張回数で上がる） × 増えるマス数 / 基準マス数。広げられなければ null */
 export function expansionCost(w: WorldState, dir: ExpandDir = 'east'): number | null {
-  if (dir === 'east' && w.width + GRID.expandStep > GRID.maxWidth) return null;
-  if (dir === 'south' && w.height + GRID.expandStep > GRID.maxHeight) return null;
+  if (dir === 'east' && w.width + GRID.expandStep > limitsFor(w).maxWidth) return null;
+  if (dir === 'south' && w.height + GRID.expandStep > limitsFor(w).maxHeight) return null;
   const base = EXPANSION.costs[Math.min(w.expansions, EXPANSION.costs.length - 1)];
   return Math.round((base * expansionCells(w, dir)) / EXPANSION.baseCells);
 }

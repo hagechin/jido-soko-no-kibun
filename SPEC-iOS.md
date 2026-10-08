@@ -29,6 +29,9 @@ Web 版（[SPEC.md](./SPEC.md)）を WKWebView で包み、iOS 版だけの機�
 ### 上限突破
 
 - `ROBOT.maxShelfRobots / maxAmrs`、`ROBOT.cargo`（Lv4 追加）、`LEVELS.max`、`GRID.maxWidth / maxHeight` を、`limits` があるとき拡張値に差し替える（`limitsFor(w)` で参照）
+- 実装（I4）: `balance.ts` の `LIMITS = { base, expanded }`（台数 40/60 → 80/120、積載 Lv 添字 2 → 3（8 ビン、費用 1,800）、段数 8 → 12（9〜12 段の費用 16,000 / 25,000 / 40,000 / 60,000）、倉庫 40×28 → 64×48）。`sim/limits.ts` の `setLimitsExpanded()` を main が購入状態から切り替え、sim は `limitsFor(w)` だけを見る。段数はランクの解放を超えないが、最終ランクでは上限突破の 12 段まで
+- 上限突破を持たない環境でそれを超えたセーブを開いたら（Web 版へ書き出した等）: 既存のロボや段数はそのまま使え、追加だけ止まる
+- 強化パネルは上限に達したとき「上限突破パック（設定 → 追加機能 → ストア）で 120 台まで」のように案内（持っていれば出ない）
 
 ### サンドボックス
 

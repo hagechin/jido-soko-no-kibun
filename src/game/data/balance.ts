@@ -95,8 +95,10 @@ export const BIN = {
 /** 棚の段数（§3.2 / §9.4） */
 export const LEVELS = {
   initial: 1,
+  /** 通常の最大段数（上限突破で 12。LIMITS 参照） */
   max: 8,
-  costs: [150, 400, 900, 1800, 3500, 6000, 10000],
+  /** 段数 n → n+1 の費用（添字 n-1）。9〜12 段は上限突破パックのみ */
+  costs: [150, 400, 900, 1800, 3500, 6000, 10000, 16000, 25000, 40000, 60000],
 };
 
 /** 面積拡張費用（§9.4）。costs は「基準マス数ぶん」の費用で、実際は増えるマス数に比例する */
@@ -136,15 +138,26 @@ export const ROBOT = {
     { bins: 1, w: 1, l: 1 },
     { bins: 2, w: 1, l: 1 },
     { bins: 4, w: 1, l: 1 },
+    /** Lv4（8 ビン）は上限突破パック（iOS）のみ。LIMITS.maxCargoLevel で制限 */
+    { bins: 8, w: 1, l: 1 },
   ],
-  cargoUpgradeCosts: [250, 700],
+  cargoUpgradeCosts: [250, 700, 1800],
   speedUpgradeCosts: [150, 350, 800],
   liftUpgradeCosts: [150, 350, 800],
   shelfRobotCost: 300,
   amrCost: 250,
-  /** 同時に存在できる台数の上限（描画負荷の安全弁） */
+  /** 同時に存在できる台数の上限（描画負荷の安全弁。上限突破パックで LIMITS.expanded に） */
   maxShelfRobots: 40,
   maxAmrs: 60,
+};
+
+/**
+ * 上限突破（SPEC-iOS §1、I4）: 通常の上限と、購入後の上限。sim は `limitsFor(w)` 経由で読む。
+ * maxCargoLevel は ROBOT.cargo の添字（2 = 4 ビン、3 = 8 ビン）
+ */
+export const LIMITS = {
+  base: { maxShelfRobots: 40, maxAmrs: 60, maxCargoLevel: 2, maxLevels: 8, maxWidth: 40, maxHeight: 28 },
+  expanded: { maxShelfRobots: 80, maxAmrs: 120, maxCargoLevel: 3, maxLevels: 12, maxWidth: 64, maxHeight: 48 },
 };
 
 /** 衝突回避（§4.3） */

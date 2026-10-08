@@ -1,3 +1,4 @@
+import { limitsFor } from './limits';
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
 import { buyAmr, buyEmptyBin, buyShelfRobot, freeBinSlots, maxOutRobots, upgradeLevels, upgradeSpeed } from './shop';
@@ -63,7 +64,7 @@ describe('debug: max out robots', () => {
     for (const ro of w.robots) {
       expect(ro.speedLevel).toBe(ROBOT.maxSpeedLevel);
       if (ro.kind === 'shelf') expect(ro.liftLevel).toBe(ROBOT.maxLiftLevel);
-      if (ro.kind === 'amr') expect(ro.cargoLevel).toBe(ROBOT.cargo.length - 1);
+      if (ro.kind === 'amr') expect(ro.cargoLevel).toBe(limitsFor(w).maxCargoLevel); // 通常は Lv3（4 ビン）。Lv4 は上限突破のみ
     }
     const rt = createRuntime();
     for (let t = 0; t < 600; t++) stepSim(w, rt);

@@ -1,6 +1,6 @@
 import { icon } from './icon';
 /** アップグレードショップ（§4.4 / §9.4） */
-import { AUTOMATION, BIN, BUILD, LEVELS, RANKS, ROBOT } from '../data/balance';
+import { AUTOMATION, BIN, BUILD, LIMITS, RANKS, ROBOT } from '../data/balance';
 import {
   binCapacityUpgradeCost,
   buyAmr,
@@ -23,6 +23,9 @@ import {
   type ShopResult,
 } from '../sim/shop';
 import type { WorldState } from '../sim/types';
+import { limitsFor } from '../sim/limits';
+import { hasFeature } from '../platform/entitlements';
+import { native } from '../platform/native';
 import { el, showToast } from './layout';
 
 export interface UpgradeContext {
@@ -33,6 +36,12 @@ export interface UpgradeContext {
   buyAutomation?: (id: string) => ShopResult;
   /** アドバイザーの提案（あれば見出しに出す） */
   hint?: string | null;
+}
+
+/** 通常の上限に達したとき、上限突破パック（iOS）の案内を付ける（持っていれば何も付けない） */
+function limitHint(atCap: boolean, what: string): string {
+  if (!atCap || hasFeature('limits')) return '';
+  return native.available ? `。上限突破パック（設定 → 追加機能 → ストア）で ${what}` : `。iOS 版の上限突破パックで ${what}`;
 }
 
 function row(label: string, cost: number | null, onBuy: (() => ShopResult) | null, ctx: UpgradeContext, extra = '', lockedText?: string): HTMLElement {
@@ -57,8 +66,9 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
 
   body.append(el('h4', { text: '倉庫' }));
   const lvCost = levelUpgradeCost(w);
-  const lvLocked = w.levels >= maxLevelsForRank(w) && w.levels < LEVELS.max ? `ランク${w.rank + 2}で解放` : undefined;
-  body.append(row(`棚の段数 ${w.levels} → ${Math.min(LEVELS.max, w.levels + 1)}`, lvCost, () => upgradeLevels(w), ctx, '全スタックに +1 段。保管量が増える代わりに掘り出しが発生する', lvLocked));
+  const lim = limitsFor(w);
+  const lvLocked = w.levels >= maxLevelsForRank(w) && w.levels < lim.maxLevels ? `ランク${w.rank + 2}で解放` : undefined;
+  body.append(row(`棚の段数 ${w.levels} → ${Math.min(lim.maxLevels, w.levels + 1)}`, lvCost, () => upgradeLevels(w), ctx, `全スタックに +1 段。保管量が増える代わりに掘り出しが発生する${limitHint(w.levels >= lim.maxLevels, `段数 ${LIMITS.expanded.maxLevels} まで`)}`, lvLocked));
   body.append(row(`ビン容量 ${w.binCapacity} → ${w.binCapacity + 10}`, binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, '1 ビンに入る個数'));
   const binsLeft = Math.max(0, freeBinSlots(w) - reservedSlots(w));
   body.append(row('空ビン 1 個', BIN.emptyBinCost, binsLeft > 0 ? () => buyEmptyBin(w) : null, ctx, `空きのあるスタックの頂上に置く（買えるのはあと ${binsLeft} 個。掘り出し用に ${reservedSlots(w)} スロットは空けておく）`));
@@ -66,8 +76,10 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   body.append(el('p', { class: 'muted small', text: `スタック ${BUILD.stackCost} / ポート ${BUILD.portCost} / ステーション ${BUILD.pickStationCost} コイン。「建設」で配置します` }));
 
   body.append(el('h4', { text: 'ロボット' }));
-  body.append(row('棚ロボ追加', ROBOT.shelfRobotCost, () => buyShelfRobot(w), ctx, `現在 ${w.robots.filter((r) => r.kind === 'shelf').length} 台`));
-  body.append(row('搬送ロボ追加', ROBOT.amrCost, () => buyAmr(w), ctx, `現在 ${w.robots.filter((r) => r.kind === 'amr').length} 台`));
+  const shelves = w.robots.filter((r) => r.kind === 'shelf').length;
+  const amrs = w.robots.filter((r) => r.kind === 'amr').length;
+  body.append(row('棚ロボ追加', ROBOT.shelfRobotCost, shelves < lim.maxShelfRobots ? () => buyShelfRobot(w) : null, ctx, `現在 ${shelves} 台（上限 ${lim.maxShelfRobots}）${limitHint(shelves >= lim.maxShelfRobots, `${LIMITS.expanded.maxShelfRobots} 台まで`)}`));
+  body.append(row('搬送ロボ追加', ROBOT.amrCost, amrs < lim.maxAmrs ? () => buyAmr(w) : null, ctx, `現在 ${amrs} 台（上限 ${lim.maxAmrs}）${limitHint(amrs >= lim.maxAmrs, `${LIMITS.expanded.maxAmrs} 台まで`)}`));
 
   const r = w.robots.find((r) => r.id === ctx.selectedRobotId) ?? null;
   body.append(el('h4', { text: r ? `${r.name} の強化（機体ごと）` : 'ロボの強化（3D ビューでロボを選ぶと表示）' }));
@@ -76,8 +88,8 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
     if (r.kind === 'shelf') body.append(row(`リフト速度 Lv${r.liftLevel} → ${r.liftLevel + 1}`, liftUpgradeCost(r), () => upgradeLift(w, r.id), ctx, '掘り出し・上げ下ろしの時間短縮'));
     if (r.kind === 'amr') {
       const c = ROBOT.cargo[r.cargoLevel];
-      const n = ROBOT.cargo[Math.min(r.cargoLevel + 1, ROBOT.cargo.length - 1)];
-      body.append(row(`積載 ${c.bins} → ${n.bins} ビン`, cargoUpgradeCost(r), () => upgradeCargo(w, r.id), ctx, 'ビンを積み重ねて運び、必要なステーションを順に回る'));
+      const n = ROBOT.cargo[Math.min(r.cargoLevel + 1, lim.maxCargoLevel)];
+      body.append(row(`積載 ${c.bins} → ${n.bins} ビン`, cargoUpgradeCost(r), () => upgradeCargo(w, r.id), ctx, `ビンを積み重ねて運び、必要なステーションを順に回る${limitHint(r.cargoLevel >= lim.maxCargoLevel, `積載 ${ROBOT.cargo[LIMITS.expanded.maxCargoLevel].bins} ビンまで`)}`));
     }
   }
 

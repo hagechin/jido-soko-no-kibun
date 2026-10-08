@@ -47,6 +47,7 @@ import { BackgroundTicker, loadBackgroundSetting, saveBackgroundSetting } from '
 import { native, nativeTry } from './platform/native';
 import { hasFeature, initEntitlements, onEntitlementsChange } from './platform/entitlements';
 import { featureStatusNode, renderStore } from './ui/store';
+import { setLimitsExpanded } from './sim/limits';
 import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
@@ -260,6 +261,7 @@ class Game {
     // ストア（iOS 版の買い切り）。購入状態が変わったら開いているパネルを描き直す
     this.bar.registerPanel('store', (body) => renderStore(body, { refresh: () => this.bar.refresh() }));
     onEntitlementsChange(() => {
+      setLimitsExpanded(hasFeature('limits'));
       this.bar.refresh();
       // ストア画面での購入・復元は画面側が知らせる。ここで知らせるのは外から変わったとき（承認待ちの完了・返金など）
       if (this.bar.open !== 'store') showToast('購入状態を反映しました', 2500, 'check');
@@ -943,6 +945,7 @@ class Game {
 // iOS アプリではネイティブの保存と購入状態を先に取り込んでから始める（Web 版は即開始）
 void (async () => {
   await Promise.all([preloadNativeSave(), initEntitlements()]);
+  setLimitsExpanded(hasFeature('limits'));
   const game = new Game();
   game.start();
   // デバッグ用にグローバルへ（本番でも無害）
