@@ -469,6 +469,7 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
     case 21: {
       const i = r.carrying.indexOf(job.binId);
       port.outbound.push(i >= 0 ? r.carrying.splice(i, 1)[0] : r.carrying.pop()!);
+      r.carried = (r.carried ?? 0) + 1;
       r.phase = 'idle';
       finishJob(w, rt, r);
       return;
@@ -574,6 +575,7 @@ function shelfStore(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob,
       const stack = w.stacks.find((s) => s.id === job.stackId);
       if (stack && stack.bins.length < w.levels && !lockedStacks(w).has(stack.id)) {
         stack.bins.push(r.carrying.pop()!);
+        r.carried = (r.carried ?? 0) + 1;
         r.phase = 'idle';
         finishJob(w, rt, r);
       } else {
@@ -737,6 +739,7 @@ function amrReturn(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { 
       const bin = r.carrying.shift()!;
       w.bins[bin].purpose = null;
       port.returns.push(bin);
+      r.carried = (r.carried ?? 0) + 1; // ポート → ステーション → ポートの 1 往復で 1
       r.phase = 'idle';
       r.step = 0;
       if (!r.carrying.length) finishJob(w, rt, r);

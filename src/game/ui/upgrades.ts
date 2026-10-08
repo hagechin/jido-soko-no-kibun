@@ -1,6 +1,6 @@
 import { icon } from './icon';
 /** アップグレードショップ（§4.4 / §9.4） */
-import { AUTOMATION, BIN, BUILD, LIMITS, RANKS, ROBOT } from '../data/balance';
+import { ADVISOR, AUTOMATION, BIN, BUILD, LIMITS, RANKS, ROBOT } from '../data/balance';
 import {
   binCapacityUpgradeCost,
   buyAmr,
@@ -19,6 +19,8 @@ import {
   upgradeBinCapacity,
   upgradeCargo,
   upgradeLevels,
+  upgradeAllRobots,
+  upgradeAllRobotsCost,
   upgradeLift,
   upgradePicker,
   upgradeSpeed,
@@ -40,6 +42,8 @@ export interface UpgradeContext {
   buyAutomation?: (id: string) => ShopResult;
   /** アドバイザーの提案（あれば見出しに出す） */
   hint?: string | null;
+  /** 地上の搬送ロボが横付けの順番待ちをしている割合（アドバイザーの移動平均）。ドローンの買い時の目安に使う */
+  amrStaged?: number;
 }
 
 function row(label: string, cost: number | null, onBuy: (() => ShopResult) | null, ctx: UpgradeContext, extra = '', lockedText?: string): HTMLElement {
@@ -83,11 +87,17 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const special = hasFeature('specialRobots');
   const drones = w.robots.filter((r) => isDrone(r)).length;
   body.append(el('h4', { text: '特別ロボ' }));
-  body.append(row('ドローン搬送ロボ追加', ROBOT.droneCost, special && drones < ROBOT.maxDrones ? () => buyDrone(w) : null, ctx, `棚の上を飛び越えて運ぶ（速度 +1 段階）。地上の渋滞と横付けの枠を受けず、一番溜まっているポートへ真っ先に向かい、暇なときはポートの上で待機。現在 ${drones} 台（上限 ${ROBOT.maxDrones}）${specialRobotsHint()}`, special ? undefined : 'ロック'));
-  body.append(row('ダブルデッカー棚ロボ追加', ROBOT.doubleDeckerCost, special && shelves < lim.maxShelfRobots ? () => buyDoubleDecker(w) : null, ctx, `ビンを 2 段持てる棚ロボ。1 個掘れば届くビンは退避の往復なしで取り出し、深い掘り出しも 2 個ずつ運ぶ。棚ロボの上限に含む${specialRobotsHint()}`, special ? undefined : 'ロック'));
+  // ドローンの買い時: 地上ロボが横付けで順番待ちしている規模になってから。小さいうちは地上ロボで足りる
+  const queued = (ctx.amrStaged ?? 0) >= ADVISOR.stagedRatio;
+  const droneTiming = queued ? '★ 今が買い時: 搬送ロボが横付けで順番待ちしています' : '大きな倉庫で特に威力を発揮（搬送ロボがポートで順番待ちするようになったら「おすすめ」でお知らせ。今の規模では地上ロボで足りています）';
+  body.append(row('ドローン搬送ロボ追加', ROBOT.droneCost, special && drones < ROBOT.maxDrones ? () => buyDrone(w) : null, ctx, `棚の上を飛び越えて運ぶ（速度 +1 段階）。地上の渋滞と横付けの枠を受けず、一番溜まっているポートへ真っ先に向かい、暇なときはポートの上で待機。${droneTiming}。現在 ${drones} 台（上限 ${ROBOT.maxDrones}）${specialRobotsHint()}`, special ? undefined : 'ロック'));
+  body.append(row('ダブルデッカー棚ロボ追加', ROBOT.doubleDeckerCost, special && shelves < lim.maxShelfRobots ? () => buyDoubleDecker(w) : null, ctx, `ビンを 2 段持てる棚ロボ。1 個掘れば届くビンは退避の往復なしで取り出し、深い掘り出しも 2 個ずつ運ぶ。狭い棚でも 1 台で棚ロボ 2 台ぶんの働きをするので序盤から活躍。棚ロボの上限に含む${specialRobotsHint()}`, special ? undefined : 'ロック'));
 
+  const allCost = upgradeAllRobotsCost(w);
+  body.append(el('h4', { text: 'ロボの強化（全機）' }));
+  body.append(row(allCost === null ? '全ロボを最大強化（MAX）' : '全ロボを最大強化', allCost, () => upgradeAllRobots(w), ctx, allCost === null ? '全ロボとも速度・リフト・積載が最大です' : `全ロボの速度・リフト・積載を一気に最大まで（${w.robots.length} 台ぶんの合計）`));
   const r = w.robots.find((r) => r.id === ctx.selectedRobotId) ?? null;
-  body.append(el('h4', { text: r ? `${r.name} の強化（機体ごと）` : 'ロボの強化（3D ビューでロボを選ぶと表示）' }));
+  body.append(el('h4', { text: r ? `${r.name} の強化（機体ごと）` : 'ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）' }));
   if (r) {
     body.append(row(`速度 Lv${r.speedLevel} → ${r.speedLevel + 1}`, speedUpgradeCost(r), () => upgradeSpeed(w, r.id), ctx, '移動速度 +20%/Lv'));
     if (r.kind === 'shelf') body.append(row(`リフト速度 Lv${r.liftLevel} → ${r.liftLevel + 1}`, liftUpgradeCost(r), () => upgradeLift(w, r.id), ctx, '掘り出し・上げ下ろしの時間短縮'));

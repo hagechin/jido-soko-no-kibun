@@ -145,6 +145,32 @@ export function maxOutRobots(w: WorldState): { upgraded: number; skipped: number
   return { upgraded, skipped };
 }
 
+/** 全ロボを最大まで強化（速度・リフト・積載）したときの合計コイン。全部最大なら null */
+export function upgradeAllRobotsCost(w: WorldState): number | null {
+  let total = 0;
+  for (const r of w.robots) {
+    for (let lv = r.speedLevel; lv < ROBOT.maxSpeedLevel; lv++) total += ROBOT.speedUpgradeCosts[Math.min(lv, ROBOT.speedUpgradeCosts.length - 1)];
+    if (r.kind === 'shelf') for (let lv = r.liftLevel; lv < ROBOT.maxLiftLevel; lv++) total += ROBOT.liftUpgradeCosts[Math.min(lv, ROBOT.liftUpgradeCosts.length - 1)];
+    if (r.kind === 'amr') for (let lv = r.cargoLevel; lv < limitsFor(w).maxCargoLevel; lv++) total += ROBOT.cargoUpgradeCosts[lv];
+  }
+  return total > 0 ? total : null;
+}
+
+/** 全ロボを一気に最大まで強化する（コインを払う版。積載は底面積が変わらない設定なので停車中でなくてもよい） */
+export function upgradeAllRobots(w: WorldState): ShopResult {
+  const cost = upgradeAllRobotsCost(w);
+  if (cost === null) return { ok: false, reason: '全ロボとも最大です' };
+  const p = pay(w, cost);
+  if (!p.ok) return p;
+  const maxCargo = limitsFor(w).maxCargoLevel;
+  for (const r of w.robots) {
+    r.speedLevel = ROBOT.maxSpeedLevel;
+    if (r.kind === 'shelf') r.liftLevel = ROBOT.maxLiftLevel;
+    if (r.kind === 'amr') r.cargoLevel = Math.max(r.cargoLevel, maxCargo);
+  }
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------- 倉庫のアップグレード（§9.4）
 import { BIN, LEVELS, PICKER, RANKS } from '../data/balance';
 import { footprint, shapeFor } from './footprint';

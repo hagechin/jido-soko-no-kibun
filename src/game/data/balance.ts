@@ -390,6 +390,8 @@ export const ADVISOR = {
   highIdleRatio: 0.5,
   /** キューがこの件数以上なら底上げを提案 */
   queueHint: 6,
+  /** 地上の搬送ロボのうち、ポート／ステーションの横付けの順番待ち（staged）をしている割合がこれ以上なら「ドローンの買い時」 */
+  stagedRatio: 0.2,
   /** 同じヒントを再表示するまでの間隔（ms）／ヒントの確認間隔（ms） */
   repeatMs: 180_000,
   checkMs: 30_000,

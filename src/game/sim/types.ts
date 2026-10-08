@@ -138,6 +138,8 @@ export interface Robot {
   retreatUntil?: number;
   /** 選択・指示の表示用 */
   name: string;
+  /** 運んだビンの数（目的地に下ろした回数。古いセーブには無い＝0） */
+  carried?: number;
 }
 
 export type Goal =

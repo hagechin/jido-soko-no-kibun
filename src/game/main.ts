@@ -344,7 +344,7 @@ class Game {
           const r = buyAutomation(this.world, id);
           if (r.ok) this.save();
           return r;
-        }, hint: this.currentHint?.text ?? null }));
+        }, hint: this.currentHint?.text ?? null, amrStaged: this.advisor.amrStaged }));
 
     $('btn-camera-reset').addEventListener('click', () => {
       this.cameraTouched = true;
@@ -511,7 +511,7 @@ class Game {
   private checkAdvisor(now: number): void {
     if (now - this.lastHintCheck < ADVISOR.checkMs || this.world.speed === 0 || this.world.flags.buildMode) return;
     this.lastHintCheck = now;
-    const hint = adviseNext(this.world, this.advisor);
+    const hint = adviseNext(this.world, this.advisor, { drones: !native.available ? 'none' : hasFeature('specialRobots') ? 'available' : 'locked' });
     this.currentHint = hint;
     if (!hint) return;
     if (this.lastHint && this.lastHint.id === hint.id && now - this.lastHint.at < ADVISOR.repeatMs) return;
