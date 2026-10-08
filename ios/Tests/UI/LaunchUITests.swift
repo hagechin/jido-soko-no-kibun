@@ -6,9 +6,15 @@ final class LaunchUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testLaunchShowsTheWarehouseHud() throws {
+    private func launchFresh() -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments = ["-resetSave"] // 残っているセーブに左右されないよう、新規開始で起動
         app.launch()
+        return app
+    }
+
+    func testLaunchShowsTheWarehouseHud() throws {
+        let app = launchFresh()
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.waitForExistence(timeout: 20), "WKWebView が出ない")
         // HUD の日付「1年目 4月 第1週」など「年目」を含む文字が出る = JS が動いている
@@ -22,12 +28,11 @@ final class LaunchUITests: XCTestCase {
     }
 
     func testTimeAdvancesWhileRunning() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchFresh()
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.waitForExistence(timeout: 20))
-        let week1 = web.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "第1週")).firstMatch
-        XCTAssertTrue(week1.waitForExistence(timeout: 30))
+        let date = web.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "年目")).firstMatch
+        XCTAssertTrue(date.waitForExistence(timeout: 30), "HUD の日付が出ない")
         // 1 週 = 90 秒（ゲーム内）。4x にして待つ代わりに、オーダーカードの経過秒が増えることで動作を確かめる
         let order = web.staticTexts.containing(NSPredicate(format: "label MATCHES %@", "^[0-9]+s$")).firstMatch
         XCTAssertTrue(order.waitForExistence(timeout: 60), "オーダーの経過時間が出ない")

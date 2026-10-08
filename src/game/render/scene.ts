@@ -168,6 +168,12 @@ export class WarehouseRenderer {
     this.camera.updateProjectionMatrix();
   }
 
+  /** 倉庫全体が収まる初期構図に合わせ直す（起動直後に画面サイズが変わったとき用） */
+  refit(): void {
+    if (!this.layoutKey) return;
+    this.controls.fitForAspect(this.camera.aspect);
+  }
+
   // ---------------------------------------------------------------- static
   private layoutKeyOf(w: WorldState): string {
     return `${w.width}x${w.height}:${w.levels}:${w.cells.join('')}:${w.stations.map((s) => s.id + s.kind).join(',')}:${w.ports.map((p) => (p.closed ? 'c' : 'o')).join('')}:${this.quality.level}`;

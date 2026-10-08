@@ -19,6 +19,15 @@ export function saveToStorage(w: WorldState): boolean {
 /** iOS アプリ: 起動前にネイティブの保存を localStorage へ流し込む（以後は同期の loadFromStorage で読める） */
 export async function preloadNativeSave(): Promise<void> {
   if (!native.available) return;
+  if (native.info?.reset) {
+    // UI テスト（-resetSave）: ネイティブ側はもう消してある。WebView の localStorage も消して新規開始
+    try {
+      localStorage.removeItem(SAVE.key);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
   try {
     const text = await native.call<string | null>('load', { key: SAVE.key });
     if (typeof text === 'string' && text) localStorage.setItem(SAVE.key, text);

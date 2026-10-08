@@ -27,4 +27,10 @@ final class SaveStore {
     func delete(key: String) {
         try? FileManager.default.removeItem(at: url(for: key))
     }
+
+    /// すべてのセーブを消す（UI テストの -resetSave 用）
+    func deleteAll() {
+        guard let items = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return }
+        for u in items { try? FileManager.default.removeItem(at: u) }
+    }
 }

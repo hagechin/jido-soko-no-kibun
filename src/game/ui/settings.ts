@@ -4,6 +4,11 @@ import { saveQuality, settingsFor, type QualityLevel } from '../render/quality';
 import { DIFFICULTY, DIFFICULTY_ORDER, type DifficultyId } from '../data/balance';
 import { el, showToast } from './layout';
 
+/** 「最終セーブ」の表示（セーブのたびに main が更新する） */
+export function lastSavedText(at: number | null): string {
+  return at ? `最終セーブ ${new Date(at).toLocaleTimeString('ja-JP')}（30 秒ごとに自動）` : '30 秒ごとに自動セーブ';
+}
+
 export interface SettingsContext {
   quality: QualityLevel;
   /** 追加セクション（眺めモードなど） */
@@ -66,7 +71,7 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
   body.append(el('h4', { text: 'セーブ' }));
   const saveBtn = el('button', { class: 'btn', type: 'button' }, iconText('save', '今すぐセーブ'));
   saveBtn.addEventListener('click', () => showToast(ctx.saveNow() ? 'セーブしました' : 'セーブできませんでした'));
-  body.append(el('div', { class: 'settings-row' }, saveBtn, el('span', { class: 'muted small', text: ctx.lastSavedAt ? `最終セーブ ${new Date(ctx.lastSavedAt).toLocaleTimeString('ja-JP')}（30 秒ごとに自動）` : '30 秒ごとに自動セーブ' })));
+  body.append(el('div', { class: 'settings-row' }, saveBtn, el('span', { class: 'muted small', id: 'last-saved', text: lastSavedText(ctx.lastSavedAt) })));
   if (ctx.exportSave) {
     const ex = el('button', { class: 'btn', type: 'button' }, iconText('upload', 'ファイルに書き出し'));
     ex.addEventListener('click', () => ctx.exportSave!());

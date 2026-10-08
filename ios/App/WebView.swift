@@ -14,8 +14,11 @@ struct WebView: UIViewRepresentable {
         config.mediaTypesRequiringUserActionForPlayback = []
         config.userContentController.add(context.coordinator, name: "native")
         // 起動前に「ネイティブあり」を知らせる
+        // 起動引数 -resetSave（UI テスト用）: Documents のセーブを消し、JS 側にも localStorage を消すよう伝える
+        let resetSave = CommandLine.arguments.contains("-resetSave")
+        if resetSave { SaveStore().deleteAll() }
         let boot = """
-        window.__nativeInfo = { platform: 'ios', version: '\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0")', build: '\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0")' };
+        window.__nativeInfo = { platform: 'ios', version: '\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0")', build: '\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0")', reset: \(resetSave ? "true" : "false") };
         """
         config.userContentController.addUserScript(WKUserScript(source: boot, injectionTime: .atDocumentStart, forMainFrameOnly: true))
 

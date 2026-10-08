@@ -12,7 +12,7 @@ interface Pending {
 }
 
 interface NativeWindow extends Window {
-  __nativeInfo?: { platform: string; version: string; build: string };
+  __nativeInfo?: { platform: string; version: string; build: string; reset?: boolean };
   webkit?: { messageHandlers?: { native?: { postMessage: (m: unknown) => void } } };
   __native?: { reply: (id: number, r: { ok: boolean; result?: unknown; error?: string }) => void; emit: (event: string, payload: unknown) => void };
 }

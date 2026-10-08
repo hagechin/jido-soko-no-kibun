@@ -14,17 +14,16 @@ cd ios && xcodegen generate
 ```sh
 cd ios
 xcrun simctl list devices available | grep -i iphone   # 使えるシミュレータ名を確認
+# OS は Xcode の SDK と同じものを指定する（Xcode 27 なら 27.0。StoreKit テストの都合、下記）
 xcodebuild test -project HakoniwaDS.xcodeproj -scheme HakoniwaDS \
-  -destination 'platform=iOS Simulator,name=iPhone 17e' \
+  -destination 'platform=iOS Simulator,name=iPhone 17e,OS=27.0' \
   -resultBundlePath build/Test.xcresult 2>&1 | tail -60
 ```
 
 - `-destination` の `name` は上の一覧にあるものに置き換える（iOS 26 系の端末を 1 つ、できれば iPad も 1 つ）。OS を指定するなら `name=iPhone 17e,OS=26.5` のように
-- `StoreManagerTests` だけ失敗して、ログに `[SKTestSession] Error ... SKInternalErrorDomain Code=3` が出る場合は次を試して、どれで通ったかを報告する:
-  1. 同じコマンドを Xcode の SDK と同じ OS のシミュレータ（例: iOS 27.0）で実行する
-  2. Xcode の GUI で HakoniwaDS スキームを選び ⌘U で実行する
-  3. `-only-testing:HakoniwaDSTests/StoreManagerTests` で単独実行する
-  - 2 回目の実行時はスキームの Test に StoreKit 構成を付けていない（SKTestSession が自前で構成を読む）。それでも Code=3 なら、`xcrun simctl erase <device>` でシミュレータを初期化してから再実行する
+- **StoreKit のテスト（`StoreManagerTests`）は、Xcode の SDK と同じ OS のシミュレータで実行する**（Xcode 27 なら iOS 27.0）。SDK より古い OS（iOS 26.x）では `SKTestSession` が `SKInternalErrorDomain Code=3` で商品を返さず、4 件とも失敗する（第 1・2 回のレポートで確認済み。環境の問題でアプリの不具合ではない）
+- UI テストは起動引数 `-resetSave` で起動する（アプリ側が Documents と localStorage のセーブを消して新規開始）。手動確認で使ったシミュレータのセーブに左右されない
+- `simctl erase` の直後は `xcrun simctl bootstatus <device> -b` で起動完了を待ってから実行する
 - 結果: 最後に `** TEST SUCCEEDED **` / `** TEST FAILED **`。失敗したテスト名とメッセージを報告する
 - テストの中身:
   - `SchemeHandlerTests`: 同梱ファイルの MIME と index.html の解決、Web フォルダが同梱されていること（無ければ sync-web.sh 未実行）

@@ -36,7 +36,10 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 export function showToast(text: string, ms = 2200, iconName?: IconName): void {
   const host = document.getElementById('toasts');
   if (!host) return;
+  // 同じ文のトーストが出ている間は重ねない（追いつき計算などで同じイベントが続けて起きる）
+  for (const c of Array.from(host.children)) if ((c as HTMLElement).dataset.text === text) return;
   const t = el('div', { class: 'toast' }, iconName ? icon(iconName, 16) : null, el('span', { text }));
+  t.dataset.text = text;
   host.append(t);
   while (host.children.length > 4) host.firstElementChild?.remove();
   setTimeout(() => t.remove(), ms);

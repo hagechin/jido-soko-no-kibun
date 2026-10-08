@@ -26,7 +26,7 @@ import { iconImg } from './ui/icons';
 import { $, el, showToast } from './ui/layout';
 import { renderUpgrades } from './ui/upgrades';
 import { renderInventory } from './ui/inventory';
-import { renderSettings } from './ui/settings';
+import { lastSavedText, renderSettings } from './ui/settings';
 import { renderBuild, type BuildUiState } from './ui/buildMode';
 import { renderPortPanel, renderStationPanel } from './ui/stationPanel';
 import { EventBanner, Modal, cyberReportNode } from './ui/eventBanner';
@@ -88,6 +88,8 @@ class Game {
   private debug = { enabled: false, showStats: false, simMs: 0, fps: 0, frames: 0, fpsAt: 0 };
   private statsEl: HTMLElement | null = null;
   private lastSavedAt: number | null = null;
+  /** 起動後にユーザーが視点を動かしたか（動かす前は画面サイズの変化に合わせて初期構図を取り直す） */
+  private cameraTouched = false;
   private quality: QualityLevel;
   private build: BuildUiState = { tool: 'stack', held: null };
   calm = new CalmMode();
@@ -171,6 +173,7 @@ class Game {
       if (this.calm.active) applyCalmCamera();
     };
     this.renderer.controls.onInteract = () => {
+      this.cameraTouched = true;
       if (this.calm.active && this.calm.settings.camera === 'auto') this.calm.exit();
     };
     this.hud = new Hud((s) => this.setSpeed(s));
@@ -289,7 +292,10 @@ class Game {
     );
     this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh(), buyAutomation: (id) => buyAutomation(this.world, id), hint: this.currentHint?.text ?? null }));
 
-    $('btn-camera-reset').addEventListener('click', () => this.renderer.controls.reset());
+    $('btn-camera-reset').addEventListener('click', () => {
+      this.cameraTouched = true;
+      this.renderer.controls.reset();
+    });
     window.addEventListener('keydown', (e) => this.onShortcut(e));
     $('btn-calm').addEventListener('click', () => this.calm.enter());
     this.renderer.controls.onTap = (x, y) => {
@@ -297,7 +303,13 @@ class Game {
       this.onTap(x, y);
     };
 
-    window.addEventListener('resize', () => this.renderer.resize());
+    // 画面サイズの変化（WebView は起動直後にレイアウトが確定する。回転も）: まだ視点を触っていなければ初期構図を合わせ直す
+    const onResize = () => {
+      this.renderer.resize();
+      if (!this.cameraTouched && !this.calm.active && !this.editor.open) this.renderer.refit();
+    };
+    window.addEventListener('resize', onResize);
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(onResize).observe(canvas);
     // オートセーブ: 30 秒ごと＋タブを閉じる／隠すとき（§11.2）
     setInterval(() => this.save(), SAVE.autosaveIntervalMs);
     window.addEventListener('pagehide', () => this.save());
@@ -580,7 +592,11 @@ class Game {
 
   save(): boolean {
     const ok = saveToStorage(this.world);
-    if (ok) this.lastSavedAt = Date.now();
+    if (ok) {
+      this.lastSavedAt = Date.now();
+      const label = document.getElementById('last-saved');
+      if (label) label.textContent = lastSavedText(this.lastSavedAt);
+    }
     return ok;
   }
 

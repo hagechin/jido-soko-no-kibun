@@ -46,6 +46,11 @@ final class StoreManager: ObservableObject {
         purchased = ids
     }
 
+    /// 返金・取り消しが届いた商品を外す（currentEntitlements に残っている場合の保険）
+    func revoke(_ productID: String) {
+        purchased.remove(productID)
+    }
+
     func purchase(productID: String) async throws -> String {
         guard let product = products.first(where: { $0.id == productID }) else {
             if products.isEmpty { await loadProducts() }
@@ -87,6 +92,7 @@ final class StoreManager: ObservableObject {
                 if case .verified(let t) = result {
                     await t.finish()
                     await self.refreshEntitlements()
+                    if t.revocationDate != nil { await self.revoke(t.productID) }
                 }
             }
         }

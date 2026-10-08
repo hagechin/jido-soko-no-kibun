@@ -59,7 +59,21 @@ final class StoreManagerTests: XCTestCase {
         XCTAssertTrue(store.purchased.contains("jp.hakoniwa.ds.limits"))
         let tx = try XCTUnwrap(session.allTransactions().first { $0.productIdentifier == "jp.hakoniwa.ds.limits" })
         try session.refundTransaction(identifier: UInt(tx.identifier))
-        await store.refreshEntitlements()
-        XCTAssertFalse(store.purchased.contains("jp.hakoniwa.ds.limits"))
+        // 返金は currentEntitlements にすぐ反映されないことがある（Transaction.updates で届く）。最大 10 秒待つ
+        let revoked = await waitUntil(timeout: 10) {
+            await store.refreshEntitlements()
+            return !store.purchased.contains("jp.hakoniwa.ds.limits")
+        }
+        XCTAssertTrue(revoked, "返金後も jp.hakoniwa.ds.limits の権利が残っている")
+    }
+
+    /// 条件が真になるまで 250ms ごとに試す
+    private func waitUntil(timeout: TimeInterval, _ cond: () async -> Bool) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if await cond() { return true }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+        return await cond()
     }
 }

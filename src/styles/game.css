@@ -432,6 +432,13 @@ button {
     max-height: 70%;
     border-radius: var(--radius) var(--radius) 0 0;
   }
+  /* 眺めモードのミニ HUD は中央に（後ろで定義している .mini-hud の left に勝つよう body を付ける） */
+  body .mini-hud {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 20px);
+    white-space: nowrap;
+  }
 }
 
 /* ---------- オーダーシート ---------- */
