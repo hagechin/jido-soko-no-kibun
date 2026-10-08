@@ -8,7 +8,7 @@ import type { Robot, Stack, WorldState } from './types';
 export type ShopResult = { ok: true } | { ok: false; reason: string };
 
 function pay(w: WorldState, cost: number): ShopResult {
-  if (w.coins < cost) return { ok: false, reason: tr('コインが足りません（{0} 必要）', cost) };
+  if (w.coins < cost) return { ok: false, reason: tr(tr('コインが足りません（{0} 必要）'), cost) };
   w.coins -= cost;
   return { ok: true };
 }
@@ -24,10 +24,10 @@ function occupiedCells(w: WorldState): Set<string> {
 
 /** 棚ロボを追加（空いているスタックの上に置く）。variant = 'double' でダブルデッカー（特別ロボ、棚ロボの上限に含む） */
 export function buyShelfRobot(w: WorldState, variant: 'standard' | 'double' = 'standard'): ShopResult {
-  if (w.robots.filter((r) => r.kind === 'shelf').length >= limitsFor(w).maxShelfRobots) return { ok: false, reason: tr('棚ロボはこれ以上増やせません（上限 {0} 台）', limitsFor(w).maxShelfRobots) };
+  if (w.robots.filter((r) => r.kind === 'shelf').length >= limitsFor(w).maxShelfRobots) return { ok: false, reason: tr(tr('棚ロボはこれ以上増やせません（上限 {0} 台）'), limitsFor(w).maxShelfRobots) };
   const occ = occupiedCells(w);
   const spot = w.stacks.find((s) => !occ.has(`${s.x},${s.z}`));
-  if (!spot) return { ok: false, reason: tr('置き場所（空いているスタック）がありません') };
+  if (!spot) return { ok: false, reason: tr(tr('置き場所（空いているスタック）がありません')) };
   const p = pay(w, price(w, variant === 'double' ? ROBOT.doubleDeckerCost : ROBOT.shelfRobotCost));
   if (!p.ok) return p;
   addRobot(w, 'shelf', spot.x, spot.z, variant);
@@ -41,7 +41,7 @@ export function buyDoubleDecker(w: WorldState): ShopResult {
 /** ドローン搬送ロボを追加（特別ロボ）: 空中レイヤーなので、他のドローンが居ないマスならどこにでも置ける（待機スポット優先）。上限 maxDrones */
 export function buyDrone(w: WorldState): ShopResult {
   const drones = w.robots.filter((r) => isDrone(r));
-  if (drones.length >= ROBOT.maxDrones) return { ok: false, reason: tr('ドローンはこれ以上増やせません（上限 {0} 台）', ROBOT.maxDrones) };
+  if (drones.length >= ROBOT.maxDrones) return { ok: false, reason: tr(tr('ドローンはこれ以上増やせません（上限 {0} 台）'), ROBOT.maxDrones) };
   const taken = new Set(drones.map((r) => `${r.pose.x},${r.pose.z}`));
   let spot = w.waitSpots.find((s) => !taken.has(`${s.x},${s.z}`)) ?? null;
   if (!spot) {
@@ -54,7 +54,7 @@ export function buyDrone(w: WorldState): ShopResult {
       }
     }
   }
-  if (!spot) return { ok: false, reason: tr('置き場所がありません') };
+  if (!spot) return { ok: false, reason: tr(tr('置き場所がありません')) };
   const p = pay(w, price(w, ROBOT.droneCost));
   if (!p.ok) return p;
   addRobot(w, 'amr', spot.x, spot.z, 'drone');
@@ -63,7 +63,7 @@ export function buyDrone(w: WorldState): ShopResult {
 
 /** 搬送ロボを追加（空いている待機スポット → 空いている床） */
 export function buyAmr(w: WorldState): ShopResult {
-  if (w.robots.filter((r) => r.kind === 'amr' && !isDrone(r)).length >= limitsFor(w).maxAmrs) return { ok: false, reason: tr('搬送ロボはこれ以上増やせません（上限 {0} 台）', limitsFor(w).maxAmrs) };
+  if (w.robots.filter((r) => r.kind === 'amr' && !isDrone(r)).length >= limitsFor(w).maxAmrs) return { ok: false, reason: tr(tr('搬送ロボはこれ以上増やせません（上限 {0} 台）'), limitsFor(w).maxAmrs) };
   const occ = occupiedCells(w);
   let spot = w.waitSpots.find((s) => !occ.has(`${s.x},${s.z}`)) ?? null;
   if (!spot) {
@@ -76,7 +76,7 @@ export function buyAmr(w: WorldState): ShopResult {
       }
     }
   }
-  if (!spot) return { ok: false, reason: tr('置き場所がありません') };
+  if (!spot) return { ok: false, reason: tr(tr('置き場所がありません')) };
   const p = pay(w, price(w, ROBOT.amrCost));
   if (!p.ok) return p;
   addRobot(w, 'amr', spot.x, spot.z);
@@ -90,9 +90,9 @@ export function speedUpgradeCost(r: Robot, w?: WorldState): number | null {
 
 export function upgradeSpeed(w: WorldState, robotId: number): ShopResult {
   const r = w.robots.find((r) => r.id === robotId);
-  if (!r) return { ok: false, reason: tr('ロボがいません') };
+  if (!r) return { ok: false, reason: tr(tr('ロボがいません')) };
   const cost = speedUpgradeCost(r, w);
-  if (cost === null) return { ok: false, reason: tr('速度は最大です') };
+  if (cost === null) return { ok: false, reason: tr(tr('速度は最大です')) };
   const p = pay(w, cost);
   if (!p.ok) return p;
   r.speedLevel++;
@@ -106,9 +106,9 @@ export function liftUpgradeCost(r: Robot, w?: WorldState): number | null {
 
 export function upgradeLift(w: WorldState, robotId: number): ShopResult {
   const r = w.robots.find((r) => r.id === robotId);
-  if (!r) return { ok: false, reason: tr('ロボがいません') };
+  if (!r) return { ok: false, reason: tr(tr('ロボがいません')) };
   const cost = liftUpgradeCost(r, w);
-  if (cost === null) return { ok: false, reason: tr('リフト速度は最大です') };
+  if (cost === null) return { ok: false, reason: tr(tr('リフト速度は最大です')) };
   const p = pay(w, cost);
   if (!p.ok) return p;
   r.liftLevel++;
@@ -159,7 +159,7 @@ export function upgradeAllRobotsCost(w: WorldState): number | null {
 /** 全ロボを一気に最大まで強化する（コインを払う版。積載は底面積が変わらない設定なので停車中でなくてもよい） */
 export function upgradeAllRobots(w: WorldState): ShopResult {
   const cost = upgradeAllRobotsCost(w);
-  if (cost === null) return { ok: false, reason: tr('全ロボとも最大です') };
+  if (cost === null) return { ok: false, reason: tr(tr('全ロボとも最大です')) };
   const p = pay(w, cost);
   if (!p.ok) return p;
   const maxCargo = limitsFor(w).maxCargoLevel;
@@ -192,8 +192,8 @@ export function maxLevelsForRank(w: WorldState): number {
 /** 棚の段数 +1（全スタック） */
 export function upgradeLevels(w: WorldState): ShopResult {
   const cost = levelUpgradeCost(w);
-  if (cost === null) return { ok: false, reason: tr('段数は最大です') };
-  if (w.levels >= maxLevelsForRank(w)) return { ok: false, reason: tr('段数 {0} はランクアップで解放', w.levels + 1) };
+  if (cost === null) return { ok: false, reason: tr(tr('段数は最大です')) };
+  if (w.levels >= maxLevelsForRank(w)) return { ok: false, reason: tr(tr('段数 {0} はランクアップで解放'), w.levels + 1) };
   const p = pay(w, cost);
   if (!p.ok) return p;
   w.levels++;
@@ -208,7 +208,7 @@ export function binCapacityUpgradeCost(w: WorldState): number | null {
 
 export function upgradeBinCapacity(w: WorldState): ShopResult {
   const cost = binCapacityUpgradeCost(w);
-  if (cost === null) return { ok: false, reason: tr('ビン容量は最大です') };
+  if (cost === null) return { ok: false, reason: tr(tr('ビン容量は最大です')) };
   const p = pay(w, cost);
   if (!p.ok) return p;
   w.binCapacity += BIN.capacityUpgradeStep;
@@ -223,20 +223,20 @@ export function cargoUpgradeCost(r: Robot, w?: WorldState): number | null {
 /** 積載量 Lv アップ（機体ごと）。ビンを積み重ねて運ぶ（占有マスは変わらない） */
 export function upgradeCargo(w: WorldState, robotId: number): ShopResult {
   const r = w.robots.find((r) => r.id === robotId);
-  if (!r) return { ok: false, reason: tr('ロボがいません') };
+  if (!r) return { ok: false, reason: tr(tr('ロボがいません')) };
   const cost = cargoUpgradeCost(r, w);
-  if (cost === null) return { ok: false, reason: tr('積載量は最大です') };
+  if (cost === null) return { ok: false, reason: tr(tr('積載量は最大です')) };
   const newShape = shapeFor(r.cargoLevel + 1);
   const oldShape = shapeFor(r.cargoLevel);
   if (newShape.w !== oldShape.w || newShape.l !== oldShape.l) {
     // 底面積が変わる設定のときだけ、今の位置で新しい占有マスが空いている必要がある
-    if (r.moveTo || r.actRemaining > 0) return { ok: false, reason: tr('停車中のときだけ改造できます') };
+    if (r.moveTo || r.actRemaining > 0) return { ok: false, reason: tr(tr('停車中のときだけ改造できます')) };
     const cells = footprint(r.pose, newShape, []);
     const occ = occupiedCells(w);
     occ.delete(`${r.pose.x},${r.pose.z}`);
     for (const c of cells) {
-      if (!isFloorWalkable(cellAt(w, c.x, c.z))) return { ok: false, reason: tr('周りに広い床が必要です（改造後の大きさぶん）') };
-      if (occ.has(`${c.x},${c.z}`)) return { ok: false, reason: tr('隣に他のロボがいます') };
+      if (!isFloorWalkable(cellAt(w, c.x, c.z))) return { ok: false, reason: tr(tr('周りに広い床が必要です（改造後の大きさぶん）')) };
+      if (occ.has(`${c.x},${c.z}`)) return { ok: false, reason: tr(tr('隣に他のロボがいます')) };
     }
   }
   const p = pay(w, cost);
@@ -258,9 +258,9 @@ export function reservedSlots(w: WorldState): number {
 
 /** 空ビンを買って、空きのあるスタックの頂上に置く（★）。掘り出し用の空きスロットは必ず残す（棚が満杯だと掘り出しが止まる） */
 export function buyEmptyBin(w: WorldState): ShopResult {
-  if (freeBinSlots(w) <= reservedSlots(w)) return { ok: false, reason: tr('掘り出し用に空きスロットを {0} 個残す必要があります。段数を増やすかスタックを置いてください', reservedSlots(w)) };
+  if (freeBinSlots(w) <= reservedSlots(w)) return { ok: false, reason: tr(tr('掘り出し用に空きスロットを {0} 個残す必要があります。段数を増やすかスタックを置いてください'), reservedSlots(w)) };
   const stack = stackForNewEmptyBin(w);
-  if (!stack) return { ok: false, reason: tr('今は空いているスタックがありません（運搬中のビンが戻るまで待つ）') };
+  if (!stack) return { ok: false, reason: tr(tr('今は空いているスタックがありません（運搬中のビンが戻るまで待つ）')) };
   const p = pay(w, price(w, BIN.emptyBinCost));
   if (!p.ok) return p;
   stack.bins.push(createBin(w, null, 0).id);
@@ -294,9 +294,9 @@ export function pickerUpgradeCost(s: { level: number }, w?: WorldState): number 
 
 export function upgradePicker(w: WorldState, stationId: number): ShopResult {
   const s = w.stations.find((s) => s.id === stationId);
-  if (!s || s.kind !== 'pick') return { ok: false, reason: tr('ピッキングステーションがありません') };
+  if (!s || s.kind !== 'pick') return { ok: false, reason: tr(tr('ピッキングステーションがありません')) };
   const cost = pickerUpgradeCost(s, w);
-  if (cost === null) return { ok: false, reason: tr('ピック速度は最大です') };
+  if (cost === null) return { ok: false, reason: tr(tr('ピック速度は最大です')) };
   const p = pay(w, cost);
   if (!p.ok) return p;
   s.level++;
@@ -310,29 +310,29 @@ import { tr } from '../i18n';
 export function buyAutomation(w: WorldState, id: string): ShopResult {
   const a = w.automation;
   if (id === 'dispatch') {
-    if (a.dispatch >= AUTOMATION.dispatchCosts.length) return { ok: false, reason: tr('自動配車AI は最大です') };
+    if (a.dispatch >= AUTOMATION.dispatchCosts.length) return { ok: false, reason: tr(tr('自動配車AI は最大です')) };
     const need = [AUTOMATION.unlockRank.dispatch1, AUTOMATION.unlockRank.dispatch2, AUTOMATION.unlockRank.dispatch3][a.dispatch];
-    if (w.rank < need) return { ok: false, reason: tr('ランク{0}で解放', need + 1) };
+    if (w.rank < need) return { ok: false, reason: tr(tr('ランク{0}で解放'), need + 1) };
     const p = pay(w, dispatchPrice(w, a.dispatch));
     if (!p.ok) return p;
     a.dispatch++;
     return { ok: true };
   }
   if (id === 'restock') {
-    if (a.restock) return { ok: false, reason: tr('購入済み') };
-    if (w.rank < AUTOMATION.unlockRank.restock) return { ok: false, reason: tr('ランク{0}で解放', AUTOMATION.unlockRank.restock + 1) };
+    if (a.restock) return { ok: false, reason: tr(tr('購入済み')) };
+    if (w.rank < AUTOMATION.unlockRank.restock) return { ok: false, reason: tr(tr('ランク{0}で解放'), AUTOMATION.unlockRank.restock + 1) };
     const p = pay(w, automationPrice(w, AUTOMATION.restockCost));
     if (!p.ok) return p;
     a.restock = true;
     return { ok: true };
   }
   if (id === 'relocate') {
-    if (a.relocate) return { ok: false, reason: tr('購入済み') };
-    if (w.rank < AUTOMATION.unlockRank.relocate) return { ok: false, reason: tr('ランク{0}で解放', AUTOMATION.unlockRank.relocate + 1) };
+    if (a.relocate) return { ok: false, reason: tr(tr('購入済み')) };
+    if (w.rank < AUTOMATION.unlockRank.relocate) return { ok: false, reason: tr(tr('ランク{0}で解放'), AUTOMATION.unlockRank.relocate + 1) };
     const p = pay(w, automationPrice(w, AUTOMATION.relocateCost));
     if (!p.ok) return p;
     a.relocate = true;
     return { ok: true };
   }
-  return { ok: false, reason: tr('不明なAI') };
+  return { ok: false, reason: tr(tr('不明なAI')) };
 }

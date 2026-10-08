@@ -68,19 +68,19 @@ export class Modal {
 export function cyberReportNode(record: CyberWeekRecord, history: CyberWeekRecord[]): Node {
   const rows = [...history].sort((a, b) => a.year - b.year);
   const table = el('table', { class: 'report-table' });
-  table.append(el('thead', {}, el('tr', {}, el('th', { text: tr(tr('年')) }), el('th', { text: tr(tr('出荷数')) }), el('th', { text: tr(tr('平均リードタイム')) }), el('th', { text: tr(tr('欠品')) }), el('th', { text: tr(tr('コイン')) }))));
+  table.append(el('thead', {}, el('tr', {}, el('th', { text: tr(tr(tr('年'))) }), el('th', { text: tr(tr(tr('出荷数'))) }), el('th', { text: tr(tr(tr('平均リードタイム'))) }), el('th', { text: tr(tr(tr('欠品'))) }), el('th', { text: tr(tr(tr('コイン'))) }))));
   const tb = el('tbody');
   for (const r of rows) {
     tb.append(
-      el('tr', { class: r.year === record.year ? 'is-now' : '' }, el('td', { text: tr(tr('{0}年目'), r.year) }), el('td', { text: String(r.shipped) }), el('td', { text: `${r.avgLeadSec}s` }), el('td', { text: String(r.stockouts) }), el('td', { text: r.coins.toLocaleString('ja-JP') })),
+      el('tr', { class: r.year === record.year ? 'is-now' : '' }, el('td', { text: tr(tr(tr('{0}年目')), r.year) }), el('td', { text: String(r.shipped) }), el('td', { text: `${r.avgLeadSec}s` }), el('td', { text: String(r.stockouts) }), el('td', { text: r.coins.toLocaleString('ja-JP') })),
     );
   }
   table.append(tb);
   const prev = rows.filter((r) => r.year < record.year).pop();
   const comment = !prev
-    ? tr(tr('初めてのサイバーウィークを乗り切りました。来年はもっと混みます。'))
+    ? tr(tr(tr('初めてのサイバーウィークを乗り切りました。来年はもっと混みます。')))
     : record.shipped > prev.shipped
-      ? tr(tr('去年より {0} 件多く出荷できました！'), record.shipped - prev.shipped)
-      : tr(tr('去年より出荷が減りました。段数・ロボ・自動化を見直しましょう。'));
-  return el('div', {}, el('p', {}, icon('flame', 16), el('span', { text: tr(tr(' サイバーウィーク終了。お疲れさまでした！')) })), table, el('p', { class: 'muted', text: comment }));
+      ? tr(tr(tr('去年より {0} 件多く出荷できました！')), record.shipped - prev.shipped)
+      : tr(tr(tr('去年より出荷が減りました。段数・ロボ・自動化を見直しましょう。')));
+  return el('div', {}, el('p', {}, icon('flame', 16), el('span', { text: tr(tr(tr(' サイバーウィーク終了。お疲れさまでした！'))) })), table, el('p', { class: 'muted', text: comment }));
 }

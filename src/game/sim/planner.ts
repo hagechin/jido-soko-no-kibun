@@ -236,7 +236,7 @@ export function resolveOverlaps(w: WorldState, rt: Runtime): void {
     rt.plans.delete(mover.id);
     rt.overlapTicks.delete(mover.id);
     rt.dirty = true;
-    w.events.push({ type: 'notice', icon: 'alert', text: tr(tr('{0} が他のロボと同じマスに重なっていたので ({1},{2}) へ移しました'), mover.name, spot.x, spot.z) });
+    w.events.push({ type: 'notice', icon: 'alert', text: tr(tr(tr('{0} が他のロボと同じマスに重なっていたので ({1},{2}) へ移しました')), mover.name, spot.x, spot.z) });
   }
 }
 

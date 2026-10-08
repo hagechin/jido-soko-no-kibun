@@ -755,32 +755,32 @@ function amrReturn(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { 
 export function describeRobot(w: WorldState, r: Robot): string {
   const job = r.job as RobotJob | null;
   const overPort = isDrone(r) && w.ports.some((p) => p.x === r.pose.x && p.z === r.pose.z);
-  if (!job) return r.phase === 'moving' ? tr('移動中') : overPort ? tr('ポートの上で待機中') : tr('待機中');
+  if (!job) return r.phase === 'moving' ? tr(tr('移動中')) : overPort ? tr(tr('ポートの上で待機中')) : tr(tr('待機中'));
   switch (job.type) {
     case 'retrieve': {
       const b = w.bins[job.binId];
-      const what = b?.item ? itemDef(b.item).name : tr('空ビン');
-      if (r.step === 11 || r.step === 12 || r.step === 13) return tr('掘り出し中（{0}）', what);
-      if (r.step >= 14 && r.step <= 16) return tr('2 段持ちで取り出し中（{0}）', what);
-      if (r.step >= 20) return tr('ポートへ運搬中（{0}）', what);
-      return tr('取り出しへ（{0}）', what);
+      const what = b?.item ? itemDef(b.item).name : tr(tr('空ビン'));
+      if (r.step === 11 || r.step === 12 || r.step === 13) return tr(tr('掘り出し中（{0}）'), what);
+      if (r.step >= 14 && r.step <= 16) return tr(tr('2 段持ちで取り出し中（{0}）'), what);
+      if (r.step >= 20) return tr(tr('ポートへ運搬中（{0}）'), what);
+      return tr(tr('取り出しへ（{0}）'), what);
     }
     case 'store':
-      return r.carrying.length ? tr('棚へ格納中') : tr('ポートで返却ビンを回収');
+      return r.carrying.length ? tr(tr('棚へ格納中')) : tr(tr('ポートで返却ビンを回収'));
     case 'relocate':
-      return tr('在庫を並べ替え中');
+      return tr(tr('在庫を並べ替え中'));
     case 'fetch':
-      return r.phase === 'loading' ? tr('積み込み中') : job.staged ? tr('ポートの順番待ち') : job.only === 'inbound' ? tr('ポートへ（入荷専任）') : tr('ポートへ');
+      return r.phase === 'loading' ? tr(tr('積み込み中')) : job.staged ? tr(tr('ポートの順番待ち')) : job.only === 'inbound' ? tr(tr('ポートへ（入荷専任）')) : tr(tr('ポートへ'));
     case 'deliver': {
       const left = unprocessedCargo(w, r).length;
-      if (job.staged) return tr('ステーションの順番待ち（{0} ビン）', left);
-      return r.phase === 'working' ? tr('作業待ち') : tr('ステーションへ配送中（残り {0} ビン）', left);
+      if (job.staged) return tr(tr('ステーションの順番待ち（{0} ビン）'), left);
+      return r.phase === 'working' ? tr(tr('作業待ち')) : tr(tr('ステーションへ配送中（残り {0} ビン）'), left);
     }
     case 'return':
-      return tr('ポートへ返却中');
+      return tr(tr('ポートへ返却中'));
     case 'park':
-      if (isDrone(r)) return overPort && job.x === r.pose.x && job.z === r.pose.z ? tr('ポートの上で待機中') : tr('ポートの上へ');
-      return tr('待機スポットへ');
+      if (isDrone(r)) return overPort && job.x === r.pose.x && job.z === r.pose.z ? tr(tr('ポートの上で待機中')) : tr(tr('ポートの上へ'));
+      return tr(tr('待機スポットへ'));
   }
 }
 

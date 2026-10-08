@@ -727,4 +727,5 @@ export const EN: Record<string, string> = {
   '全ロボの速度・リフト・積載を一気に最大まで（{0} 台ぶんの合計）': 'Max speed, lift and cargo for every robot at once (total for {0} robots)',
   'ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）': 'Robot upgrades (select a robot in the 3D view or the robot list)',
   '移動速度 +20%/Lv。ドローンは飛行で +1 段階（いまの実効 Lv{0}）': 'Movement speed +20%/Lv. Drones get +1 level for flight (effective Lv{0} now)',
+  '抑制': 'slow',
 };

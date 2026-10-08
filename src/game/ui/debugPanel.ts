@@ -59,65 +59,65 @@ function tickOf(w: WorldState, month: number, week: number): number {
 export function renderDebug(body: HTMLElement, ctx: DebugContext): void {
   const w = ctx.world;
   onAction = ctx.onAction;
-  body.append(el('p', { class: 'muted small', text: tr('デモ・デバッグ用。ここでの変更もセーブされます。') }));
+  body.append(el('p', { class: 'muted small', text: tr(tr('デモ・デバッグ用。ここでの変更もセーブされます。')) }));
 
-  body.append(el('h4', { text: tr('コイン') }));
+  body.append(el('h4', { text: tr(tr('コイン')) }));
   const coins = el('div', { class: 'settings-row' });
-  for (const n of [1000, 10000, 100000]) coins.append(btn(`+${n.toLocaleString('ja-JP')}`, () => { w.coins += n; showToast(tr('+{0} コイン', n)); ctx.refresh(); }));
-  coins.append(btn(tr('評判 100'), () => { w.reputation = 100; ctx.refresh(); }));
+  for (const n of [1000, 10000, 100000]) coins.append(btn(`+${n.toLocaleString('ja-JP')}`, () => { w.coins += n; showToast(tr(tr('+{0} コイン'), n)); ctx.refresh(); }));
+  coins.append(btn(tr(tr('評判 100')), () => { w.reputation = 100; ctx.refresh(); }));
   body.append(coins);
 
-  body.append(el('h4', { text: tr('プリセット倉庫を読み込む') }));
+  body.append(el('h4', { text: tr(tr('プリセット倉庫を読み込む')) }));
   for (const p of PRESETS) {
-    const row = el('div', { class: 'shop-row' }, el('div', { class: 'shop-label' }, el('div', { text: p.name }), el('div', { class: 'muted small', text: p.desc })), btn(tr('読み込む'), () => {
-      if (!confirm(tr('{0} を読み込みます。今の倉庫は消えます。よろしいですか？', p.name))) return;
+    const row = el('div', { class: 'shop-row' }, el('div', { class: 'shop-label' }, el('div', { text: p.name }), el('div', { class: 'muted small', text: p.desc })), btn(tr(tr('読み込む')), () => {
+      if (!confirm(tr(tr('{0} を読み込みます。今の倉庫は消えます。よろしいですか？'), p.name))) return;
       ctx.loadWorld(buildPreset(p.id, { seed: Date.now() >>> 0 }));
-      showToast(tr('{0} を読み込みました', p.name));
+      showToast(tr(tr('{0} を読み込みました'), p.name));
     }));
     body.append(row);
   }
 
-  body.append(el('h4', { text: tr('ランク・自動化') }));
+  body.append(el('h4', { text: tr(tr('ランク・自動化')) }));
   const rankRow = el('div', { class: 'settings-row' });
-  RANKS.forEach((r, i) => rankRow.append(btn(`${i + 1}: ${r.name}`, () => { w.rank = i; w.stats.totalShipped = Math.max(w.stats.totalShipped, rankShippedAt(w, i)); showToast(tr('ランク: {0}', r.name)); ctx.refresh(); }, w.rank === i ? 'is-active' : '')));
+  RANKS.forEach((r, i) => rankRow.append(btn(`${i + 1}: ${r.name}`, () => { w.rank = i; w.stats.totalShipped = Math.max(w.stats.totalShipped, rankShippedAt(w, i)); showToast(tr(tr('ランク: {0}'), r.name)); ctx.refresh(); }, w.rank === i ? 'is-active' : '')));
   body.append(rankRow);
-  body.append(el('div', { class: 'settings-row' }, btn(tr('全 AI を有効化'), () => { w.automation.dispatch = 3; w.automation.restock = true; w.automation.relocate = true; showToast(tr('自動化AI をすべて有効にしました')); ctx.refresh(); }), btn(tr('AI をすべて無効化'), () => { w.automation.dispatch = 0; w.automation.restock = false; w.automation.relocate = false; ctx.refresh(); })));
+  body.append(el('div', { class: 'settings-row' }, btn(tr(tr('全 AI を有効化')), () => { w.automation.dispatch = 3; w.automation.restock = true; w.automation.relocate = true; showToast(tr(tr('自動化AI をすべて有効にしました'))); ctx.refresh(); }), btn(tr(tr('AI をすべて無効化')), () => { w.automation.dispatch = 0; w.automation.restock = false; w.automation.relocate = false; ctx.refresh(); })));
 
-  body.append(el('h4', { text: tr('ロボ') }));
+  body.append(el('h4', { text: tr(tr('ロボ')) }));
   body.append(
     el('div', { class: 'settings-row' },
-      btn(tr('ロボ MAX（全ロボの速度・リフト・積載量を最大に）'), () => {
+      btn(tr(tr('ロボ MAX（全ロボの速度・リフト・積載量を最大に）')), () => {
         const r = maxOutRobots(w);
-        showToast(r.skipped ? tr('{0} 台を MAX にしました（{1} 台は周りに床が無くて積載量だけ見送り）', r.upgraded, r.skipped) : tr('{0} 台を MAX にしました', r.upgraded));
+        showToast(r.skipped ? tr(tr('{0} 台を MAX にしました（{1} 台は周りに床が無くて積載量だけ見送り）'), r.upgraded, r.skipped) : tr(tr('{0} 台を MAX にしました'), r.upgraded));
         ctx.refresh();
       }),
-      el('span', { class: 'muted small', text: tr('棚ロボ {0} 台 / 搬送ロボ {1} 台', w.robots.filter((r) => r.kind === 'shelf').length, w.robots.filter((r) => r.kind === 'amr').length) }),
+      el('span', { class: 'muted small', text: tr(tr('棚ロボ {0} 台 / 搬送ロボ {1} 台'), w.robots.filter((r) => r.kind === 'shelf').length, w.robots.filter((r) => r.kind === 'amr').length) }),
     ),
   );
 
-  body.append(el('h4', { text: tr('時間・イベント') }));
+  body.append(el('h4', { text: tr(tr('時間・イベント')) }));
   body.append(
     el('div', { class: 'settings-row' },
-      btn(tr('+1 週'), () => { jumpTo(w, w.tick + CALENDAR.ticksPerWeek); ctx.refresh(); }),
-      btn(tr('+1 か月'), () => { jumpTo(w, w.tick + CALENDAR.ticksPerMonth); ctx.refresh(); }),
-      btn(tr('サイバーウィーク予告（11月1週）へ'), () => { jumpTo(w, tickOf(w, 11, 1)); ctx.refresh(); }),
-      btn(tr('サイバーウィーク本番（11月4週）へ'), () => { jumpTo(w, tickOf(w, 11, 4)); ctx.refresh(); }),
+      btn(tr(tr('+1 週')), () => { jumpTo(w, w.tick + CALENDAR.ticksPerWeek); ctx.refresh(); }),
+      btn(tr(tr('+1 か月')), () => { jumpTo(w, w.tick + CALENDAR.ticksPerMonth); ctx.refresh(); }),
+      btn(tr(tr('サイバーウィーク予告（11月1週）へ')), () => { jumpTo(w, tickOf(w, 11, 1)); ctx.refresh(); }),
+      btn(tr(tr('サイバーウィーク本番（11月4週）へ')), () => { jumpTo(w, tickOf(w, 11, 4)); ctx.refresh(); }),
     ),
   );
   body.append(
     el('div', { class: 'settings-row' },
-      btn(tr('入荷トラックを呼ぶ'), () => { scheduleTruck(w, forecastRestock(w, true), 'weekly', 1); showToast(tr('トラックを手配しました')); }),
-      btn(tr('オーダーを 5 件追加'), () => { for (let i = 0; i < 5; i++) w.orders.push(generateOrder(w)); ctx.refresh(); }),
-      btn(tr('オーダーを全部消す'), () => { w.orders = []; ctx.refresh(); }),
+      btn(tr(tr('入荷トラックを呼ぶ')), () => { scheduleTruck(w, forecastRestock(w, true), 'weekly', 1); showToast(tr(tr('トラックを手配しました'))); }),
+      btn(tr(tr('オーダーを 5 件追加')), () => { for (let i = 0; i < 5; i++) w.orders.push(generateOrder(w)); ctx.refresh(); }),
+      btn(tr(tr('オーダーを全部消す')), () => { w.orders = []; ctx.refresh(); }),
     ),
   );
 
-  body.append(el('h4', { text: tr('停滞診断') }));
+  body.append(el('h4', { text: tr(tr('停滞診断')) }));
   const diag = el('pre', { class: 'muted small', style: 'white-space: pre-wrap; margin: 0;' });
   const runDiag = () => { diag.textContent = diagnoseIdle(w).join('\n'); };
-  body.append(el('div', { class: 'settings-row' }, btn(tr('いま誰も動かない理由を調べる'), runDiag)), diag);
+  body.append(el('div', { class: 'settings-row' }, btn(tr(tr('いま誰も動かない理由を調べる')), runDiag)), diag);
 
-  body.append(el('h4', { text: tr('計測') }));
+  body.append(el('h4', { text: tr(tr('計測')) }));
   const st = ctx.stats;
-  body.append(el('div', { class: 'settings-row' }, btn(ctx.showStats ? tr('計測表示: オン') : tr('計測表示: オフ'), () => { ctx.setShowStats(!ctx.showStats); ctx.refresh(); }, ctx.showStats ? 'is-active' : ''), el('span', { class: 'muted small', text: tr('描画 {0} fps / シミュレーション {1} ms/tick / ロボ {2} 台 / {3}×{4} / スタック {5} / ビン {6}', st.fps.toFixed(0), st.simMs.toFixed(2), st.robots, w.width, w.height, w.stacks.length, Object.keys(w.bins).length) })));
+  body.append(el('div', { class: 'settings-row' }, btn(ctx.showStats ? tr(tr('計測表示: オン')) : tr(tr('計測表示: オフ')), () => { ctx.setShowStats(!ctx.showStats); ctx.refresh(); }, ctx.showStats ? 'is-active' : ''), el('span', { class: 'muted small', text: tr(tr('描画 {0} fps / シミュレーション {1} ms/tick / ロボ {2} 台 / {3}×{4} / スタック {5} / ビン {6}'), st.fps.toFixed(0), st.simMs.toFixed(2), st.robots, w.width, w.height, w.stacks.length, Object.keys(w.bins).length) })));
 }

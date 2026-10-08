@@ -100,22 +100,22 @@ export function parkOutside(w: WorldState): void {
 /** 保存できる配置か。空配列なら OK */
 export function validateLayout(w: WorldState): string[] {
   const out: string[] = [];
-  if (!w.stacks.length) out.push(tr('スタックがありません'));
-  if (!w.ports.length) out.push(tr('ポートがありません'));
-  if (!w.stations.some((s) => s.kind === 'pick')) out.push(tr('ピッキングステーションがありません'));
-  if (!w.stations.some((s) => s.kind === 'inbound')) out.push(tr('入荷ステーションがありません'));
-  if (w.stacks.length && !railConnected(w)) out.push(tr('レール（スタックとポート）が 1 つにつながっていません'));
+  if (!w.stacks.length) out.push(tr(tr('スタックがありません')));
+  if (!w.ports.length) out.push(tr(tr('ポートがありません')));
+  if (!w.stations.some((s) => s.kind === 'pick')) out.push(tr(tr('ピッキングステーションがありません')));
+  if (!w.stations.some((s) => s.kind === 'inbound')) out.push(tr(tr('入荷ステーションがありません')));
+  if (w.stacks.length && !railConnected(w)) out.push(tr(tr('レール（スタックとポート）が 1 つにつながっていません')));
   for (const p of w.ports) {
-    if (!isAdjacentToStack(w, p.x, p.z)) out.push(tr('ポート({0},{1}) が棚に隣接していません', p.x, p.z));
-    else if (!isFacingFloor(w, p.x, p.z)) out.push(tr('ポート({0},{1}) が床に面していません', p.x, p.z));
+    if (!isAdjacentToStack(w, p.x, p.z)) out.push(tr(tr('ポート({0},{1}) が棚に隣接していません'), p.x, p.z));
+    else if (!isFacingFloor(w, p.x, p.z)) out.push(tr(tr('ポート({0},{1}) が床に面していません'), p.x, p.z));
   }
-  for (const s of w.stations) if (!isFacingFloor(w, s.x, s.z)) out.push(tr('{0}ステーション({1},{2}) が床に面していません', s.kind === 'pick' ? tr('ピッキング') : tr('入荷'), s.x, s.z));
-  if (!floorConnected(w)) out.push(tr('床の通路が分断されています（搬送ロボが行けない場所がある）'));
+  for (const s of w.stations) if (!isFacingFloor(w, s.x, s.z)) out.push(tr(tr('{0}ステーション({1},{2}) が床に面していません'), s.kind === 'pick' ? tr(tr('ピッキング')) : tr(tr('入荷')), s.x, s.z));
+  if (!floorConnected(w)) out.push(tr(tr('床の通路が分断されています（搬送ロボが行けない場所がある）')));
   const slots = w.stacks.length * w.levels;
   const bins = Object.keys(w.bins).length;
-  if (bins > slots) out.push(tr('ビン {0} 個に対して棚のスロットが {1} しかありません', bins, slots));
+  if (bins > slots) out.push(tr(tr('ビン {0} 個に対して棚のスロットが {1} しかありません'), bins, slots));
   const shelves = w.robots.filter((r) => r.kind === 'shelf').length;
-  if (shelves > w.stacks.length + w.ports.length) out.push(tr('棚ロボ {0} 台を置けるレールがありません', shelves));
+  if (shelves > w.stacks.length + w.ports.length) out.push(tr(tr('棚ロボ {0} 台を置けるレールがありません'), shelves));
   return out;
 }
 
@@ -146,14 +146,14 @@ function movable(kind: CellKind | null): kind is BuildKind {
 export function moveCells(w: WorldState, cells: Vec2[], dx: number, dz: number): EditResult {
   if (!dx && !dz) return { ok: true };
   const sel = cells.filter((c) => movable(cellAt(w, c.x, c.z)));
-  if (!sel.length) return { ok: false, reason: tr('動かせる設備が選ばれていません') };
+  if (!sel.length) return { ok: false, reason: tr(tr('動かせる設備が選ばれていません')) };
   const selKeys = new Set(sel.map((c) => `${c.x},${c.z}`));
   for (const c of sel) {
     const nx = c.x + dx;
     const nz = c.z + dz;
-    if (!inBounds(w, nx, nz)) return { ok: false, reason: tr('倉庫の外にはみ出します') };
+    if (!inBounds(w, nx, nz)) return { ok: false, reason: tr(tr('倉庫の外にはみ出します')) };
     const k = cellAt(w, nx, nz);
-    if (k !== 'floor' && !selKeys.has(`${nx},${nz}`)) return { ok: false, reason: tr('移動先に他の設備があります') };
+    if (k !== 'floor' && !selKeys.has(`${nx},${nz}`)) return { ok: false, reason: tr(tr('移動先に他の設備があります')) };
   }
   // いったん全部床にして、ずらした位置へ置き直す（設備オブジェクトは id・中身ごと座標だけ変える）
   const kinds = new Map<string, CellKind>();
@@ -181,10 +181,10 @@ export function moveCells(w: WorldState, cells: Vec2[], dx: number, dz: number):
 
 /** エディタでの配置: 範囲内の床なら置ける（配置の正しさは保存時に validate で見る）。新設はコインがかかる */
 export function paintCell(w: WorldState, kind: BuildKind, x: number, z: number): EditResult {
-  if (!inBounds(w, x, z)) return { ok: false, reason: tr('倉庫の外です') };
-  if (cellAt(w, x, z) !== 'floor') return { ok: false, reason: tr('そこには何かがあります') };
+  if (!inBounds(w, x, z)) return { ok: false, reason: tr(tr('倉庫の外です')) };
+  if (cellAt(w, x, z) !== 'floor') return { ok: false, reason: tr(tr('そこには何かがあります')) };
   const cost = buildCost(w, kind);
-  if (w.coins < cost) return { ok: false, reason: tr('コインが足りません（{0} 必要）', cost) };
+  if (w.coins < cost) return { ok: false, reason: tr(tr('コインが足りません（{0} 必要）'), cost) };
   w.coins -= cost;
   w.cells[z * w.width + x] = kind;
   switch (kind) {
@@ -212,14 +212,14 @@ export function paintCell(w: WorldState, kind: BuildKind, x: number, z: number):
 export function eraseCell(w: WorldState, x: number, z: number): EditResult {
   const k = cellAt(w, x, z);
   if (!k || k === 'floor') return { ok: true };
-  if (k === 'inboundDock' || k === 'outboundDock') return { ok: false, reason: tr('入荷口・出荷口は動かせません') };
+  if (k === 'inboundDock' || k === 'outboundDock') return { ok: false, reason: tr(tr('入荷口・出荷口は動かせません')) };
   if (k === 'stack') {
     const s = w.stacks.find((s) => s.x === x && s.z === z);
-    if (s?.bins.length) return { ok: false, reason: tr('ビンが入ったスタックは撤去できません（空にするか動かしてください）') };
+    if (s?.bins.length) return { ok: false, reason: tr(tr('ビンが入ったスタックは撤去できません（空にするか動かしてください）')) };
     w.stacks = w.stacks.filter((o) => o !== s);
   } else if (k === 'port') {
     const p = w.ports.find((p) => p.x === x && p.z === z);
-    if (p && (p.outbound.length || p.returns.length)) return { ok: false, reason: tr('ビンが置かれているポートは撤去できません') };
+    if (p && (p.outbound.length || p.returns.length)) return { ok: false, reason: tr(tr('ビンが置かれているポートは撤去できません')) };
     w.ports = w.ports.filter((o) => o !== p);
   } else if (k === 'pickStation' || k === 'inboundStation') {
     const st = w.stations.find((s) => s.x === x && s.z === z);
@@ -262,7 +262,7 @@ export function finishEdit(w: WorldState): EditResult {
     const ok = r.kind === 'shelf' ? place(r, shelfCells) : place(r, floorCells);
     if (!ok) {
       w.robots.forEach((r, i) => (r.pose = poses[i]));
-      return { ok: false, reason: r.kind === 'shelf' ? tr('棚ロボを置けるスタックが足りません') : tr('搬送ロボを置ける床が足りません') };
+      return { ok: false, reason: r.kind === 'shelf' ? tr(tr('棚ロボを置けるスタックが足りません')) : tr(tr('搬送ロボを置ける床が足りません')) };
     }
   }
   for (const r of w.robots) {

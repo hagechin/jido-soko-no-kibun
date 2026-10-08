@@ -63,8 +63,8 @@ export class Hud {
       this.last.economy = eco;
       const d = DIFFICULTY[w.difficulty] ?? DIFFICULTY.normal;
       const e = ECONOMY_MODES[eco] ?? ECONOMY_MODES.standard;
-      this.rank.textContent = tr('{0}・{1}{2}', RANKS[w.rank]?.name ?? '—', d.name, eco === 'standard' ? '' : tr('・{0}', e.name));
-      this.rank.title = tr('難易度: {0} — {1}{2}（設定で変更できます）', d.name, d.desc, eco === 'standard' ? '' : tr(' ／ 経済モード: {0} — {1}', e.name, e.desc));
+      this.rank.textContent = tr(tr('{0}・{1}{2}'), RANKS[w.rank]?.name ?? '—', d.name, eco === 'standard' ? '' : tr(tr('・{0}'), e.name));
+      this.rank.title = tr(tr('難易度: {0} — {1}{2}（設定で変更できます）'), d.name, d.desc, eco === 'standard' ? '' : tr(tr(' ／ 経済モード: {0} — {1}'), e.name, e.desc));
     }
     const rep = Math.round(w.reputation);
     if (this.last.rep !== rep) {
@@ -87,7 +87,7 @@ export class Hud {
     if (this.last.restockMode !== rm) {
       this.last.restockMode = rm;
       this.dock.classList.toggle('is-restock-mode', rm);
-      this.dock.title = rm ? tr('入荷口に滞留している個数。入荷モード: 在庫が薄いのでロボの多くを入荷作業に回しています') : tr('入荷口に滞留している個数');
+      this.dock.title = rm ? tr(tr('入荷口に滞留している個数。入荷モード: 在庫が薄いのでロボの多くを入荷作業に回しています')) : tr(tr('入荷口に滞留している個数'));
     }
     // スマホは幅が足りないので短い表記（長い表記は title で）
     const narrow = typeof matchMedia === 'function' && matchMedia('(max-width: 899px)').matches;
@@ -104,8 +104,8 @@ export class Hud {
       if (w.speed > 0) this.lastNonZeroSpeed = w.speed;
       const pause = this.speedBtns.find((b) => b.dataset.speed === '0');
       if (pause) {
-        pause.setAttribute('aria-label', w.speed === 0 ? tr('再開') : tr('一時停止'));
-        pause.title = w.speed === 0 ? tr('再開（Space）') : tr('一時停止（Space）');
+        pause.setAttribute('aria-label', w.speed === 0 ? tr(tr('再開')) : tr(tr('一時停止')));
+        pause.title = w.speed === 0 ? tr(tr('再開（Space）')) : tr(tr('一時停止（Space）'));
       }
       if (w.speed > 0) this.cycleBtn.textContent = `${w.speed}x`;
       else this.cycleBtn.replaceChildren(icon('play', 14), document.createTextNode(` ${this.lastNonZeroSpeed}x`));
