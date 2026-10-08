@@ -799,3 +799,10 @@ npm run preview   # http://localhost:4321 で確認
 - ★ 決定: バンドル ID `jp.hatte.hakoniwa.ds`（テストは `.tests` / `.uitests`）、課金の商品 ID は `jp.hatte.hakoniwa.ds.robots / limits / sandbox / supporter`。`project.yml`・`Products.storekit`・`StoreManager.swift`・`StoreManagerTests.swift`・`platform/entitlements.ts`・`SPEC-iOS.md`・`STORE.md` を置き換え。App Store Connect で商品を作るときはこの ID で
 - 10 回目のレポート: M23（エディタのツールバー、iPad のオーダー列の見出し）OK。`05-layout-editor.png` を両機種で撮り直し済み。iPad の `01-main.png` は修正前のもの（見出しがステータスバーに重なっている）なので撮り直しが要る
 - 注意: `project.yml` の `DEVELOPMENT_TEAM` はまだ "hatte"（名前）。10 文字の Team ID に差し替えが必要
+
+---
+
+## ★ リリース候補とブランチの分岐
+
+- `bb64f3d`（11 回目のテストまで通過）をリリース候補 v1.0.0-rc1 とし、`release/1.0` ブランチを切って push。タグ `v1.0.0-rc1` はこの環境から push できなかった（403）ので、Mac で `git tag v1.0.0-rc1 bb64f3d && git push origin v1.0.0-rc1`
+- フォトモードは `feature/photo-mode`、英語対応は `feature/i18n` で開発し、出来上がったら開発の本線（`claude/nifty-feynman-opfzeb`）へ取り込む。実機で見つかった不具合は `release/1.0` に直し、本線へも取り込む。README に運用を記載
