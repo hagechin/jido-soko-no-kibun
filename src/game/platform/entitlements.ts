@@ -48,7 +48,13 @@ export function ownedProducts(): ReadonlySet<string> {
 }
 
 export function setOwnedProducts(ids: Iterable<string>): void {
-  owned = new Set(ids);
+  const next = new Set(ids);
+  // 同じ内容なら知らせない（起動時にネイティブから同じ一覧が 2 度来る）
+  if (next.size === owned.size && [...next].every((id) => owned.has(id))) {
+    owned = next;
+    return;
+  }
+  owned = next;
   for (const h of changeHandlers) h();
 }
 

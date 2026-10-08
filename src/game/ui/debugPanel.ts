@@ -17,11 +17,18 @@ export interface DebugContext {
   stats: { simMs: number; fps: number; robots: number };
   showStats: boolean;
   setShowStats: (on: boolean) => void;
+  /** ボタンを押すたびに呼ばれる（サンドボックスとして使われた印を付ける） */
+  onAction?: () => void;
 }
+
+let onAction: (() => void) | undefined;
 
 function btn(label: string, onClick: () => void, cls = ''): HTMLButtonElement {
   const b = el('button', { class: `btn ${cls}`, type: 'button', text: label });
-  b.addEventListener('click', onClick);
+  b.addEventListener('click', () => {
+    onAction?.();
+    onClick();
+  });
   return b;
 }
 
@@ -49,6 +56,7 @@ function tickOf(w: WorldState, month: number, week: number): number {
 
 export function renderDebug(body: HTMLElement, ctx: DebugContext): void {
   const w = ctx.world;
+  onAction = ctx.onAction;
   body.append(el('p', { class: 'muted small', text: 'デモ・デバッグ用。ここでの変更もセーブされます。' }));
 
   body.append(el('h4', { text: 'コイン' }));

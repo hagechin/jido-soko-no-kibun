@@ -23,9 +23,10 @@ export class Hud {
   private date = $('hud-date').querySelector('b')!;
   private season = $('hud-season');
   private dock = $('hud-dock');
+  private sandbox = $('hud-sandbox');
   private dockN = this.dock.querySelector('b')!;
   private speedBtns = Array.from($('speed').querySelectorAll<HTMLButtonElement>('.speed-btn'));
-  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN, difficulty: '', restockMode: false };
+  private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN, difficulty: '', restockMode: false, sandbox: false };
 
   private cycleBtn = $('speed-cycle');
   private lastNonZeroSpeed = 1;
@@ -61,6 +62,11 @@ export class Hud {
       this.last.rep = rep;
       this.rep.textContent = String(rep);
       this.rep.style.color = reputationColor(rep);
+    }
+    const sb = !!w.flags.sandboxUsed;
+    if (this.last.sandbox !== sb) {
+      this.last.sandbox = sb;
+      this.sandbox.hidden = !sb;
     }
     const dock = dockBacklog(w);
     if (this.last.dock !== dock) {

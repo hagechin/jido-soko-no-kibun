@@ -27,6 +27,11 @@ export interface SettingsContext {
   /** バックグラウンド動作（他のタブを見ている間も進める） */
   background?: boolean;
   setBackground?: (on: boolean) => void;
+  /** 追加機能（iOS 版の買い切り）: ストアを開く／サンドボックス画面を開く（購入済みのときだけ渡される） */
+  openStore?: () => void;
+  openSandbox?: () => void;
+  /** 解放済み機能の一覧 */
+  featureStatus?: () => HTMLElement;
 }
 
 export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
@@ -67,6 +72,22 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     body.append(row);
     body.append(el('p', { class: 'muted small', text: DIFFICULTY[cur].desc }));
     body.append(el('p', { class: 'muted small', text: '変わるのは受注まわり（客の多さ・溜まったときの受注抑制・遅延の猶予とペナルティ・報酬倍率）だけ。倉庫やロボはそのまま' }));
+  }
+  if (ctx.openStore || ctx.openSandbox) {
+    body.append(el('h4', { text: '追加機能' }));
+    const row = el('div', { class: 'settings-row' });
+    if (ctx.openSandbox) {
+      const sb = el('button', { class: 'btn', type: 'button' }, iconText('box', 'サンドボックス画面'));
+      sb.addEventListener('click', () => ctx.openSandbox!());
+      row.append(sb);
+    }
+    if (ctx.openStore) {
+      const st = el('button', { class: 'btn', type: 'button' }, iconText('sparkles', 'ストア（特別ロボ・上限突破・サンドボックス）'));
+      st.addEventListener('click', () => ctx.openStore!());
+      row.append(st);
+    }
+    body.append(row);
+    if (ctx.featureStatus) body.append(ctx.featureStatus());
   }
   body.append(el('h4', { text: 'セーブ' }));
   const saveBtn = el('button', { class: 'btn', type: 'button' }, iconText('save', '今すぐセーブ'));

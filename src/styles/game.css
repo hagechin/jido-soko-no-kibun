@@ -210,6 +210,8 @@ button {
   left: 50%;
   bottom: 12px;
   transform: translateX(-50%);
+  z-index: 12; /* シート（5〜7）より手前、モーダル（20）より奥 */
+  pointer-events: none;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -753,7 +755,8 @@ button {
   border-radius: 6px;
   font-size: 12px;
 }
-#hud-dock[hidden] {
+#hud-dock[hidden],
+#hud-sandbox[hidden] {
   display: none;
 }
 
@@ -818,6 +821,38 @@ button {
   gap: 0;
   min-width: 56px;
   padding: 4px;
+}
+
+/* ---------- ストア・機能一覧 ---------- */
+.feature-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.feature-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.feature-list li.is-on {
+  color: var(--text);
+}
+.feature-list li.is-on .icon {
+  color: var(--ok);
+}
+.store-list {
+  display: grid;
+  gap: 6px;
+}
+.store-row .buy-btn {
+  min-width: 84px;
+}
+.hud-sandbox {
+  color: var(--accent-2);
 }
 
 /* ---------- モーダル・イベント演出 ---------- */

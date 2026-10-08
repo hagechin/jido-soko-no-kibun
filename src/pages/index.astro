@@ -27,6 +27,7 @@ import { iconMarkup } from '../game/ui/icon';
           <span class="hud-item" id="hud-coins" title="コイン"><Fragment set:html={iconMarkup('coins', 16)} /> <b>0</b></span>
           <span class="hud-item rank-name" id="hud-rank" title="倉庫ランク"><Fragment set:html={iconMarkup('factory', 16)} /> <b>—</b></span>
           <span class="hud-item" id="hud-rep" title="評判"><Fragment set:html={iconMarkup('star', 16)} /> <b>0</b></span>
+          <span class="hud-item hud-sandbox" id="hud-sandbox" title="サンドボックスを使ったセーブ" hidden><Fragment set:html={iconMarkup('box', 16)} /> <b>SB</b></span>
           <span class="hud-item" id="hud-dock" title="入荷口に滞留している個数" hidden><Fragment set:html={iconMarkup('inbox', 16)} /> <b>0</b></span>
         </div>
         <div class="hud-group">

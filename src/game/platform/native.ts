@@ -30,7 +30,8 @@ export const native = {
   get info() {
     return w?.__nativeInfo ?? null;
   },
-  call<T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+  /** @param timeoutMs 返事を待つ上限（購入など、ユーザーが OS の画面を操作する呼び出しは長く） */
+  call<T = unknown>(method: string, params: Record<string, unknown> = {}, timeoutMs = 15_000): Promise<T> {
     if (!this.available) return Promise.reject(new Error('native unavailable'));
     const id = seq++;
     return new Promise<T>((resolve, reject) => {
@@ -48,7 +49,7 @@ export const native = {
           pending.delete(id);
           p.reject(new Error(`native timeout: ${method}`));
         }
-      }, 15_000);
+      }, timeoutMs);
     });
   },
   on(event: NativeEvent, handler: (payload: unknown) => void): () => void {

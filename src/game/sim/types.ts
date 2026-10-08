@@ -275,6 +275,8 @@ export interface WorldState {
     buildMode: boolean;
     /** レイアウトエディタで倉庫を止めている（ロボは倉庫の外） */
     layoutEditor?: boolean;
+    /** サンドボックス（iOS の購入機能）でコインや時間をいじったセーブ（記録の区別用。HUD にバッジ） */
+    sandboxUsed?: boolean;
   };
 }
 

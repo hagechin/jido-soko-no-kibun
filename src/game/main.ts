@@ -45,7 +45,8 @@ import { beginEdit, finishEdit } from './sim/layoutEditor';
 import { helpNode } from './ui/help';
 import { BackgroundTicker, loadBackgroundSetting, saveBackgroundSetting } from './ui/background';
 import { native, nativeTry } from './platform/native';
-import { initEntitlements } from './platform/entitlements';
+import { hasFeature, initEntitlements, onEntitlementsChange } from './platform/entitlements';
+import { featureStatusNode, renderStore } from './ui/store';
 import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
@@ -233,27 +234,36 @@ class Game {
         else this.rt.dirty = true; // レイアウトが変わったかもしれないので再計画
       }
     };
-    // デバッグ画面（?debug）
+    // デバッグ画面（?debug）。同じ画面を iOS 版では「サンドボックス」（購入機能）として設定から開ける
     this.debug.enabled = /[?&]debug/.test(location.search);
     if (this.debug.enabled) (globalThis as unknown as { __game?: Game }).__game = this;
-    if (this.debug.enabled) {
-      this.bar.addButton('debug', 'bug', 'デバッグ');
-      this.bar.registerPanel('debug', (body) =>
-        renderDebug(body, {
-          world: this.world,
-          loadWorld: (w) => this.loadWorld(w),
-          refresh: () => this.bar.refresh(),
-          stats: { simMs: this.debug.simMs, fps: this.debug.fps, robots: this.world.robots.length },
-          showStats: this.debug.showStats,
-          setShowStats: (on) => {
-            this.debug.showStats = on;
-            if (this.statsEl) this.statsEl.hidden = !on;
-          },
-        }),
-      );
-      this.statsEl = el('div', { class: 'debug-stats', hidden: true });
-      $('view').append(this.statsEl);
-    }
+    this.bar.registerPanel('debug', (body) =>
+      renderDebug(body, {
+        world: this.world,
+        loadWorld: (w) => this.loadWorld(w),
+        refresh: () => this.bar.refresh(),
+        stats: { simMs: this.debug.simMs, fps: this.debug.fps, robots: this.world.robots.length },
+        showStats: this.debug.showStats,
+        setShowStats: (on) => {
+          this.debug.showStats = on;
+          if (this.statsEl) this.statsEl.hidden = !on;
+        },
+        // ?debug（開発）ではなくサンドボックスとして使ったら、セーブに印を付ける
+        onAction: () => {
+          if (!this.debug.enabled) this.world.flags.sandboxUsed = true;
+        },
+      }),
+    );
+    this.statsEl = el('div', { class: 'debug-stats', hidden: true });
+    $('view').append(this.statsEl);
+    if (this.debug.enabled) this.bar.addButton('debug', 'bug', 'デバッグ');
+    // ストア（iOS 版の買い切り）。購入状態が変わったら開いているパネルを描き直す
+    this.bar.registerPanel('store', (body) => renderStore(body, { refresh: () => this.bar.refresh() }));
+    onEntitlementsChange(() => {
+      this.bar.refresh();
+      // ストア画面での購入・復元は画面側が知らせる。ここで知らせるのは外から変わったとき（承認待ちの完了・返金など）
+      if (this.bar.open !== 'store') showToast('購入状態を反映しました', 2500, 'check');
+    });
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {
         openHelp: () => this.openHelp(),
@@ -269,6 +279,9 @@ class Game {
         },
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
+        openStore: () => this.bar.show('store'),
+        openSandbox: hasFeature('sandbox') ? () => this.bar.show('debug') : undefined,
+        featureStatus: () => featureStatusNode(),
         exportSave: () => exportSaveFile(this.world),
         importSave: (file) => this.importSave(file),
         extra: (body) => {
