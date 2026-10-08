@@ -465,6 +465,7 @@ button {
     overflow-y: hidden;
     padding: 6px;
     scroll-snap-type: x proximity;
+    scroll-padding-left: 6px; /* スナップで注文票が左端に寄っても padding ぶんは残す（ピルとの隙間 = 2px ＋ 6px） */
   }
   .bar-btn .lbl {
     display: none;
