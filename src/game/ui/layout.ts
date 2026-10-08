@@ -50,10 +50,15 @@ function placeToasts(host: HTMLElement): void {
     host.style.bottom = `${Math.max(12, above + 8)}px`;
     host.style.top = '';
   } else {
-    // シートがビューをほぼ覆っている（スマホ）: ビューの上端に
+    // シートがビューをほぼ覆っている（スマホ）: ビューの上のオーダー列に重ねる（シートの見出しやボタンには重ねない）
+    const orders = document.getElementById('orders');
+    const orR = orders?.getBoundingClientRect();
+    const overOrders = orR && orR.bottom <= vr.top + 1 && orR.height > 40;
     host.style.bottom = 'auto';
-    host.style.top = '8px';
+    host.style.top = overOrders ? `${Math.round(orR.top - vr.top + 6)}px` : '8px';
   }
+  // シートが開いている間は 2 つまで（ボタンを覆わない）
+  while (host.children.length > 2) host.firstElementChild?.remove();
 }
 
 export function showToast(text: string, ms = 2200, iconName?: IconName): void {

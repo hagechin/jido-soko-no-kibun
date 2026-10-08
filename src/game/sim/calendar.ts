@@ -40,3 +40,8 @@ export function updateCalendar(w: WorldState): { newWeek: boolean; newMonth: boo
 export function formatDate(c: Calendar): string {
   return `${c.year}年目 ${c.month}月 第${c.week}週`;
 }
+
+/** スマホの HUD 用の短い表記（幅が足りないとき）: 3年12月1週 */
+export function formatDateShort(c: Calendar): string {
+  return `${c.year}年${c.month}月${c.week}週`;
+}

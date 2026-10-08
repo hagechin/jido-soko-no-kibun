@@ -1,5 +1,5 @@
 import { DIFFICULTY, RANKS } from '../data/balance';
-import { formatDate, SEASON_ICON } from '../sim/calendar';
+import { formatDate, formatDateShort, SEASON_ICON } from '../sim/calendar';
 import { icon } from './icon';
 import { dockBacklog } from '../sim/inbound';
 import { restockMode } from '../sim/automation';
@@ -85,16 +85,24 @@ export class Hud {
       this.dock.classList.toggle('is-restock-mode', rm);
       this.dock.title = rm ? '入荷口に滞留している個数。入荷モード: 在庫が薄いのでロボの多くを入荷作業に回しています' : '入荷口に滞留している個数';
     }
-    const d = formatDate(w.calendar);
+    // スマホは幅が足りないので短い表記（長い表記は title で）
+    const narrow = typeof matchMedia === 'function' && matchMedia('(max-width: 899px)').matches;
+    const d = narrow ? formatDateShort(w.calendar) : formatDate(w.calendar);
     if (this.last.date !== d) {
       this.last.date = d;
       this.date.textContent = d;
+      this.date.parentElement!.title = formatDate(w.calendar);
       this.season.replaceChildren(icon(SEASON_ICON[w.calendar.month] ?? 'calendar', 16));
     }
     if (this.last.speed !== w.speed) {
       this.last.speed = w.speed;
       for (const b of this.speedBtns) b.classList.toggle('is-active', Number(b.dataset.speed) === w.speed);
       if (w.speed > 0) this.lastNonZeroSpeed = w.speed;
+      const pause = this.speedBtns.find((b) => b.dataset.speed === '0');
+      if (pause) {
+        pause.setAttribute('aria-label', w.speed === 0 ? '再開' : '一時停止');
+        pause.title = w.speed === 0 ? '再開（Space）' : '一時停止（Space）';
+      }
       if (w.speed > 0) this.cycleBtn.textContent = `${w.speed}x`;
       else this.cycleBtn.replaceChildren(icon('play', 14), document.createTextNode(` ${this.lastNonZeroSpeed}x`));
       this.cycleBtn.classList.toggle('is-active', w.speed > 0);
