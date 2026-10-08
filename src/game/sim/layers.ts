@@ -5,6 +5,7 @@
  * - air: ドローン搬送ロボ（範囲内の全マス。地上の渋滞とは無関係）
  * 衝突回避・予約表・重なり判定は kind ではなく layer で分ける。
  */
+import { ROBOT } from '../data/balance';
 import { footprint, shapeFor, type Shape } from './footprint';
 import type { Robot, Vec2 } from './types';
 
@@ -26,6 +27,11 @@ export function isDoubleDecker(r: Pick<Robot, 'variant'>): boolean {
 /** 棚ロボが同時に持てるビンの数（ダブルデッカーは 2） */
 export function shelfSlots(r: Pick<Robot, 'kind' | 'variant'>): number {
   return r.kind === 'shelf' && r.variant === 'double' ? 2 : 1;
+}
+
+/** 経路計画に使う速度 Lv。ドローンは飛ぶので 1 段階速い */
+export function speedLevelOf(r: Pick<Robot, 'variant' | 'speedLevel'>): number {
+  return r.variant === 'drone' ? Math.min(ROBOT.maxSpeedLevel, r.speedLevel + ROBOT.droneSpeedBonus) : r.speedLevel;
 }
 
 /** 占有マスの形（棚ロボは常に 1×1、搬送ロボは積載 Lv による） */

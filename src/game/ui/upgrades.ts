@@ -83,7 +83,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const special = hasFeature('specialRobots');
   const drones = w.robots.filter((r) => isDrone(r)).length;
   body.append(el('h4', { text: '特別ロボ' }));
-  body.append(row('ドローン搬送ロボ追加', ROBOT.droneCost, special && drones < ROBOT.maxDrones ? () => buyDrone(w) : null, ctx, `棚の上を飛び越えて運ぶ。地上の渋滞と横付けの枠を受けない。現在 ${drones} 台（上限 ${ROBOT.maxDrones}）${specialRobotsHint()}`, special ? undefined : 'ロック'));
+  body.append(row('ドローン搬送ロボ追加', ROBOT.droneCost, special && drones < ROBOT.maxDrones ? () => buyDrone(w) : null, ctx, `棚の上を飛び越えて運ぶ（速度 +1 段階）。地上の渋滞と横付けの枠を受けず、一番溜まっているポートへ真っ先に向かい、暇なときはポートの上で待機。現在 ${drones} 台（上限 ${ROBOT.maxDrones}）${specialRobotsHint()}`, special ? undefined : 'ロック'));
   body.append(row('ダブルデッカー棚ロボ追加', ROBOT.doubleDeckerCost, special && shelves < lim.maxShelfRobots ? () => buyDoubleDecker(w) : null, ctx, `ビンを 2 段持てる棚ロボ。1 個掘れば届くビンは退避の往復なしで取り出し、深い掘り出しも 2 個ずつ運ぶ。棚ロボの上限に含む${specialRobotsHint()}`, special ? undefined : 'ロック'));
 
   const r = w.robots.find((r) => r.id === ctx.selectedRobotId) ?? null;
