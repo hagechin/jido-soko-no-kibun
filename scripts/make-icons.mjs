@@ -65,4 +65,7 @@ writeFileSync('public/icons/apple-touch-icon.png', png(180 - (180 % 16) + 16 > 1
 let rects = '';
 ART.forEach((row, y) => [...row].forEach((ch, x) => { if (PAL[ch]) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="rgb(${PAL[ch].join(',')})"/>`; }));
 writeFileSync('public/favicon.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">${rects}</svg>\n`);
+// iOS のアプリアイコン（1024、不透明）
+mkdirSync('ios/App/Assets.xcassets/AppIcon.appiconset', { recursive: true });
+writeFileSync('ios/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png', png(1024));
 console.log('icons written');

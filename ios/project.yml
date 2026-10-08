@@ -1,0 +1,67 @@
+name: HakoniwaDS
+options:
+  bundleIdPrefix: jp.hakoniwa
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    DEVELOPMENT_TEAM: ""
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  HakoniwaDS:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - "Products.storekit"
+      - path: Web
+        type: folder
+        buildPhase: resources
+      - path: App/Products.storekit
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: jp.hakoniwa.ds
+        PRODUCT_NAME: HakoniwaDS
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_STRICT_CONCURRENCY: minimal
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: 箱庭！DS
+        CFBundleName: HakoniwaDS
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIRequiresFullScreen: false
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: true
+        ITSAppUsesNonExemptEncryption: false
+        UIApplicationSupportsIndirectInputEvents: true
+schemes:
+  HakoniwaDS:
+    build:
+      targets:
+        HakoniwaDS: all
+    run:
+      config: Debug
+      storeKitConfiguration: App/Products.storekit
+    archive:
+      config: Release

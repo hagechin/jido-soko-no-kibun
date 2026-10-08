@@ -43,6 +43,9 @@ import { LayoutEditor } from './ui/layoutEditor';
 import { beginEdit, finishEdit } from './sim/layoutEditor';
 import { helpNode } from './ui/help';
 import { BackgroundTicker, loadBackgroundSetting, saveBackgroundSetting } from './ui/background';
+import { native, nativeTry } from './platform/native';
+import { initEntitlements } from './platform/entitlements';
+import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
 import { Sound } from './audio/sound';
@@ -765,6 +768,7 @@ class Game {
           this.renderer.effects.ship(this.world, e.stationId, e.coins, e.bonus);
           this.sound.ship(e.bonus);
           if (!this.calm.active) showToast(`出荷！ +${e.coins} コイン${e.bonus > 1 ? `（×${e.bonus} ボーナス）` : ''}`, 2200, 'package-check');
+          nativeTry('haptic', { kind: 'light' });
           break;
         case 'pick':
           this.renderer.effects.pickFlash(this.world, e.stationId);
@@ -791,6 +795,7 @@ class Game {
         case 'rankUp': {
           const list = el('ul');
           for (const u of unlockSummary(this.world)) list.append(el('li', { text: u }));
+          nativeTry('haptic', { kind: 'success' });
           this.modal.show(`ランクアップ: ${rankName(this.world)}`, el('p', { text: '倉庫が昇格しました。アンロック:' }), list);
           if (this.bar.open) this.bar.refresh();
           break;
@@ -892,7 +897,15 @@ class Game {
   }
 }
 
-const game = new Game();
-game.start();
-// デバッグ用にグローバルへ（本番でも無害）
-(window as unknown as { game: Game }).game = game;
+// iOS アプリではネイティブの保存と購入状態を先に取り込んでから始める（Web 版は即開始）
+void (async () => {
+  await Promise.all([preloadNativeSave(), initEntitlements()]);
+  const game = new Game();
+  game.start();
+  // デバッグ用にグローバルへ（本番でも無害）
+  (window as unknown as { game: Game }).game = game;
+  if (native.available) {
+    native.on('background', () => game.save());
+    document.documentElement.classList.add('is-native');
+  }
+})();

@@ -1,6 +1,6 @@
 {
-  "name": "自動倉庫の気分",
-  "short_name": "自動倉庫",
+  "name": "箱庭！ディストリビューション",
+  "short_name": "箱庭！DS",
   "description": "物流倉庫を自動化して眺めるシミュレーションゲーム",
   "lang": "ja",
   "start_url": "./",

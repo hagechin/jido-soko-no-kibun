@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "自動倉庫の気分 — 物流倉庫オートメーション・シミュレーション（ブラウザゲーム）",
+  "description": "箱庭！ディストリビューション — 物流倉庫オートメーション・シミュレーション（ブラウザ / iOS）",
   "engines": {
     "node": ">=22.12.0"
   },

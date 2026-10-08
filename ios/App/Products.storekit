@@ -1,0 +1,60 @@
+{
+  "identifier" : "HAKONIWA-DS-LOCAL",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "600",
+      "familyShareable" : true,
+      "internalID" : "1001",
+      "localizations" : [
+        { "description" : "ドローン搬送ロボとダブルデッカー棚ロボ", "displayName" : "特別ロボパック", "locale" : "ja" }
+      ],
+      "productID" : "jp.hakoniwa.ds.robots",
+      "referenceName" : "Special Robots",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "480",
+      "familyShareable" : true,
+      "internalID" : "1002",
+      "localizations" : [
+        { "description" : "ロボ上限 80/120、積載 Lv4、段数 12、倉庫 64×48", "displayName" : "上限突破パック", "locale" : "ja" }
+      ],
+      "productID" : "jp.hakoniwa.ds.limits",
+      "referenceName" : "Limit Breaker",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "320",
+      "familyShareable" : true,
+      "internalID" : "1003",
+      "localizations" : [
+        { "description" : "コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断", "displayName" : "サンドボックスモード", "locale" : "ja" }
+      ],
+      "productID" : "jp.hakoniwa.ds.sandbox",
+      "referenceName" : "Sandbox",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "1200",
+      "familyShareable" : true,
+      "internalID" : "1004",
+      "localizations" : [
+        { "description" : "全部入り ＋ 金色ロボスキン ＋ 倉庫カラーテーマ", "displayName" : "サポーターパック", "locale" : "ja" }
+      ],
+      "productID" : "jp.hakoniwa.ds.supporter",
+      "referenceName" : "Supporter",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "0",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ja_JP",
+    "_storefront" : "JPN",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [],
+  "version" : { "major" : 3, "minor" : 0 }
+}

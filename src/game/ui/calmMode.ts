@@ -1,4 +1,5 @@
 import { icon, iconText } from './icon';
+import { native, nativeTry } from '../platform/native';
 /** 眺めモード（暖炉モード）§10.1: UI を隠し、自動カメラ、タップで復帰、Wake Lock、fps 制限 */
 import { RENDER, UI } from '../data/balance';
 import { formatDate } from '../sim/calendar';
@@ -128,6 +129,10 @@ export class CalmMode {
 
   private async requestWakeLock(): Promise<void> {
     if (!this.settings.wakeLock) return;
+    if (native.available) {
+      nativeTry('wakeLock', { on: true });
+      return;
+    }
     const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } };
     if (!nav.wakeLock) return;
     try {
@@ -138,6 +143,7 @@ export class CalmMode {
   }
 
   private releaseWakeLock(): void {
+    if (native.available) nativeTry('wakeLock', { on: false });
     this.wakeLock?.release().catch(() => {});
     this.wakeLock = null;
   }
@@ -155,7 +161,7 @@ export class CalmMode {
       });
       row.append(b);
     }
-    const supported = 'wakeLock' in navigator;
+    const supported = 'wakeLock' in navigator || native.available;
     const wl = el('button', { class: `btn${this.settings.wakeLock ? ' is-active' : ''}`, type: 'button' }, iconText('smartphone', supported ? '画面を点けっぱなし' : '画面点けっぱなし（非対応）'));
     if (!supported) wl.setAttribute('disabled', 'true');
     wl.addEventListener('click', () => {

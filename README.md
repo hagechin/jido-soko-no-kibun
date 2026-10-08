@@ -1,6 +1,6 @@
-# 自動倉庫の気分
+# 箱庭！ディストリビューション
 
-物流倉庫を自動化して「眺める」ブラウザゲーム。仕様は [SPEC.md](./SPEC.md)、進捗は [PROGRESS.md](./PROGRESS.md)。
+物流倉庫を自動化して「眺める」シミュレーションゲーム（旧称: 自動倉庫の気分）。Web 版の仕様は [SPEC.md](./SPEC.md)、iOS 版は [SPEC-iOS.md](./SPEC-iOS.md)、進捗は [PROGRESS.md](./PROGRESS.md)。iOS 版のビルド手順は [ios/README.md](./ios/README.md)。
 
 ## 開発
 

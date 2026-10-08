@@ -1,4 +1,4 @@
-/* 自動倉庫の気分 — Service Worker（§11.4）。ビルド時に PRECACHE と VERSION が差し込まれる。
+/* 箱庭！ディストリビューション — Service Worker（§11.4）。ビルド時に PRECACHE と VERSION が差し込まれる。
  * 全ファイルを事前キャッシュし、2 回目以降は機内モードでも起動できる。
  * 更新は勝手に適用しない（ページ側が SKIP_WAITING を送ったときだけ切り替える）。 */
 const VERSION = '__VERSION__';

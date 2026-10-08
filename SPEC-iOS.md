@@ -1,0 +1,91 @@
+# 箱庭！ディストリビューション iOS 版 仕様
+
+Web 版（[SPEC.md](./SPEC.md)）を WKWebView で包み、iOS 版だけの機能と買い切り課金を載せる。開発は Web 版と同じリポジトリの `ios/` で行う。
+
+## 0. 方針
+
+- **同梱配信**: `npm run build` の `dist/` をアプリに同梱し、独自スキーム `hakoniwa://app/` で配信する（`file://` は絶対パスと localStorage の扱いが不安定なため）。初回起動後もネットワークは使わない
+- **薄いネイティブ層**: 依存ライブラリ無し。SwiftUI + WKWebView + StoreKit 2 を数百行で。Xcode プロジェクトは XcodeGen（`ios/project.yml`）から生成し、`.xcodeproj` はコミットしない
+- **Web 版を止めない**: JS 側に「プラットフォーム層」（`src/game/platform/`）を 1 枚置き、ネイティブがあればブリッジ経由、無ければ従来どおり動く。機能解放は `hasFeature()` で判定する
+- **審査対策**: Web をそのまま包んだだけにしない（iOS 限定機能を持つ）。機能解放は必ず Apple の IAP（非消耗型）。トラッキング無し、外部通信無し
+
+## 1. iOS 限定機能と商品（IAP: 非消耗型・買い切り・ファミリー共有あり）
+
+| 商品 ID | 名前 | 内容 | 価格の目安 |
+|---|---|---|---|
+| `jp.hakoniwa.ds.robots` | 特別ロボパック | ドローン搬送ロボ、ダブルデッカー棚ロボ | ¥600 |
+| `jp.hakoniwa.ds.limits` | 上限突破パック | ロボ上限 40/60 → 80/120、積載 Lv4（8 ビン）、段数 8 → 12、倉庫 40×28 → 64×48 | ¥480 |
+| `jp.hakoniwa.ds.sandbox` | サンドボックスモード | デバッグ画面を正式機能として解放（コイン、プリセット倉庫、時間ジャンプ、ロボ MAX、停滞診断） | ¥320 |
+| `jp.hakoniwa.ds.supporter` | サポーターパック | 上の 3 つ全部 ＋ 金色ロボスキン ＋ 倉庫カラーテーマ | ¥1,200 |
+
+機能フラグ（JS 側 `hasFeature`）: `specialRobots` / `limits` / `sandbox` / `cosmetics`。サポーターパックは全部を含む。
+
+### 特別ロボ
+
+- **ドローン搬送ロボ**: 空中レイヤーを使う搬送ロボ。棚の上を飛び越えて移動し、地上の渋滞に巻き込まれない。ポート／ステーションへは上から横付けするので「横付けできる台数」の制限を受けない。台数上限 4。経路計画は第 3 の予約表（air）で、通行可能 = 範囲内の全マス
+- **ダブルデッカー棚ロボ**: ビンを 2 段持てる棚ロボ。目的ビンの上に 1 個だけ載っているなら、それを持ち上げたまま目的ビンも取り、退避先への往復をしない（上のビンは目的ビンをポートに置いた後、元のスタックへ戻す）
+- どちらもショップで購入する（コイン）。購入ボタンは `specialRobots` が無いとロック表示（ストアへ誘導）
+
+### 上限突破
+
+- `ROBOT.maxShelfRobots / maxAmrs`、`ROBOT.cargo`（Lv4 追加）、`LEVELS.max`、`GRID.maxWidth / maxHeight` を、`limits` があるとき拡張値に差し替える（`limitsFor(w)` で参照）
+
+### サンドボックス
+
+- `?debug` と同じ画面を設定パネルから開ける。セーブには `flags.sandboxUsed` を立て、HUD に「サンドボックス」バッジを出す（記録の区別用）
+
+### 見た目（サポーター）
+
+- 金色のロボスキン（render の色差し替え）と倉庫カラーテーマ（CSS 変数の差し替え）。設定で切替
+
+## 2. ブリッジ（JS ↔ Swift）
+
+JS → Swift: `window.webkit.messageHandlers.native.postMessage({ id, method, params })`
+Swift → JS: `window.__native.reply(id, { ok, result | error })` / `window.__native.emit(event, payload)`
+
+| method | params | result | 用途 |
+|---|---|---|---|
+| `ping` | – | `{ platform: 'ios', version, build }` | 起動確認 |
+| `save` | `{ key, data }` | `true` | セーブをアプリの Documents に保存（localStorage は鏡） |
+| `load` | `{ key }` | `string \| null` | 起動時に読み込み |
+| `delete` | `{ key }` | `true` | 新しく始める |
+| `wakeLock` | `{ on }` | `true` | 眺めモードの画面点けっぱなし（`isIdleTimerDisabled`） |
+| `haptic` | `{ kind: 'light' \| 'success' \| 'warning' }` | `true` | 出荷・昇格・警告の触覚 |
+| `products` | – | `[{ id, title, description, price, purchased }]` | ストア画面 |
+| `purchase` | `{ id }` | `{ state: 'purchased' \| 'pending' \| 'cancelled' }` | 購入 |
+| `restore` | – | `{ ids }` | 購入の復元 |
+| `entitlements` | – | `{ ids }` | 起動時と変化時（`emit('entitlements')`） |
+
+イベント: `entitlements`（購入状態が変わった）、`foreground` / `background`（アプリの前面／背面）
+
+## 3. セーブ
+
+- 本体: `Documents/saves/<key>.json`（アトミック書き込み）。localStorage は従来どおり書くが、起動時はネイティブの保存を優先して localStorage に流し込む
+- 書き出し／読み込み（ファイル）は Web 版と同じ JSON。iCloud 同期は後続（CloudKit か KVS、1 セーブ 160KB 程度）
+
+## 4. 画面・OS まわり
+
+- セーフエリア: `viewport-fit=cover` と CSS の `env(safe-area-inset-*)` を使う（WebView は画面いっぱい、`contentInsetAdjustmentBehavior = .never`）
+- 向き: 縦横両対応（Web 版と同じレイアウト）。ステータスバーは表示、ダークスタイル
+- 音: `AVAudioSession` を `.ambient`（他アプリの音楽を止めない）。ユーザー操作無しの再生を許可
+- バックグラウンド: iOS では OS が WebView を止めるので、Web 版の「お休み（追いつき／お留守番レポート）」の挙動になる。`background` イベントでセーブ
+- 外部リンク無し。ズーム・バウンス無効
+
+## 5. マイルストーン
+
+| # | 内容 | 完了条件 |
+|---|---|---|
+| I1 | 設計書、`ios/` の雛形（XcodeGen・Swift シェル・スキームハンドラ・ブリッジ・StoreKit 2・ローカル StoreKit 構成）、JS プラットフォーム層 | Mac で `xcodegen generate` → ビルド → シミュレータで Web 版が動く。`ping` が返る |
+| I2 | セーブのネイティブ保存、画面点けっぱなし、ハプティクス | 再起動してもセーブが残る。眺めモードで画面が消えない |
+| I3 | ストア画面（商品一覧・購入・復元）、機能フラグ、サンドボックス解放 | ローカル StoreKit 構成で購入 → デバッグ画面が設定から開ける |
+| I4 | 上限突破（定数の差し替え） | 購入後に 80 台／段数 12／64×48 まで広げられる |
+| I5 | 特別ロボ（ドローン・ダブルデッカー）: sim・描画・ショップ | 衝突ゼロのテストに空中レイヤーと 2 段持ちが加わる |
+| I6 | 見た目（スキン・テーマ）、iCloud 同期 | 設定で切替、別端末でセーブが見える |
+| I7 | 提出準備: アイコン、起動画面、プライバシーマニフェスト、スクリーンショット、審査メモ | App Store Connect にアップロードできる |
+
+## 6. 判断（★）
+
+- Capacitor ではなく自前シェル: 依存ゼロの方針と揃え、必要な機能（配信・ブリッジ・課金・触覚・画面点灯）は小さい
+- XcodeGen を使う: `.xcodeproj` を手書き・コミットしない。Mac 側に `brew install xcodegen` が 1 回必要
+- 独自スキーム配信: 絶対パス（`/_astro/...`）がそのまま動き、安定した origin で localStorage が使える
+- 商品は非消耗型 4 本のみ。消耗型・サブスクは置かない

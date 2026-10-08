@@ -4,3 +4,9 @@ dist/
 .lolipop/
 *.log
 .DS_Store
+
+# iOS（生成物）
+ios/Web/
+ios/*.xcodeproj
+ios/DerivedData/
+ios/build/

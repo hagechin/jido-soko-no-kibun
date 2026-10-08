@@ -2,13 +2,28 @@
 import { SAVE } from '../data/balance';
 import { deserialize, serialize, type LoadResult } from '../sim/save';
 import type { WorldState } from '../sim/types';
+import { native, nativeTry } from '../platform/native';
 
 export function saveToStorage(w: WorldState): boolean {
+  const text = serialize(w);
+  // iOS アプリ: 本体は Documents（localStorage は消されることがある）。失敗しても localStorage には残す
+  if (native.available) nativeTry('save', { key: SAVE.key, data: text });
   try {
-    localStorage.setItem(SAVE.key, serialize(w));
+    localStorage.setItem(SAVE.key, text);
     return true;
   } catch {
-    return false;
+    return native.available;
+  }
+}
+
+/** iOS アプリ: 起動前にネイティブの保存を localStorage へ流し込む（以後は同期の loadFromStorage で読める） */
+export async function preloadNativeSave(): Promise<void> {
+  if (!native.available) return;
+  try {
+    const text = await native.call<string | null>('load', { key: SAVE.key });
+    if (typeof text === 'string' && text) localStorage.setItem(SAVE.key, text);
+  } catch {
+    /* ネイティブに無ければ localStorage のまま */
   }
 }
 
@@ -23,6 +38,7 @@ export function loadFromStorage(): LoadResult | null {
 }
 
 export function clearStorage(): void {
+  if (native.available) nativeTry('delete', { key: SAVE.key });
   try {
     localStorage.removeItem(SAVE.key);
   } catch {

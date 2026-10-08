@@ -580,3 +580,18 @@ npm run preview   # http://localhost:4321 で確認
   - 追いつき計算中は「離席中の進行を反映しています… 残り N 秒ぶん」のオーバーレイを出し、終わるまで描画しない（ロボが一気に走って見える問題の解消）
 - スマホでは OS がタブごと止めるため、バックグラウンド動作は効かない（設定の説明に明記）
 - 確認: 隠れた状態を再現して、オンなら 2 秒で 21 tick 進む（戻ると Worker 停止・追いつき 0）、オフなら進まず戻った瞬間に追いつき、コンソールエラー 0。全 119 件通過
+
+---
+
+## タイトル変更と iOS 版 I1（設計書・雛形・ブリッジ）
+
+- タイトルを「箱庭！ディストリビューション」に変更（HTML タイトル・説明・PWA マニフェスト・ホーム画面名「箱庭！DS」・README・package.json）。セーブや設定の localStorage キー（`jido-soko-no-kibun:*`）は互換のため据え置き
+- iOS 版の設計書 `SPEC-iOS.md`: 同梱配信（独自スキーム `hakoniwa://app/`）、薄いネイティブ層（SwiftUI + WKWebView + StoreKit 2、依存無し）、JS のプラットフォーム層、商品 4 本（特別ロボ ¥600 / 上限突破 ¥480 / サンドボックス ¥320 / サポーター ¥1,200、全部非消耗型）、ブリッジ API、セーブの置き場所、マイルストーン I1〜I7
+- `ios/`（同じリポジトリ）:
+  - `project.yml`（XcodeGen）: iOS 16+、Web フォルダをフォルダ参照で同梱、Info.plist、スキームにローカル StoreKit 構成。`.xcodeproj` と `ios/Web` はコミットしない
+  - Swift: `HakoniwaDSApp`（AVAudioSession ambient、前面／背面イベント）、`ContentView`、`WebView`（WKWebView、`AppSchemeHandler` が Web/ を MIME 付きで配信、外部リンク遮断、DEBUG で Safari インスペクタ可）、`Bridge`（ping / save / load / delete / wakeLock / haptic / products / purchase / restore / entitlements）、`StoreManager`（StoreKit 2: 商品取得・購入・検証・currentEntitlements・Transaction.updates 監視・復元）、`SaveStore`（Documents/saves へアトミック保存）、`Products.storekit`、`PrivacyInfo.xcprivacy`（トラッキング無し）、アイコン 1024（`make-icons.mjs` が生成）
+  - `sync-web.sh`: `npm run build` → `dist` を `ios/Web` へ（Service Worker は除く）
+  - `README.md`: Mac での手順（XcodeGen → generate → Team 設定 → Run）
+- JS プラットフォーム層: `platform/native.ts`（Promise ベースの呼び出し、タイムアウト、イベント購読。ネイティブが無ければ即失敗）、`platform/entitlements.ts`（商品 → 機能フラグ `specialRobots / limits / sandbox / cosmetics`、サポーターは全部。開発用に localStorage `jido-soko-no-kibun:features` = `all` で Web 版でも解放を確認できる）
+- 組み込み: 起動時にネイティブのセーブと購入状態を取り込んでから開始（Web 版は即開始）。セーブは Documents にも保存、新規開始で削除。眺めモードの画面点灯は `isIdleTimerDisabled`、出荷で軽い触覚・昇格で成功の触覚、背面に回ったらセーブ
+- 確認: この環境では Xcode が無いのでビルドは未確認（Mac で `./ios/sync-web.sh && cd ios && xcodegen generate` → Run）。ブラウザでネイティブの振りをするブリッジを注入し、起動時に `load` と `entitlements` が呼ばれ、セーブで `save` が飛び、`is-native` クラスが付くことを確認。Web 版は従来どおり起動。全 119 件通過
