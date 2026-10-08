@@ -806,3 +806,10 @@ npm run preview   # http://localhost:4321 で確認
 
 - `bb64f3d`（11 回目のテストまで通過）をリリース候補 v1.0.0-rc1 とし、`release/1.0` ブランチを切って push。タグ `v1.0.0-rc1` はこの環境から push できなかった（403）ので、Mac で `git tag v1.0.0-rc1 bb64f3d && git push origin v1.0.0-rc1`
 - フォトモードは `feature/photo-mode`、英語対応は `feature/i18n` で開発し、出来上がったら開発の本線（`claude/nifty-feynman-opfzeb`）へ取り込む。実機で見つかった不具合は `release/1.0` に直し、本線へも取り込む。README に運用を記載
+
+---
+
+## 価格の変更（release/1.0）
+
+- ★ 決定: サンドボックスモード ¥320 → ¥500、上限突破パック ¥480 → ¥500（App Store の価格帯に 480 円が無い）。特別ロボ ¥600・サポーター ¥1,200 は据え置き。`Products.storekit`（ローカルの StoreKit 構成）、`STORE.md`、`SPEC-iOS.md` を更新
+- 実際のアプリの表示価格は StoreKit が App Store Connect の設定から取ってくる（`Product.displayPrice`、国・通貨に応じて変わる）。`.storekit` の値はシミュレータでのテストとスクリーンショット用
