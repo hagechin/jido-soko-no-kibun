@@ -2,6 +2,7 @@
 import { difficultyOf } from './orders';
 import { REPUTATION, REWARD, TICKS_PER_SECOND } from '../data/balance';
 import { activeEvents } from '../data/seasons';
+import { coinPerItemAt, economyOf } from './pricing';
 import type { Order, WorldState } from './types';
 
 export function orderItemCount(o: Order): number {
@@ -33,7 +34,7 @@ export interface RewardBreakdown {
 
 /** 商品 1 個あたりの単価（ランクで上がる） */
 export function coinPerItem(w: WorldState): number {
-  return REWARD.coinPerItemByRank[Math.min(w.rank, REWARD.coinPerItemByRank.length - 1)];
+  return coinPerItemAt(w);
 }
 
 export function rewardFor(w: WorldState, o: Order, eventMult = 1): RewardBreakdown {
@@ -42,7 +43,7 @@ export function rewardFor(w: WorldState, o: Order, eventMult = 1): RewardBreakdo
   const base = items * coinPerItem(w);
   const repMult = reputationMultiplier(w.reputation);
   const bonus = speedBonus(leadSeconds);
-  const total = Math.round(base * repMult * bonus * eventMult * difficultyOf(w).coinFactor);
+  const total = Math.round(base * repMult * bonus * eventMult * difficultyOf(w).coinFactor * economyOf(w).coinFactor);
   return { items, base, repMult, bonus, eventMult, total, leadSeconds };
 }
 

@@ -1,7 +1,7 @@
 import { limitsFor } from './limits';
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
-import { buyAmr, buyEmptyBin, buyShelfRobot, freeBinSlots, maxOutRobots, upgradeLevels, upgradeSpeed } from './shop';
+import { buyAmr, buyEmptyBin, buyShelfRobot, freeBinSlots, maxOutRobots, upgradeAllRobots, upgradeAllRobotsCost, upgradeLevels, upgradeSpeed } from './shop';
 import { buildPreset } from './presets';
 import { createRuntime, stepSim } from './sim';
 import { ROBOT } from '../data/balance';
@@ -15,6 +15,38 @@ describe('shop', () => {
     expect(w.coins).toBe(1000 - ROBOT.shelfRobotCost - ROBOT.amrCost);
     const cells = w.robots.map((r) => `${r.kind}:${r.pose.x},${r.pose.z}`);
     expect(new Set(cells).size).toBe(cells.length);
+  });
+  it('全ロボを最大強化: 合計コインは機体ごとに 1 段ずつ上げた額と同じ。払うと全機が最大になり、その後は null', () => {
+    const w = createWorld({ seed: 1 });
+    w.coins = 1e6;
+    buyShelfRobot(w);
+    buyAmr(w);
+    // 1 台だけ先に速度を 1 段上げておく（残りの合計が減る）
+    upgradeSpeed(w, w.robots[0].id);
+    const cost = upgradeAllRobotsCost(w)!;
+    expect(cost).toBeGreaterThan(0);
+    let expected = 0;
+    for (const r of w.robots) {
+      for (let lv = r.speedLevel; lv < ROBOT.maxSpeedLevel; lv++) expected += ROBOT.speedUpgradeCosts[Math.min(lv, ROBOT.speedUpgradeCosts.length - 1)];
+      if (r.kind === 'shelf') for (let lv = r.liftLevel; lv < ROBOT.maxLiftLevel; lv++) expected += ROBOT.liftUpgradeCosts[Math.min(lv, ROBOT.liftUpgradeCosts.length - 1)];
+      if (r.kind === 'amr') for (let lv = r.cargoLevel; lv < limitsFor(w).maxCargoLevel; lv++) expected += ROBOT.cargoUpgradeCosts[lv];
+    }
+    expect(cost).toBe(expected);
+    const before = w.coins;
+    expect(upgradeAllRobots(w)).toEqual({ ok: true });
+    expect(w.coins).toBe(before - cost);
+    for (const r of w.robots) {
+      expect(r.speedLevel).toBe(ROBOT.maxSpeedLevel);
+      if (r.kind === 'shelf') expect(r.liftLevel).toBe(ROBOT.maxLiftLevel);
+      if (r.kind === 'amr') expect(r.cargoLevel).toBe(limitsFor(w).maxCargoLevel);
+    }
+    expect(upgradeAllRobotsCost(w)).toBeNull();
+    expect(upgradeAllRobots(w).ok).toBe(false);
+    // コイン不足なら何も変わらない
+    const w2 = createWorld({ seed: 1 });
+    w2.coins = 1;
+    expect(upgradeAllRobots(w2).ok).toBe(false);
+    expect(w2.robots.every((r) => r.speedLevel === 0)).toBe(true);
   });
   it('refuses when coins are short', () => {
     const w = createWorld({ seed: 1 });

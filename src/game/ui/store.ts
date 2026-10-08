@@ -22,7 +22,7 @@ export interface StoreContext {
 
 /** 商品の並び（ネイティブの一覧が空でも案内に使う） */
 export const PRODUCT_ORDER: { id: string; name: string; desc: string }[] = [
-  { id: PRODUCTS.robots, name: '特別ロボパック', desc: '棚を飛び越えるドローン搬送ロボと、ビンを 2 段持てるダブルデッカー棚ロボ' },
+  { id: PRODUCTS.robots, name: '特別ロボパック', desc: 'ドローン搬送ロボ（棚を飛び越える。大きな倉庫で特に威力を発揮）と、ダブルデッカー棚ロボ（ビンを 2 段持つ。狭い棚でも棚ロボ 2 台ぶんの働きで序盤から活躍）' },
   { id: PRODUCTS.limits, name: '上限突破パック', desc: 'ロボ上限 80/120 台、積載 Lv4、棚 12 段、倉庫 64×48' },
   { id: PRODUCTS.sandbox, name: 'サンドボックスモード', desc: 'コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断を設定から使える' },
   { id: PRODUCTS.supporter, name: 'サポーターパック', desc: '上の 3 つ全部 ＋ 金色ロボスキン ＋ 倉庫カラーテーマ' },

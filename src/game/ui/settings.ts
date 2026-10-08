@@ -1,7 +1,7 @@
 import { iconText } from './icon';
 /** 設定パネル: セーブ・新規開始・画質（書き出し／読み込みは M10、眺めモードの fps は M10） */
 import { saveQuality, settingsFor, type QualityLevel } from '../render/quality';
-import { DIFFICULTY, DIFFICULTY_ORDER, type DifficultyId } from '../data/balance';
+import { DIFFICULTY, DIFFICULTY_ORDER, ECONOMY_MODES, ECONOMY_ORDER, type DifficultyId, type EconomyId } from '../data/balance';
 import { el, showToast } from './layout';
 import { THEMES, type Skin, type Theme } from './cosmetics';
 
@@ -23,6 +23,9 @@ export interface SettingsContext {
   /** 難易度（受注まわりだけに効く。途中で変更できる） */
   difficulty?: DifficultyId;
   setDifficulty?: (d: DifficultyId) => void;
+  /** 経済モード（コインの貯まりやすさと値段。途中で変更できる） */
+  economy?: EconomyId;
+  setEconomy?: (e: EconomyId) => void;
   /** 操作方法を開く */
   openHelp?: () => void;
   /** バックグラウンド動作（他のタブを見ている間も進める） */
@@ -77,6 +80,22 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     body.append(row);
     body.append(el('p', { class: 'muted small', text: DIFFICULTY[cur].desc }));
     body.append(el('p', { class: 'muted small', text: '変わるのは受注まわり（客の多さ・溜まったときの受注抑制・遅延の猶予とペナルティ・報酬倍率）だけ。倉庫やロボはそのまま' }));
+  }
+  if (ctx.setEconomy) {
+    body.append(el('h4', { text: '経済モード（いつでも変更できます）' }));
+    const cur = ctx.economy ?? 'standard';
+    const row = el('div', { class: 'settings-row' });
+    for (const id of ECONOMY_ORDER) {
+      const b = el('button', { class: `btn${cur === id ? ' is-active' : ''}`, type: 'button', text: ECONOMY_MODES[id].name });
+      b.addEventListener('click', () => {
+        ctx.setEconomy!(id);
+        showToast(`経済モード: ${ECONOMY_MODES[id].name}`);
+      });
+      row.append(b);
+    }
+    body.append(row);
+    body.append(el('p', { class: 'muted small', text: ECONOMY_MODES[cur].desc }));
+    body.append(el('p', { class: 'muted small', text: '難易度とは別の軸。切り替えた時点から報酬・値段・昇格に要る出荷数が変わる（持っているコインやロボはそのまま）。難易度と組み合わせられる（例: スーパーハード × ロングラン）' }));
   }
   if (ctx.openStore || ctx.openSandbox) {
     body.append(el('h4', { text: '追加機能' }));
