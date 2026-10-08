@@ -5,6 +5,7 @@ import { dockBacklog } from '../sim/inbound';
 import { restockMode } from '../sim/automation';
 import type { WorldState } from '../sim/types';
 import { $ } from './layout';
+import { tr } from '../i18n';
 
 /** 評判の色: 0〜30 は赤、60 で黄、100 で緑（間は補間） */
 export function reputationColor(rep: number): string {
@@ -59,8 +60,8 @@ export class Hud {
       this.last.rank = w.rank;
       this.last.difficulty = w.difficulty;
       const d = DIFFICULTY[w.difficulty] ?? DIFFICULTY.normal;
-      this.rank.textContent = `${RANKS[w.rank]?.name ?? '—'}・${d.name}`;
-      this.rank.title = `難易度: ${d.name} — ${d.desc}（設定で変更できます）`;
+      this.rank.textContent = tr('{0}・{1}', RANKS[w.rank]?.name ?? '—', d.name);
+      this.rank.title = tr('難易度: {0} — {1}（設定で変更できます）', d.name, d.desc);
     }
     const rep = Math.round(w.reputation);
     if (this.last.rep !== rep) {
@@ -83,7 +84,7 @@ export class Hud {
     if (this.last.restockMode !== rm) {
       this.last.restockMode = rm;
       this.dock.classList.toggle('is-restock-mode', rm);
-      this.dock.title = rm ? '入荷口に滞留している個数。入荷モード: 在庫が薄いのでロボの多くを入荷作業に回しています' : '入荷口に滞留している個数';
+      this.dock.title = rm ? tr('入荷口に滞留している個数。入荷モード: 在庫が薄いのでロボの多くを入荷作業に回しています') : tr('入荷口に滞留している個数');
     }
     // スマホは幅が足りないので短い表記（長い表記は title で）
     const narrow = typeof matchMedia === 'function' && matchMedia('(max-width: 899px)').matches;
@@ -100,8 +101,8 @@ export class Hud {
       if (w.speed > 0) this.lastNonZeroSpeed = w.speed;
       const pause = this.speedBtns.find((b) => b.dataset.speed === '0');
       if (pause) {
-        pause.setAttribute('aria-label', w.speed === 0 ? '再開' : '一時停止');
-        pause.title = w.speed === 0 ? '再開（Space）' : '一時停止（Space）';
+        pause.setAttribute('aria-label', w.speed === 0 ? tr('再開') : tr('一時停止'));
+        pause.title = w.speed === 0 ? tr('再開（Space）') : tr('一時停止（Space）');
       }
       if (w.speed > 0) this.cycleBtn.textContent = `${w.speed}x`;
       else this.cycleBtn.replaceChildren(icon('play', 14), document.createTextNode(` ${this.lastNonZeroSpeed}x`));

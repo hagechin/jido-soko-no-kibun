@@ -6,6 +6,7 @@ import { icon, iconText } from './icon';
 import { native } from '../platform/native';
 import { hasFeature, ownedProducts, PRODUCTS, setOwnedProducts, type Feature } from '../platform/entitlements';
 import { el, showToast } from './layout';
+import { tr } from '../i18n';
 
 export interface StoreProduct {
   id: string;
@@ -22,17 +23,17 @@ export interface StoreContext {
 
 /** 商品の並び（ネイティブの一覧が空でも案内に使う） */
 export const PRODUCT_ORDER: { id: string; name: string; desc: string }[] = [
-  { id: PRODUCTS.robots, name: '特別ロボパック', desc: '棚を飛び越えるドローン搬送ロボと、ビンを 2 段持てるダブルデッカー棚ロボ' },
-  { id: PRODUCTS.limits, name: '上限突破パック', desc: 'ロボ上限 80/120 台、積載 Lv4、棚 12 段、倉庫 64×48' },
-  { id: PRODUCTS.sandbox, name: 'サンドボックスモード', desc: 'コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断を設定から使える' },
-  { id: PRODUCTS.supporter, name: 'サポーターパック', desc: '上の 3 つ全部 ＋ 金色ロボスキン ＋ 倉庫カラーテーマ' },
+  { id: PRODUCTS.robots, name: tr('特別ロボパック'), desc: tr('棚を飛び越えるドローン搬送ロボと、ビンを 2 段持てるダブルデッカー棚ロボ') },
+  { id: PRODUCTS.limits, name: tr('上限突破パック'), desc: tr('ロボ上限 80/120 台、積載 Lv4、棚 12 段、倉庫 64×48') },
+  { id: PRODUCTS.sandbox, name: tr('サンドボックスモード'), desc: tr('コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断を設定から使える') },
+  { id: PRODUCTS.supporter, name: tr('サポーターパック'), desc: tr('上の 3 つ全部 ＋ 金色ロボスキン ＋ 倉庫カラーテーマ') },
 ];
 
 const FEATURE_LABEL: Record<Feature, string> = {
-  specialRobots: '特別ロボ（ドローン・ダブルデッカー）',
-  limits: '上限突破',
-  sandbox: 'サンドボックス',
-  cosmetics: '金色スキン・カラーテーマ',
+  specialRobots: tr('特別ロボ（ドローン・ダブルデッカー）'),
+  limits: tr('上限突破'),
+  sandbox: tr('サンドボックス'),
+  cosmetics: tr('金色スキン・カラーテーマ'),
 };
 
 /** 解放済み機能の一覧（設定パネルとストアで共用） */
@@ -65,43 +66,43 @@ export function loadProducts(force = false): Promise<StoreProduct[]> {
 
 export function renderStore(body: HTMLElement, ctx: StoreContext): void {
   if (!native.available) {
-    body.append(el('p', { class: 'muted small', text: 'ここに並ぶ追加機能は iOS 版（App Store）で購入できます。この Web 版では購入できません。' }));
+    body.append(el('p', { class: 'muted small', text: tr('ここに並ぶ追加機能は iOS 版（App Store）で購入できます。この Web 版では購入できません。') }));
     for (const p of PRODUCT_ORDER) body.append(el('div', { class: 'shop-row' }, el('div', { class: 'shop-label' }, el('div', { text: p.name }), el('div', { class: 'muted small', text: p.desc }))));
-    body.append(el('h4', { text: '解放済みの機能' }));
+    body.append(el('h4', { text: tr('解放済みの機能') }));
     body.append(featureStatusNode());
     return;
   }
 
-  body.append(el('p', { class: 'muted small', text: '買い切りです（広告なし・消耗品なし）。ファミリー共有に対応。再インストールしたときは「購入を復元」で戻ります。' }));
+  body.append(el('p', { class: 'muted small', text: tr('買い切りです（広告なし・消耗品なし）。ファミリー共有に対応。再インストールしたときは「購入を復元」で戻ります。') }));
   const list = el('div', { class: 'store-list' });
   body.append(list);
 
-  const restoreBtn = el('button', { class: 'btn', type: 'button' }, iconText('refresh-cw', '購入を復元'));
+  const restoreBtn = el('button', { class: 'btn', type: 'button' }, iconText('refresh-cw', tr('購入を復元')));
   restoreBtn.addEventListener('click', async () => {
     restoreBtn.setAttribute('disabled', 'true');
     try {
       const r = await native.call<{ ids: string[] }>('restore', {}, 120_000);
       const ids = r.ids ?? [];
       setOwnedProducts(ids);
-      showToast(ids.length ? `購入を復元しました（${ids.length} 件）` : '復元できる購入はありません');
+      showToast(ids.length ? tr('購入を復元しました（{0} 件）', ids.length) : tr('復元できる購入はありません'));
     } catch {
-      showToast('復元できませんでした。オンラインで試してください');
+      showToast(tr('復元できませんでした。オンラインで試してください'));
     }
     ctx.refresh();
   });
   body.append(el('div', { class: 'settings-row' }, restoreBtn));
-  body.append(el('h4', { text: '解放済みの機能' }));
+  body.append(el('h4', { text: tr('解放済みの機能') }));
   body.append(featureStatusNode());
 
   const draw = (products: StoreProduct[]) => {
     list.replaceChildren();
     if (!products.length) {
-      const retry = el('button', { class: 'btn', type: 'button' }, iconText('refresh-cw', '再読み込み'));
+      const retry = el('button', { class: 'btn', type: 'button' }, iconText('refresh-cw', tr('再読み込み')));
       retry.addEventListener('click', () => {
-        list.replaceChildren(el('p', { class: 'muted small', text: '読み込み中…' }));
+        list.replaceChildren(el('p', { class: 'muted small', text: tr('読み込み中…') }));
         void loadProducts(true).then(draw);
       });
-      list.append(el('p', { class: 'muted small', text: '商品を読み込めませんでした。オンラインのときに再読み込みしてください（ゲームはオフラインでも遊べます）。' }), el('div', { class: 'settings-row' }, retry));
+      list.append(el('p', { class: 'muted small', text: tr('商品を読み込めませんでした。オンラインのときに再読み込みしてください（ゲームはオフラインでも遊べます）。') }), el('div', { class: 'settings-row' }, retry));
       return;
     }
     const owned = ownedProducts();
@@ -111,11 +112,11 @@ export function renderStore(body: HTMLElement, ctx: StoreContext): void {
       const bought = p.purchased || owned.has(p.id);
       const btn = el('button', { class: 'btn buy-btn', type: 'button' });
       if (bought) {
-        btn.append(iconText('check', '購入済み', 14));
+        btn.append(iconText('check', tr('購入済み'), 14));
         btn.setAttribute('disabled', 'true');
       } else {
         btn.textContent = p.price;
-        btn.title = `${p.title} を購入`;
+        btn.title = tr('{0} を購入', p.title);
         btn.addEventListener('click', async () => {
           btn.setAttribute('disabled', 'true');
           btn.textContent = '…';
@@ -123,11 +124,11 @@ export function renderStore(body: HTMLElement, ctx: StoreContext): void {
             const r = await native.call<{ state: string }>('purchase', { id: p.id }, 10 * 60_000);
             if (r.state === 'purchased') {
               setOwnedProducts([...ownedProducts(), p.id]);
-              showToast(`${p.title} を購入しました`, 3000, 'party-popper');
-            } else if (r.state === 'pending') showToast('購入は承認待ちです（ファミリーの承認など）。完了すると自動で反映されます', 4000);
-            else showToast('購入をキャンセルしました');
+              showToast(tr('{0} を購入しました', p.title), 3000, 'party-popper');
+            } else if (r.state === 'pending') showToast(tr('購入は承認待ちです（ファミリーの承認など）。完了すると自動で反映されます'), 4000);
+            else showToast(tr('購入をキャンセルしました'));
           } catch (e) {
-            showToast(`購入できませんでした: ${e instanceof Error ? e.message : String(e)}`, 3500);
+            showToast(tr('購入できませんでした: {0}', e instanceof Error ? e.message : String(e)), 3500);
           }
           cache = null; // 購入済みフラグを取り直す
           ctx.refresh();
@@ -136,6 +137,6 @@ export function renderStore(body: HTMLElement, ctx: StoreContext): void {
       list.append(el('div', { class: 'shop-row store-row' }, el('div', { class: 'shop-label' }, el('div', { text: p.title || meta.name }), el('div', { class: 'muted small', text: p.description || meta.desc })), btn));
     }
   };
-  list.append(el('p', { class: 'muted small', text: '読み込み中…' }));
+  list.append(el('p', { class: 'muted small', text: tr('読み込み中…') }));
   void loadProducts().then(draw);
 }

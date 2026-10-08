@@ -3,6 +3,7 @@ import { icon } from './icon';
 import { bannerText, isCyberWeek } from '../sim/events';
 import type { CyberWeekRecord, WorldState } from '../sim/types';
 import { $, el } from './layout';
+import { tr } from '../i18n';
 
 export class EventBanner {
   private banner = $('banner');
@@ -67,19 +68,19 @@ export class Modal {
 export function cyberReportNode(record: CyberWeekRecord, history: CyberWeekRecord[]): Node {
   const rows = [...history].sort((a, b) => a.year - b.year);
   const table = el('table', { class: 'report-table' });
-  table.append(el('thead', {}, el('tr', {}, el('th', { text: '年' }), el('th', { text: '出荷数' }), el('th', { text: '平均リードタイム' }), el('th', { text: '欠品' }), el('th', { text: 'コイン' }))));
+  table.append(el('thead', {}, el('tr', {}, el('th', { text: tr('年') }), el('th', { text: tr('出荷数') }), el('th', { text: tr('平均リードタイム') }), el('th', { text: tr('欠品') }), el('th', { text: tr('コイン') }))));
   const tb = el('tbody');
   for (const r of rows) {
     tb.append(
-      el('tr', { class: r.year === record.year ? 'is-now' : '' }, el('td', { text: `${r.year}年目` }), el('td', { text: String(r.shipped) }), el('td', { text: `${r.avgLeadSec}s` }), el('td', { text: String(r.stockouts) }), el('td', { text: r.coins.toLocaleString('ja-JP') })),
+      el('tr', { class: r.year === record.year ? 'is-now' : '' }, el('td', { text: tr('{0}年目', r.year) }), el('td', { text: String(r.shipped) }), el('td', { text: `${r.avgLeadSec}s` }), el('td', { text: String(r.stockouts) }), el('td', { text: r.coins.toLocaleString('ja-JP') })),
     );
   }
   table.append(tb);
   const prev = rows.filter((r) => r.year < record.year).pop();
   const comment = !prev
-    ? '初めてのサイバーウィークを乗り切りました。来年はもっと混みます。'
+    ? tr('初めてのサイバーウィークを乗り切りました。来年はもっと混みます。')
     : record.shipped > prev.shipped
-      ? `去年より ${record.shipped - prev.shipped} 件多く出荷できました！`
-      : '去年より出荷が減りました。段数・ロボ・自動化を見直しましょう。';
-  return el('div', {}, el('p', {}, icon('flame', 16), el('span', { text: ' サイバーウィーク終了。お疲れさまでした！' })), table, el('p', { class: 'muted', text: comment }));
+      ? tr('去年より {0} 件多く出荷できました！', record.shipped - prev.shipped)
+      : tr('去年より出荷が減りました。段数・ロボ・自動化を見直しましょう。');
+  return el('div', {}, el('p', {}, icon('flame', 16), el('span', { text: tr(' サイバーウィーク終了。お疲れさまでした！') })), table, el('p', { class: 'muted', text: comment }));
 }

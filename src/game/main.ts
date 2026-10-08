@@ -54,6 +54,8 @@ import { deserialize } from './sim/save';
 import { formatDate } from './sim/calendar';
 import { installDemoSave, isDemoRequested } from './ui/demo';
 import { PhotoMode } from './ui/photoMode';
+import { localeSetting, saveLocaleSetting } from './i18n';
+import { translateStaticDom } from './i18n/dom';
 import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
@@ -64,6 +66,7 @@ import { isCyberWeek } from './sim/events';
 import { visibleOrders } from './sim/orders';
 import { exportSaveFile, importSaveFile } from './ui/storage';
 import type { QualityLevel } from './render/quality';
+import { tr } from './i18n';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 
@@ -131,9 +134,9 @@ class Game {
       const away = Date.now() - loaded.savedAt;
       if (away > OFFLINE.catchUpMaxMs) offlineReport = applyOffline(this.world, away);
       else this.catchUp = Math.min(OFFLINE.catchUpMaxMs, Math.max(0, away)) / TICK_MS;
-      setTimeout(() => showToast(loaded.migrated ? 'セーブデータを新しい形式に移行しました' : '続きから再開しました'), 300);
+      setTimeout(() => showToast(loaded.migrated ? tr('セーブデータを新しい形式に移行しました') : tr('続きから再開しました')), 300);
     } else {
-      if (loaded && !loaded.ok) setTimeout(() => showToast(`セーブデータを読めませんでした: ${loaded.reason}`), 300);
+      if (loaded && !loaded.ok) setTimeout(() => showToast(tr('セーブデータを読めませんでした: {0}', loaded.reason)), 300);
       this.world = createWorld({ seed: Date.now() >>> 0 });
     }
     this.rt = createRuntime();
@@ -255,7 +258,7 @@ class Game {
         },
         onExpand: (dir) => {
           const r = expand(this.world, dir);
-          showToast(r.ok ? `倉庫を ${this.world.width}×${this.world.height} マスに広げました` : r.reason);
+          showToast(r.ok ? tr('倉庫を {0}×{1} マスに広げました', this.world.width, this.world.height) : r.reason);
           this.bar.refresh();
         },
         refresh: () => this.bar.refresh(),
@@ -302,7 +305,7 @@ class Game {
     );
     this.statsEl = el('div', { class: 'debug-stats', hidden: true });
     $('view').append(this.statsEl);
-    if (this.debug.enabled) this.bar.addButton('debug', 'bug', 'デバッグ');
+    if (this.debug.enabled) this.bar.addButton('debug', 'bug', tr('デバッグ'));
     // ストア（iOS 版の買い切り）。購入状態が変わったら開いているパネルを描き直す
     this.bar.registerPanel('store', (body) => renderStore(body, { refresh: () => this.bar.refresh() }));
     onEntitlementsChange(() => {
@@ -310,7 +313,7 @@ class Game {
       this.applyCosmetics();
       this.bar.refresh();
       // ストア画面での購入・復元は画面側が知らせる。ここで知らせるのは外から変わったとき（承認待ちの完了・返金など）
-      if (this.bar.open !== 'store') showToast('購入状態を反映しました（返金・承認など）', 4000, 'check');
+      if (this.bar.open !== 'store') showToast(tr('購入状態を反映しました（返金・承認など）'), 4000, 'check');
     });
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {
@@ -328,6 +331,14 @@ class Game {
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
         openStore: () => this.bar.show('store'),
+        language: {
+          setting: localeSetting(),
+          set: (s) => {
+            saveLocaleSetting(s);
+            this.save();
+            location.reload();
+          },
+        },
         cosmetics: {
           unlocked: hasFeature('cosmetics'),
           skin: loadCosmetics().skin,
@@ -342,7 +353,7 @@ class Game {
             this.applyCosmetics();
             this.bar.refresh();
           },
-          hint: native.available ? 'はサポーターパック（設定 → 追加機能 → ストア）で解放' : 'は iOS 版のサポーターパックで解放',
+          hint: native.available ? tr('はサポーターパック（設定 → 追加機能 → ストア）で解放') : tr('は iOS 版のサポーターパックで解放'),
         },
         cloud: native.available
           ? {
@@ -361,18 +372,18 @@ class Game {
         exportSave: () => exportSaveFile(this.world),
         importSave: (file) => this.importSave(file),
         extra: (body) => {
-          body.append(el('h4', { text: 'サウンド' }));
-          const b = el('button', { class: `btn${this.sound.enabled ? ' is-active' : ''}`, type: 'button' }, this.sound.enabled ? iconText('volume-2', 'オン', 14) : iconText('volume-x', 'オフ', 14));
+          body.append(el('h4', { text: tr('サウンド') }));
+          const b = el('button', { class: `btn${this.sound.enabled ? ' is-active' : ''}`, type: 'button' }, this.sound.enabled ? iconText('volume-2', tr('オン'), 14) : iconText('volume-x', tr('オフ'), 14));
           b.addEventListener('click', () => {
             this.sound.setEnabled(!this.sound.enabled);
             this.bar.refresh();
           });
-          body.append(el('div', { class: 'settings-row' }, b, el('span', { class: 'muted small', text: 'ロボの駆動音・ピック音・出荷音・BGM（すべて合成音）' })));
+          body.append(el('div', { class: 'settings-row' }, b, el('span', { class: 'muted small', text: tr('ロボの駆動音・ピック音・出荷音・BGM（すべて合成音）') })));
           this.calm.renderSettings(body);
-          body.append(el('h4', { text: 'フォトモード' }));
-          const ph = el('button', { class: 'btn', type: 'button', title: 'P' }, iconText('camera', 'フォトモードを開く', 14), el('kbd', { class: 'key', text: 'P' }));
+          body.append(el('h4', { text: tr('フォトモード') }));
+          const ph = el('button', { class: 'btn', type: 'button', title: 'P' }, iconText('camera', tr('フォトモードを開く'), 14), el('kbd', { class: 'key', text: 'P' }));
           ph.addEventListener('click', () => this.photo.enter());
-          body.append(el('div', { class: 'settings-row' }, ph, el('span', { class: 'muted small', text: 'カメラを自由に置いて、焦点距離・絞り・シャッター・エフェクトを決めて撮る。撮った写真は起動画面にできる' })));
+          body.append(el('div', { class: 'settings-row' }, ph, el('span', { class: 'muted small', text: tr('カメラを自由に置いて、焦点距離・絞り・シャッター・エフェクトを決めて撮る。撮った写真は起動画面にできる') })));
         },
         saveNow: () => this.save(),
         newGame: () => this.newGame(),
@@ -436,19 +447,19 @@ class Game {
     this.renderer.resize();
     this.refreshSelectedInfo(true);
     if (offlineReport && offlineReport.elapsedMs > 0) {
-      this.modal.show('お留守番レポート', offlineReportNode(offlineReport));
+      this.modal.show(tr('お留守番レポート'), offlineReportNode(offlineReport));
       this.save();
     }
     if (this.world.season.pendingReport) {
       const rec = this.world.season.pendingReport;
-      this.modal.show('サイバーウィーク成績表', cyberReportNode(rec, this.world.stats.cyberWeekRecords));
+      this.modal.show(tr('サイバーウィーク成績表'), cyberReportNode(rec, this.world.stats.cyberWeekRecords));
       this.world.season.pendingReport = null;
     }
   }
 
   /** 操作方法のモーダル */
   openHelp(): void {
-    this.modal.show('操作方法', helpNode());
+    this.modal.show(tr('操作方法'), helpNode());
   }
 
   /**
@@ -529,12 +540,12 @@ class Game {
           showToast(r.reason, 4000, 'triangle-alert');
           return;
         }
-        this.closeEditor('新しいレイアウトで出荷を再開しました');
+        this.closeEditor(tr('新しいレイアウトで出荷を再開しました'));
       },
       onCancel: () => {
         const r = finishEdit(this.world);
         if (!r.ok) showToast(r.reason, 4000, 'triangle-alert');
-        this.closeEditor('編集を取り消しました');
+        this.closeEditor(tr('編集を取り消しました'));
       },
       onPreview: (on) => {
         this.renderer.controls.enabled = on;
@@ -581,7 +592,7 @@ class Game {
     this.lastStockoutHint = now;
     const dock = w.pallets.reduce((a, p) => a + p.qty, 0);
     if (dock <= 0) {
-      showToast('表示中のオーダーは全部欠品待ち。次の入荷トラック（週 1 回）を待っています', 6000, 'triangle-alert');
+      showToast(tr('表示中のオーダーは全部欠品待ち。次の入荷トラック（週 1 回）を待っています'), 6000, 'triangle-alert');
       return;
     }
     // 入荷口に山はあるのに詰められるビンが無い（空ビンも、同じ商品の空きのあるビンも無い）→ 補充AIも動けない
@@ -589,10 +600,10 @@ class Game {
     const canStuff = Object.values(w.bins).some((b) => b.item === null || (palletItems.has(b.item) && b.qty < w.binCapacity));
     if (!canStuff) {
       const slot = freeBinSlots(w) > reservedSlots(w);
-      showToast(slot ? '欠品の商品は入荷口にありますが、詰められる空きビンがありません。ショップで空ビンを買うと補充が動きます（ビン容量アップも有効）' : '欠品の商品は入荷口にありますが、空きビンも棚の空きもありません。スタックを増やすか段数を上げてから空ビンを買ってください', 8000, 'triangle-alert');
+      showToast(slot ? tr('欠品の商品は入荷口にありますが、詰められる空きビンがありません。ショップで空ビンを買うと補充が動きます（ビン容量アップも有効）') : tr('欠品の商品は入荷口にありますが、空きビンも棚の空きもありません。スタックを増やすか段数を上げてから空ビンを買ってください'), 8000, 'triangle-alert');
       return;
     }
-    showToast('表示中のオーダーは全部欠品待ち。入荷口の山をビンに詰めましょう（棚ロボで空ビンを取り出し → 搬送ロボを入荷ステーションへ。自動補充AIなら自動）', 6000, 'triangle-alert');
+    showToast(tr('表示中のオーダーは全部欠品待ち。入荷口の山をビンに詰めましょう（棚ロボで空ビンを取り出し → 搬送ロボを入荷ステーションへ。自動補充AIなら自動）'), 6000, 'triangle-alert');
   }
 
   /** バックグラウンド動作の 1 回ぶん: 前回からの実時間 × 速度の tick を進める（1 回の上限を超えたぶんは追いつき計算へ） */
@@ -631,7 +642,7 @@ class Game {
       this.catchUp += (hiddenMs / TICK_MS) * this.world.speed;
     } else {
       const r = applyOffline(this.world, hiddenMs);
-      if (r.elapsedMs > 0) this.modal.show('お留守番レポート', offlineReportNode(r));
+      if (r.elapsedMs > 0) this.modal.show(tr('お留守番レポート'), offlineReportNode(r));
       this.rt.dirty = true;
       this.save();
     }
@@ -640,11 +651,11 @@ class Game {
   private async importSave(file: File): Promise<void> {
     const res = await importSaveFile(file);
     if (!res.ok) {
-      showToast(`読み込めませんでした: ${res.reason}`);
+      showToast(tr('読み込めませんでした: {0}', res.reason));
       return;
     }
     this.loadWorld(res.world);
-    showToast('セーブデータを読み込みました');
+    showToast(tr('セーブデータを読み込みました'));
   }
 
   /** 別の倉庫（プリセット・読み込んだセーブ）に差し替える */
@@ -669,7 +680,7 @@ class Game {
       this.rt.dirty = true;
       return;
     }
-    showToast(`レイアウトの編集が途中でした: ${r.reason}`, 5000, 'triangle-alert');
+    showToast(tr('レイアウトの編集が途中でした: {0}', r.reason), 5000, 'triangle-alert');
     this.editor.show(this.world, {
       onSave: () => {
         const f = finishEdit(this.world);
@@ -677,12 +688,12 @@ class Game {
           showToast(f.reason, 4000, 'triangle-alert');
           return;
         }
-        this.closeEditor('新しいレイアウトで出荷を再開しました');
+        this.closeEditor(tr('新しいレイアウトで出荷を再開しました'));
       },
       onCancel: () => {
         const f = finishEdit(this.world);
         if (!f.ok) showToast(f.reason, 4000, 'triangle-alert');
-        this.closeEditor('編集を取り消しました');
+        this.closeEditor(tr('編集を取り消しました'));
       },
       onPreview: (on) => {
         this.renderer.controls.enabled = on;
@@ -718,16 +729,16 @@ class Game {
     if (!native.available || !cloudEnabled()) return;
     this.cloudAvailable = await cloudAvailable();
     if (!this.cloudAvailable) {
-      if (manual) showToast('iCloud にサインインしていないので同期できません');
+      if (manual) showToast(tr('iCloud にサインインしていないので同期できません'));
       return;
     }
     const c = await cloudLoad();
     if (!c) {
-      if (manual) showToast('iCloud にセーブはまだありません。次のセーブで送られます');
+      if (manual) showToast(tr('iCloud にセーブはまだありません。次のセーブで送られます'));
       return;
     }
     if (!shouldOfferCloud(this.lastSavedAt, c.savedAt)) {
-      if (manual) showToast('iCloud のセーブはこの端末より新しくありません');
+      if (manual) showToast(tr('iCloud のセーブはこの端末より新しくありません'));
       return;
     }
     this.offerCloudSave(c.text, c.savedAt);
@@ -739,23 +750,23 @@ class Game {
     if (!res.ok) return;
     const w = res.world;
     const when = new Date(savedAt).toLocaleString('ja-JP');
-    const summary = `${formatDate(w.calendar)}・${Math.floor(w.coins).toLocaleString('ja-JP')} コイン・ロボ ${w.robots.length} 台・出荷 ${w.stats.totalShipped} 件`;
-    const mine = `この端末: ${formatDate(this.world.calendar)}・${Math.floor(this.world.coins).toLocaleString('ja-JP')} コイン・ロボ ${this.world.robots.length} 台・出荷 ${this.world.stats.totalShipped} 件`;
-    const load = el('button', { class: 'btn primary', type: 'button', text: 'iCloud のセーブを読み込む' });
-    const keep = el('button', { class: 'btn', type: 'button', text: 'この端末のまま続ける' });
+    const summary = tr('{0}・{1} コイン・ロボ {2} 台・出荷 {3} 件', formatDate(w.calendar), Math.floor(w.coins).toLocaleString('ja-JP'), w.robots.length, w.stats.totalShipped);
+    const mine = tr('この端末: {0}・{1} コイン・ロボ {2} 台・出荷 {3} 件', formatDate(this.world.calendar), Math.floor(this.world.coins).toLocaleString('ja-JP'), this.world.robots.length, this.world.stats.totalShipped);
+    const load = el('button', { class: 'btn primary', type: 'button', text: tr('iCloud のセーブを読み込む') });
+    const keep = el('button', { class: 'btn', type: 'button', text: tr('この端末のまま続ける') });
     load.addEventListener('click', () => {
       this.modal.hide();
       this.loadWorld(w);
       this.lastSavedAt = Date.now();
-      showToast('iCloud のセーブを読み込みました');
+      showToast(tr('iCloud のセーブを読み込みました'));
     });
     keep.addEventListener('click', () => this.modal.hide());
     this.modal.show(
-      'iCloud に新しいセーブがあります',
-      el('p', { text: `別の端末で ${when} に保存されたセーブがあります。` }),
+      tr('iCloud に新しいセーブがあります'),
+      el('p', { text: tr('別の端末で {0} に保存されたセーブがあります。', when) }),
       el('p', { class: 'small', text: `iCloud: ${summary}` }),
       el('p', { class: 'muted small', text: mine }),
-      el('p', { class: 'muted small', text: '読み込むと、この端末の進行はそのセーブで置き換わります（次の保存で iCloud にも送られます）。' }),
+      el('p', { class: 'muted small', text: tr('読み込むと、この端末の進行はそのセーブで置き換わります（次の保存で iCloud にも送られます）。') }),
       el('div', { class: 'settings-row' }, load, keep),
     );
   }
@@ -767,7 +778,7 @@ class Game {
     this.select(null);
     this.bar.close();
     this.save();
-    showToast('新しい倉庫を始めました');
+    showToast(tr('新しい倉庫を始めました'));
   }
 
   setSpeed(s: number): void {
@@ -792,14 +803,14 @@ class Game {
     const sig = r ? `${r.id}:${r.job?.type}:${r.step}:${r.phase}:${r.carrying.join(',')}:${r.queue.length}:${this.focusItem}` : `none:${this.focusItem}`;
     if (!force && sig === this.infoSig) return;
     this.infoSig = sig;
-    const hint = this.focusItem && r?.kind === 'shelf' ? `${itemDef(this.focusItem).name} の棚（光っている）をタップ` : null;
+    const hint = this.focusItem && r?.kind === 'shelf' ? tr('{0} の棚（光っている）をタップ', itemDef(this.focusItem).name) : null;
     this.bar.setSelectedInfo(selectedInfoNode(this.world, r, hint, () => this.cancelSelected()));
   }
 
   private cancelSelected(): void {
     if (this.selectedRobotId === null) return;
     commandCancel(this.world, this.rt, this.selectedRobotId);
-    showToast('指示を取り消しました');
+    showToast(tr('指示を取り消しました'));
     this.refreshSelectedInfo(true);
   }
 
@@ -818,7 +829,7 @@ class Game {
       this.refreshSelectedInfo(true);
     }, 8000);
     if (!cells.length) {
-      showToast(`${itemDef(itemId).name} は欠品中`);
+      showToast(tr('{0} は欠品中', itemDef(itemId).name));
       return;
     }
     this.focusItem = itemId;
@@ -852,14 +863,14 @@ class Game {
     if (r.kind === 'shelf' && hit.kind === 'stack') return this.onStackTap(r, hit, x, y);
     if (r.kind === 'amr' && hit.kind === 'port') {
       const res = commandFetch(this.world, this.rt, r.id, hit.id);
-      showToast(res.ok ? `${r.name}: ポートのビンを取りに行きます` : res.reason);
+      showToast(res.ok ? tr('{0}: ポートのビンを取りに行きます', r.name) : res.reason);
       this.refreshSelectedInfo(true);
       return;
     }
     if (r.kind === 'amr' && hit.kind === 'station') {
       const res = commandGoStation(this.world, this.rt, r.id, hit.id);
       const st = this.world.stations.find((s) => s.id === hit.id);
-      showToast(res.ok ? `${r.name}: ${st?.kind === 'pick' ? 'ピッキング' : '入荷'}ステーションへ` : res.reason);
+      showToast(res.ok ? tr('{0}: {1}ステーションへ', r.name, st?.kind === 'pick' ? tr('ピッキング') : tr('入荷')) : res.reason);
       this.refreshSelectedInfo(true);
       return;
     }
@@ -876,12 +887,12 @@ class Game {
     let res: { ok: true } | { ok: false; reason: string };
     if (tool === 'erase') {
       res = remove(w, x, z);
-      if (res.ok) showToast('撤去しました');
+      if (res.ok) showToast(tr('撤去しました'));
     } else if (tool === 'move') {
       if (!this.build.held) {
         const kind = w.cells[z * w.width + x];
         if (kind === 'floor' || kind === 'inboundDock' || kind === 'outboundDock') {
-          showToast('動かせる設備をタップしてください');
+          showToast(tr('動かせる設備をタップしてください'));
           return;
         }
         this.build.held = { x, z };
@@ -893,11 +904,11 @@ class Game {
       if (res.ok) {
         this.build.held = null;
         this.renderer.highlightCells = [];
-        showToast('移動しました');
+        showToast(tr('移動しました'));
       }
     } else {
       res = place(w, tool, x, z);
-      if (res.ok) showToast(`${tool === 'stack' ? 'スタック' : tool === 'port' ? 'ポート' : tool === 'waitSpot' ? '待機スポット' : 'ステーション'} を置きました`);
+      if (res.ok) showToast(tr('{0} を置きました', tool === 'stack' ? tr('スタック') : tool === 'port' ? tr('ポート') : tool === 'waitSpot' ? tr('待機スポット') : tr('ステーション')));
     }
     if (!res.ok) showToast(res.reason);
     this.bar.refresh();
@@ -908,7 +919,7 @@ class Game {
     if (hit.kind === 'stack') {
       const s = w.stacks.find((s) => s.id === hit.id)!;
       const names = s.bins.map((id) => binLabel(w, id));
-      showToast(names.length ? `スタック: ${names.join(' / ')}` : '空のスタック');
+      showToast(names.length ? tr('スタック: {0}', names.join(' / ')) : tr('空のスタック'));
     } else if (hit.kind === 'port') {
       this.portPanelId = hit.id;
       this.bar.show('port');
@@ -923,12 +934,12 @@ class Game {
     const stack = w.stacks.find((s) => s.id === hit.id);
     if (!stack) return;
     if (!stack.bins.length) {
-      showToast('空のスタックです');
+      showToast(tr('空のスタックです'));
       return;
     }
     const issue = (binId: number) => {
       const res = commandRetrieve(w, this.rt, r.id, stack.id, binId);
-      showToast(res.ok ? `${r.name}: ${binLabel(w, binId)} を取り出します` : res.reason);
+      showToast(res.ok ? tr('{0}: {1} を取り出します', r.name, binLabel(w, binId)) : res.reason);
       if (res.ok && this.focusItem && w.bins[binId]?.item === this.focusItem) {
         this.focusItem = null;
         this.renderer.highlightCells = [];
@@ -944,10 +955,10 @@ class Game {
     // 複数ビン: 上から順に並べて選ばせる
     const items = [...stack.bins].reverse().map((id, i) => {
       const b = w.bins[id];
-      const node = el('span', {}, b.item ? iconImg(b.item, 28) : el('span', { class: 'slot-empty', title: '空ビン' }), el('span', { text: `${i === 0 ? '上 ' : ''}${binLabel(w, id)}` }));
+      const node = el('span', {}, b.item ? iconImg(b.item, 28) : el('span', { class: 'slot-empty', title: tr('空ビン') }), el('span', { text: `${i === 0 ? tr('上 ') : ''}${binLabel(w, id)}` }));
       return { node, onPick: () => issue(id) };
     });
-    this.popup.show(x, y, items, 'どのビンを取り出す？');
+    this.popup.show(x, y, items, tr('どのビンを取り出す？'));
   }
 
   // ------------------------------------------------------------ イベント
@@ -957,7 +968,7 @@ class Game {
         case 'shipped':
           this.renderer.effects.ship(this.world, e.stationId, e.coins, e.bonus);
           this.sound.ship(e.bonus);
-          if (!this.calm.active) showToast(`出荷！ +${e.coins} コイン${e.bonus > 1 ? `（×${e.bonus} ボーナス）` : ''}`, 2200, 'package-check');
+          if (!this.calm.active) showToast(tr('出荷！ +{0} コイン{1}', e.coins, e.bonus > 1 ? tr('（×{0} ボーナス）', e.bonus) : ''), 2200, 'package-check');
           nativeTry('haptic', { kind: 'light' });
           break;
         case 'pick':
@@ -968,7 +979,7 @@ class Game {
           this.sound.coin();
           break;
         case 'repChange':
-          if (e.delta < 0) showToast(`評判が下がった（${e.reason}）`);
+          if (e.delta < 0) showToast(tr('評判が下がった（{0}）', e.reason));
           break;
         case 'notice':
           showToast(e.text, 3500, NOTICE_ICON[e.icon ?? 'info']);
@@ -986,12 +997,12 @@ class Game {
           const list = el('ul');
           for (const u of unlockSummary(this.world)) list.append(el('li', { text: u }));
           nativeTry('haptic', { kind: 'success' });
-          this.modal.show(`ランクアップ: ${rankName(this.world)}`, el('p', { text: '倉庫が昇格しました。アンロック:' }), list);
+          this.modal.show(tr('ランクアップ: {0}', rankName(this.world)), el('p', { text: tr('倉庫が昇格しました。アンロック:') }), list);
           if (this.bar.open) this.bar.refresh();
           break;
         }
         case 'cyberWeekReport':
-          this.modal.show('サイバーウィーク成績表', cyberReportNode(e.record, this.world.stats.cyberWeekRecords));
+          this.modal.show(tr('サイバーウィーク成績表'), cyberReportNode(e.record, this.world.stats.cyberWeekRecords));
           this.world.season.pendingReport = null;
           break;
         default:
@@ -1027,7 +1038,7 @@ class Game {
           this.debug.fps = (this.debug.frames * 1000) / (now - this.debug.fpsAt);
           this.debug.frames = 0;
           this.debug.fpsAt = now;
-          if (this.statsEl && this.debug.showStats) this.statsEl.textContent = `${this.debug.fps.toFixed(0)} fps / sim ${this.debug.simMs.toFixed(2)} ms/tick / ロボ ${this.world.robots.length} / ${this.world.width}×${this.world.height} / tick ${this.world.tick}`;
+          if (this.statsEl && this.debug.showStats) this.statsEl.textContent = tr('{0} fps / sim {1} ms/tick / ロボ {2} / {3}×{4} / tick {5}', this.debug.fps.toFixed(0), this.debug.simMs.toFixed(2), this.world.robots.length, this.world.width, this.world.height, this.world.tick);
         }
       }
       // 離席からの追いつき計算（1 フレームに少しずつ。終わるまでは描画せず「反映中」の表示だけ）
@@ -1041,7 +1052,7 @@ class Game {
         }
         if (this.catchUp >= 1) {
           this.catchupOverlay.hidden = false;
-          this.catchupOverlay.textContent = `離席中の進行を反映しています… 残り ${Math.ceil(this.catchUp / TICKS_PER_SECOND)} 秒ぶん`;
+          this.catchupOverlay.textContent = tr('離席中の進行を反映しています… 残り {0} 秒ぶん', Math.ceil(this.catchUp / TICKS_PER_SECOND));
           return;
         }
         this.catchupOverlay.hidden = true;
@@ -1097,6 +1108,7 @@ class Game {
 
 // iOS アプリではネイティブの保存と購入状態を先に取り込んでから始める（Web 版は即開始）
 void (async () => {
+  translateStaticDom(); // 静的な HTML の日本語を辞書で置き換える（英語のとき）
   await Promise.all([preloadNativeSave(), initEntitlements()]);
   if (isDemoRequested()) installDemoSave(); // スクリーンショット・審査デモ用
   setLimitsExpanded(hasFeature('limits'));

@@ -43,6 +43,9 @@ targets:
       properties:
         CFBundleDisplayName: 箱庭！DS
         CFBundleDevelopmentRegion: ja
+        CFBundleLocalizations:
+          - ja
+          - en
         CFBundleName: HakoniwaDS
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)

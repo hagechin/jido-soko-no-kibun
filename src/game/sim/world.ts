@@ -18,6 +18,7 @@ import type { CellKind } from '../data/balance';
 import { ITEMS } from '../data/items';
 import { createRng } from './rng';
 import type { Bin, Robot, RobotKind, RobotVariant, Station, StationKind, WorldState } from './types';
+import { tr } from '../i18n';
 
 export interface WorldOptions {
   seed?: number;
@@ -227,7 +228,7 @@ export function addRobot(w: WorldState, kind: RobotKind, x: number, z: number, v
     cargoLevel: 0,
     stuckTicks: 0,
     goal: null,
-    name: variant === 'drone' ? `ドローン ${count}` : variant === 'double' ? `ダブルデッカー ${count}` : kind === 'shelf' ? `棚ロボ ${count}` : `搬送ロボ ${count}`,
+    name: variant === 'drone' ? tr('ドローン {0}', count) : variant === 'double' ? tr('ダブルデッカー {0}', count) : kind === 'shelf' ? tr('棚ロボ {0}', count) : tr('搬送ロボ {0}', count),
   };
   w.robots.push(r);
   return r;

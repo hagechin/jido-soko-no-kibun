@@ -3,14 +3,15 @@
  * 設定は localStorage。機能 `cosmetics` が無ければ標準に戻す（返金など）
  */
 import { hasFeature } from '../platform/entitlements';
+import { tr } from '../i18n';
 
 export type Skin = 'standard' | 'gold';
 export type Theme = 'standard' | 'midnight' | 'sand';
 
 export const THEMES: { id: Theme; name: string; desc: string }[] = [
-  { id: 'standard', name: '標準', desc: '青みの濃紺' },
-  { id: 'midnight', name: 'ミッドナイト', desc: '黒に近い紫。夜向け' },
-  { id: 'sand', name: 'サンド', desc: '明るい砂色。昼向け' },
+  { id: 'standard', name: tr('標準'), desc: tr('青みの濃紺') },
+  { id: 'midnight', name: tr('ミッドナイト'), desc: tr('黒に近い紫。夜向け') },
+  { id: 'sand', name: tr('サンド'), desc: tr('明るい砂色。昼向け') },
 ];
 
 const KEY = 'jido-soko-no-kibun:cosmetics';

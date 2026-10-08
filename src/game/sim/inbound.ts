@@ -6,6 +6,7 @@ import { INBOUND_WORKER, TICKS_PER_SECOND } from '../data/balance';
 import { demandFor } from '../data/seasons';
 import { availableItemIds } from './orders';
 import type { Truck, WorldState } from './types';
+import { tr } from '../i18n';
 
 /** トラック到着までの遅れ（演出）★ */
 const TRUCK_DELAY_TICKS = 3 * TICKS_PER_SECOND;
@@ -57,7 +58,7 @@ export function updateInbound(w: WorldState): void {
     w.stats.trucks++;
     w.events.push({ type: 'truckArrived', kind: 'inbound' });
     const total = t.pallets.reduce((a, p) => a + p.qty, 0);
-    w.events.push({ type: 'notice', icon: 'truck', text: `入荷トラック到着: ${t.pallets.length} 品目 / ${total} 個` });
+    w.events.push({ type: 'notice', icon: 'truck', text: tr('入荷トラック到着: {0} 品目 / {1} 個', t.pallets.length, total) });
   }
 }
 
@@ -97,10 +98,10 @@ export function stockSummary(w: WorldState): StockSummary[] {
     s.bins++;
     s.locations.push(where);
   };
-  for (const st of w.stacks) st.bins.forEach((id, level) => note(id, `棚(${st.x},${st.z}) ${level + 1}段目`));
+  for (const st of w.stacks) st.bins.forEach((id, level) => note(id, tr('棚({0},{1}) {2}段目', st.x, st.z, level + 1)));
   for (const p of w.ports) {
-    p.outbound.forEach((id) => note(id, `ポート(${p.x},${p.z})`));
-    p.returns.forEach((id) => note(id, `ポート(${p.x},${p.z}) 返却`));
+    p.outbound.forEach((id) => note(id, tr('ポート({0},{1})', p.x, p.z)));
+    p.returns.forEach((id) => note(id, tr('ポート({0},{1}) 返却', p.x, p.z)));
   }
   for (const r of w.robots) r.carrying.forEach((id) => note(id, r.name));
   for (const p of w.pallets) {

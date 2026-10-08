@@ -8,6 +8,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass.js';
 import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { tr } from '../i18n';
 
 export type PhotoEffect = 'none' | 'film' | 'mono' | 'sepia' | 'vivid' | 'dusk';
 export type PhotoAspect = 'screen' | '3:2' | '16:9' | '4:5' | '1:1';
@@ -37,15 +38,15 @@ export const PHOTO_CHOICES = {
     { label: '1/8', ticks: 5 },
   ] as const,
   effect: [
-    { id: 'none', name: 'なし' },
-    { id: 'film', name: 'フィルム' },
-    { id: 'mono', name: 'モノクロ' },
-    { id: 'sepia', name: 'セピア' },
-    { id: 'vivid', name: 'ビビッド' },
-    { id: 'dusk', name: '夕暮れ' },
+    { id: 'none', name: tr('なし') },
+    { id: 'film', name: tr('フィルム') },
+    { id: 'mono', name: tr('モノクロ') },
+    { id: 'sepia', name: tr('セピア') },
+    { id: 'vivid', name: tr('ビビッド') },
+    { id: 'dusk', name: tr('夕暮れ') },
   ] as { id: PhotoEffect; name: string }[],
   aspect: [
-    { id: 'screen', name: '画面' },
+    { id: 'screen', name: tr('画面') },
     { id: '3:2', name: '3:2' },
     { id: '16:9', name: '16:9' },
     { id: '4:5', name: '4:5' },

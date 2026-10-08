@@ -3,6 +3,7 @@ import { ROBOT } from '../data/balance';
 import { leastLoadedPort, setGoal } from './robots';
 import type { Runtime } from './runtime';
 import type { Robot, RobotJob, WorldState } from './types';
+import { tr } from '../i18n';
 
 export type CommandResult = { ok: true } | { ok: false; reason: string };
 
@@ -24,7 +25,7 @@ function enqueue(w: WorldState, rt: Runtime, r: Robot, job: RobotJob): CommandRe
     setGoal(rt, r, null);
     return { ok: true };
   }
-  if (r.queue.length >= ROBOT.maxQueuedCommands) return { ok: false, reason: `予約は${ROBOT.maxQueuedCommands}件まで` };
+  if (r.queue.length >= ROBOT.maxQueuedCommands) return { ok: false, reason: tr('予約は{0}件まで', ROBOT.maxQueuedCommands) };
   // 手動は自動の予約より前に入れる
   const firstAuto = r.queue.findIndex((j) => !j.manual);
   if (firstAuto >= 0) r.queue.splice(firstAuto, 0, job);
@@ -36,29 +37,29 @@ function enqueue(w: WorldState, rt: Runtime, r: Robot, job: RobotJob): CommandRe
 export function commandRetrieve(w: WorldState, rt: Runtime, robotId: number, stackId: number, binId: number): CommandResult {
   const r = w.robots.find((r) => r.id === robotId);
   const stack = w.stacks.find((s) => s.id === stackId);
-  if (!r || r.kind !== 'shelf') return { ok: false, reason: '棚ロボを選んでください' };
-  if (!stack || !stack.bins.includes(binId)) return { ok: false, reason: 'そのビンは棚にありません' };
+  if (!r || r.kind !== 'shelf') return { ok: false, reason: tr('棚ロボを選んでください') };
+  if (!stack || !stack.bins.includes(binId)) return { ok: false, reason: tr('そのビンは棚にありません') };
   const port = leastLoadedPort(w, stack);
-  if (!port) return { ok: false, reason: 'ポートがありません' };
+  if (!port) return { ok: false, reason: tr('ポートがありません') };
   // 同じビンへの重複指示は無視
   const dup = [r.job, ...r.queue].some((j) => j?.type === 'retrieve' && j.binId === binId);
-  if (dup) return { ok: false, reason: 'すでに指示済み' };
+  if (dup) return { ok: false, reason: tr('すでに指示済み') };
   return enqueue(w, rt, r, { type: 'retrieve', stackId, binId, portId: port.id, manual: true });
 }
 
 /** 搬送ロボ: ポートのビンを積めるだけ積んで担当ステーションへ */
 export function commandFetch(w: WorldState, rt: Runtime, robotId: number, portId: number): CommandResult {
   const r = w.robots.find((r) => r.id === robotId);
-  if (!r || r.kind !== 'amr') return { ok: false, reason: '搬送ロボを選んでください' };
-  if (!w.ports.some((p) => p.id === portId)) return { ok: false, reason: 'ポートがありません' };
+  if (!r || r.kind !== 'amr') return { ok: false, reason: tr('搬送ロボを選んでください') };
+  if (!w.ports.some((p) => p.id === portId)) return { ok: false, reason: tr('ポートがありません') };
   return enqueue(w, rt, r, { type: 'fetch', portId, stationId: null, manual: true });
 }
 
 /** 搬送ロボ: 行き先のステーションを指定（積荷があれば配送先の変更） */
 export function commandGoStation(w: WorldState, rt: Runtime, robotId: number, stationId: number): CommandResult {
   const r = w.robots.find((r) => r.id === robotId);
-  if (!r || r.kind !== 'amr') return { ok: false, reason: '搬送ロボを選んでください' };
-  if (!w.stations.some((s) => s.id === stationId)) return { ok: false, reason: 'ステーションがありません' };
+  if (!r || r.kind !== 'amr') return { ok: false, reason: tr('搬送ロボを選んでください') };
+  if (!w.stations.some((s) => s.id === stationId)) return { ok: false, reason: tr('ステーションがありません') };
   if (r.job?.type === 'fetch') {
     r.job.stationId = stationId;
     r.job.manual = true;
@@ -82,7 +83,7 @@ export function commandGoStation(w: WorldState, rt: Runtime, robotId: number, st
 /** 指示の取り消し（現在の仕事は積荷が無ければ中断） */
 export function commandCancel(w: WorldState, rt: Runtime, robotId: number): CommandResult {
   const r = w.robots.find((r) => r.id === robotId);
-  if (!r) return { ok: false, reason: 'ロボがいません' };
+  if (!r) return { ok: false, reason: tr('ロボがいません') };
   r.queue = [];
   if (r.job && !r.carrying.length && r.actRemaining === 0 && r.phase !== 'working') {
     r.job = null;

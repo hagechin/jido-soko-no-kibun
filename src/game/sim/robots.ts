@@ -12,6 +12,7 @@ import { moveTicksFor } from './pathfinding';
 import type { Runtime } from './runtime';
 import type { AmrJob, Goal, Robot, RobotJob, ShelfJob, Stack, Vec2, WorldState } from './types';
 import { isDoubleDecker, isDrone, layerOf, shapeOf, shelfSlots } from './layers';
+import { tr } from '../i18n';
 
 export function liftTicks(r: Robot): number {
   return ROBOT.liftTicksByLevel[Math.min(r.liftLevel, ROBOT.liftTicksByLevel.length - 1)];
@@ -750,31 +751,31 @@ function amrReturn(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { 
 /** 表示用: ロボの状態を短い日本語に */
 export function describeRobot(w: WorldState, r: Robot): string {
   const job = r.job as RobotJob | null;
-  if (!job) return r.phase === 'moving' ? '移動中' : '待機中';
+  if (!job) return r.phase === 'moving' ? tr('移動中') : tr('待機中');
   switch (job.type) {
     case 'retrieve': {
       const b = w.bins[job.binId];
-      const what = b?.item ? itemDef(b.item).name : '空ビン';
-      if (r.step === 11 || r.step === 12 || r.step === 13) return `掘り出し中（${what}）`;
-      if (r.step >= 14 && r.step <= 16) return `2 段持ちで取り出し中（${what}）`;
-      if (r.step >= 20) return `ポートへ運搬中（${what}）`;
-      return `取り出しへ（${what}）`;
+      const what = b?.item ? itemDef(b.item).name : tr('空ビン');
+      if (r.step === 11 || r.step === 12 || r.step === 13) return tr('掘り出し中（{0}）', what);
+      if (r.step >= 14 && r.step <= 16) return tr('2 段持ちで取り出し中（{0}）', what);
+      if (r.step >= 20) return tr('ポートへ運搬中（{0}）', what);
+      return tr('取り出しへ（{0}）', what);
     }
     case 'store':
-      return r.carrying.length ? '棚へ格納中' : 'ポートで返却ビンを回収';
+      return r.carrying.length ? tr('棚へ格納中') : tr('ポートで返却ビンを回収');
     case 'relocate':
-      return '在庫を並べ替え中';
+      return tr('在庫を並べ替え中');
     case 'fetch':
-      return r.phase === 'loading' ? '積み込み中' : job.staged ? 'ポートの順番待ち' : job.only === 'inbound' ? 'ポートへ（入荷専任）' : 'ポートへ';
+      return r.phase === 'loading' ? tr('積み込み中') : job.staged ? tr('ポートの順番待ち') : job.only === 'inbound' ? tr('ポートへ（入荷専任）') : tr('ポートへ');
     case 'deliver': {
       const left = unprocessedCargo(w, r).length;
-      if (job.staged) return `ステーションの順番待ち（${left} ビン）`;
-      return r.phase === 'working' ? '作業待ち' : `ステーションへ配送中（残り ${left} ビン）`;
+      if (job.staged) return tr('ステーションの順番待ち（{0} ビン）', left);
+      return r.phase === 'working' ? tr('作業待ち') : tr('ステーションへ配送中（残り {0} ビン）', left);
     }
     case 'return':
-      return 'ポートへ返却中';
+      return tr('ポートへ返却中');
     case 'park':
-      return '待機スポットへ';
+      return tr('待機スポットへ');
   }
 }
 

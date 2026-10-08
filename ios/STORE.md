@@ -58,6 +58,43 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 通信なし、アカウント登録なし、広告なし。オフラインでも遊べます。
 ```
 
+### 説明（英語、App Store Connect の English ローカライズ用）
+
+```
+Start with a tiny warehouse, add shelf robots and AMRs, and grow an automated logistics center that runs on its own.
+
+■ How it works
+- Orders arrive. Shelf robots dig out the right bins and drop them at a port. AMRs carry them to the picking station, and every shipment earns coins.
+- Spend coins on shelf levels, bin capacity, robot speed and cargo, and floor space.
+- Buy the Dispatch, Restock and Relocation AIs and the warehouse keeps running without you.
+- Seasonal events (fresh start, rainy season, Cyber Week…) change what sells.
+- An advisor tells you which upgrade helps right now.
+
+■ Calm mode
+Once everything is automated, sit back and let the camera tour the warehouse. AUTO or free MANUAL camera, with keep-screen-on.
+
+■ Layout editor
+Rearrange stacks, ports and stations from a top-down 2D view with box selection and drag, then check the 3D preview.
+
+■ Photo mode
+Place a camera anywhere, pick focal length, aperture, shutter and effect, and shoot. Use your photo as the startup screen.
+
+■ Keeps going while you are away
+Progress made while the app was closed is applied when you return (away report).
+
+■ iOS-only extras (one-time purchases, no ads)
+- Special Robots Pack: a drone AMR that flies over the shelves and a double-decker shelf robot
+- Limit Breaker Pack: 80/120 robots, 8-bin cargo, 12 shelf levels, 64×48 warehouse
+- Sandbox Mode: coins, preset warehouses, time jumps, Robot MAX, stall diagnosis
+- Supporter Pack: all of the above + gold robot skin + warehouse color themes
+Saves sync through iCloud.
+
+No network, no account, no ads. Works offline. Japanese and English.
+```
+
+- **英語のサブタイトル**: Build and watch an automated warehouse
+- **英語のキーワード**: `warehouse,logistics,simulation,idle,automation,robot,tycoon,AMR,picking,sandbox`
+
 - **キーワード**（100 文字以内、カンマ区切り）: `倉庫,物流,シミュレーション,放置,自動化,ロボット,箱庭,経営,ピッキング,AMR`
 - **プロモーションテキスト**（170 文字以内）: 棚ロボと搬送ロボで回る自動倉庫を育てて、眺める。通信なし・広告なしの買い切り型シミュレーション。
 - **新機能（1.0.0）**: 初回リリース

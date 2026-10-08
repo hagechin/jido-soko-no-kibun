@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 /**
  * ゲーム内の数値をすべてここに集約する（SPEC.md §9 ほか）。
  * ロジック内にマジックナンバーを書かず、必ずこのファイルを参照すること。
@@ -333,11 +334,11 @@ export const ECONOMY = {
  * 以前は 40 / 150 / 400 / 1000 件で、完全自動化まで 2 時間以上かかって苦行だった → 1 年（72 分）以内を目安に短縮
  */
 export const RANKS = [
-  { name: '町の小さな倉庫', shipped: 0, area: 0, maxLevels: 2, maxExpansions: 0, bonusCoins: 0 },
-  { name: '地域の倉庫', shipped: 20, area: 0, maxLevels: 3, maxExpansions: 1, bonusCoins: 300 },
-  { name: '配送センター', shipped: 80, area: 16 * 12 + 4 * 12, maxLevels: 5, maxExpansions: 3, bonusCoins: 800 },
-  { name: '物流センター', shipped: 250, area: 16 * 12 + 8 * 12, maxLevels: 7, maxExpansions: 5, bonusCoins: 2000 },
-  { name: 'メガDC', shipped: 700, area: 16 * 12 + 12 * 12, maxLevels: 8, maxExpansions: 99, bonusCoins: 5000 },
+  { name: tr('町の小さな倉庫'), shipped: 0, area: 0, maxLevels: 2, maxExpansions: 0, bonusCoins: 0 },
+  { name: tr('地域の倉庫'), shipped: 20, area: 0, maxLevels: 3, maxExpansions: 1, bonusCoins: 300 },
+  { name: tr('配送センター'), shipped: 80, area: 16 * 12 + 4 * 12, maxLevels: 5, maxExpansions: 3, bonusCoins: 800 },
+  { name: tr('物流センター'), shipped: 250, area: 16 * 12 + 8 * 12, maxLevels: 7, maxExpansions: 5, bonusCoins: 2000 },
+  { name: tr('メガDC'), shipped: 700, area: 16 * 12 + 12 * 12, maxLevels: 8, maxExpansions: 99, bonusCoins: 5000 },
 ] as const;
 
 /** 自動化AI（§7.3 / §9.4） */
@@ -405,10 +406,10 @@ export const ADVISOR = {
  */
 export type DifficultyId = 'easy' | 'normal' | 'hard' | 'superhard';
 export const DIFFICULTY: Record<DifficultyId, { name: string; desc: string; intervalFactor: number; backpressure: { startAt: number; perOrder: number; maxFactor: number }; lateGraceFactor: number; latePenaltyRep: number; queuePenaltyThreshold: number; coinFactor: number }> = {
-  easy: { name: 'イージー', desc: '客は少なめ。溜まるとすぐ受注を絞る。遅延にも寛容。報酬 ×0.9。小さな倉庫で自動化を眺める向け', intervalFactor: 1.25, backpressure: { startAt: 3, perOrder: 0.25, maxFactor: 4 }, lateGraceFactor: 1.5, latePenaltyRep: 0.5, queuePenaltyThreshold: 15, coinFactor: 0.9 },
-  normal: { name: 'ノーマル', desc: '標準。キューが 5 件を超えると受注を絞る', intervalFactor: 1.0, backpressure: { startAt: 5, perOrder: 0.15, maxFactor: 3 }, lateGraceFactor: 1.0, latePenaltyRep: 1, queuePenaltyThreshold: 10, coinFactor: 1.0 },
-  hard: { name: 'ハード', desc: '客が多く、受注抑制は弱い（最大 1.6 倍まで）。遅延の猶予短め。報酬 ×1.15。レイアウトとロボ配分の見直しが要る', intervalFactor: 0.85, backpressure: { startAt: 8, perOrder: 0.08, maxFactor: 1.6 }, lateGraceFactor: 0.8, latePenaltyRep: 1.5, queuePenaltyThreshold: 8, coinFactor: 1.15 },
-  superhard: { name: 'スーパーハード', desc: '受注抑制なし。客は 1.4 倍、遅延の猶予は 2/3、遅延 1 件で評判 −2。報酬 ×1.3。シミュレーターに慣れた人向け', intervalFactor: 0.7, backpressure: { startAt: 0, perOrder: 0, maxFactor: 1 }, lateGraceFactor: 0.65, latePenaltyRep: 2, queuePenaltyThreshold: 5, coinFactor: 1.3 },
+  easy: { name: tr('イージー'), desc: tr('客は少なめ。溜まるとすぐ受注を絞る。遅延にも寛容。報酬 ×0.9。小さな倉庫で自動化を眺める向け'), intervalFactor: 1.25, backpressure: { startAt: 3, perOrder: 0.25, maxFactor: 4 }, lateGraceFactor: 1.5, latePenaltyRep: 0.5, queuePenaltyThreshold: 15, coinFactor: 0.9 },
+  normal: { name: tr('ノーマル'), desc: tr('標準。キューが 5 件を超えると受注を絞る'), intervalFactor: 1.0, backpressure: { startAt: 5, perOrder: 0.15, maxFactor: 3 }, lateGraceFactor: 1.0, latePenaltyRep: 1, queuePenaltyThreshold: 10, coinFactor: 1.0 },
+  hard: { name: tr('ハード'), desc: tr('客が多く、受注抑制は弱い（最大 1.6 倍まで）。遅延の猶予短め。報酬 ×1.15。レイアウトとロボ配分の見直しが要る'), intervalFactor: 0.85, backpressure: { startAt: 8, perOrder: 0.08, maxFactor: 1.6 }, lateGraceFactor: 0.8, latePenaltyRep: 1.5, queuePenaltyThreshold: 8, coinFactor: 1.15 },
+  superhard: { name: tr('スーパーハード'), desc: tr('受注抑制なし。客は 1.4 倍、遅延の猶予は 2/3、遅延 1 件で評判 −2。報酬 ×1.3。シミュレーターに慣れた人向け'), intervalFactor: 0.7, backpressure: { startAt: 0, perOrder: 0, maxFactor: 1 }, lateGraceFactor: 0.65, latePenaltyRep: 2, queuePenaltyThreshold: 5, coinFactor: 1.3 },
 };
 export const DIFFICULTY_ORDER: DifficultyId[] = ['easy', 'normal', 'hard', 'superhard'];
 

@@ -47,6 +47,6 @@ CLI の場合は `npx lolipop deploy`（ブラウザでのログインが必要�
 | `release/1.0` | リリース候補（v1.0.0-rc1 = `bb64f3d`）。実機確認と提出に使う。直すのは不具合だけ。直したら開発ブランチへも取り込む |
 | `claude/nifty-feynman-opfzeb` | 開発の本線。機能ブランチをここへ取り込む |
 | `feature/photo-mode` | フォトモード（カメラ配置・画角・絞り・シャッター・エフェクト、撮った写真を起動画面に） |
-| `feature/i18n` | 英語対応（文字列の辞書化 → 英語） |
+| `feature/i18n` | 英語対応（日本語をキーにした辞書 `src/game/i18n/en.ts`。`node scripts/wrap-strings.mjs --check --list` で未訳を確認） |
 
 Mac 側のテストは、提出前の確認は `release/1.0`、新機能の確認はその機能ブランチで行う。

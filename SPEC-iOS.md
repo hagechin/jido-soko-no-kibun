@@ -65,6 +65,15 @@ Web 版（[SPEC.md](./SPEC.md)）を WKWebView で包み、iOS 版だけの機�
 - 起動画面: index.astro のインラインスクリプトが localStorage の写真を `--startup-photo` に入れ、HTML のスプラッシュの背景にする。iOS は `ContentView` が Documents の同じ写真を WebView の上に重ね、JS の `ready`（最初の描画後）で消す。これで起動直後から写真が出る
 - 後処理は three の examples/jsm（同梱）だけで、CDN や追加依存は無し
 
+## 1.6 多言語対応（feature/i18n）
+
+- gettext 方式: 日本語の文字列そのものをキーに `tr('現在 {0} 台', n)`。英語は `i18n/en.ts` の辞書（約 690 件）、無ければ日本語のまま。`scripts/wrap-strings.mjs` が日本語リテラルを `tr()` で包み、`--check --list` で未訳キーを出す
+- 言語は起動時に決める（設定 `jido-soko-no-kibun:locale`、無ければ端末の言語。日本語以外は英語）。モジュール読み込み時の `tr()`（商品名・ランク名・イベント名などの定数）も正しい言語になるので、切替は再読み込みで反映（設定 → 言語 → 自動／日本語／English）
+- 静的な HTML（index.astro）は起動時に `translateStaticDom()` が文字ノードと title / aria-label を辞書で置き換える。`<title>`・説明・`lang` も
+- 日付: 英語は月を略称（Year 1 · Apr W1 / Y1 Apr W1）。数値の桁区切りは共通
+- ★ ロボの名前（「棚ロボ 3」）はセーブに入っているので、作ったときの言語のまま残る（切替後に作ったロボから新しい言語）
+- iOS: `CFBundleLocalizations` に ja / en。App Store の英語の説明文は `STORE.md`
+
 ## 2. ブリッジ（JS ↔ Swift）
 
 JS → Swift: `window.webkit.messageHandlers.native.postMessage({ id, method, params })`

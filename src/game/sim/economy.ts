@@ -3,6 +3,7 @@ import { difficultyOf } from './orders';
 import { REPUTATION, REWARD, TICKS_PER_SECOND } from '../data/balance';
 import { activeEvents } from '../data/seasons';
 import type { Order, WorldState } from './types';
+import { tr } from '../i18n';
 
 export function orderItemCount(o: Order): number {
   return o.lines.reduce((a, l) => a + l.qty, 0);
@@ -68,7 +69,7 @@ export function shipOrder(w: WorldState, o: Order, stationId: number): void {
   for (const e of activeEvents(w.calendar.month, w.calendar.week)) eventMult *= e.rewardFactor;
   const r = rewardFor(w, o, eventMult);
   addCoins(w, r.total);
-  changeReputation(w, REWARD.repGainPerShipment, '出荷');
+  changeReputation(w, REWARD.repGainPerShipment, tr('出荷'));
   w.stats.totalShipped++;
   w.stats.recentShipments.push({ tick: w.tick, coins: r.total, items: r.items });
   if (w.season.cyber) {

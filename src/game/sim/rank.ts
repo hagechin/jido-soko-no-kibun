@@ -5,6 +5,7 @@ import { availableItemIds } from './orders';
 import { addCoins } from './economy';
 import { grantEmptyBin } from './shop';
 import type { WorldState } from './types';
+import { tr } from '../i18n';
 
 export function rankName(w: WorldState): string {
   return RANKS[Math.min(w.rank, RANKS.length - 1)].name;
@@ -38,7 +39,7 @@ export function checkRankUp(w: WorldState): boolean {
   let granted = 0;
   for (let i = 0; i < newItems; i++) if (grantEmptyBin(w)) granted++;
   w.events.push({ type: 'rankUp', rank: w.rank });
-  if (bonus > 0 || granted) w.events.push({ type: 'notice', icon: 'party', text: `昇格ボーナス: ${bonus > 0 ? `+${bonus} コイン` : ''}${bonus > 0 && granted ? '、' : ''}${granted ? `空ビン ${granted} 個` : ''}` });
+  if (bonus > 0 || granted) w.events.push({ type: 'notice', icon: 'party', text: tr('昇格ボーナス: {0}{1}{2}', bonus > 0 ? tr('+{0} コイン', bonus) : '', bonus > 0 && granted ? '、' : '', granted ? tr('空ビン {0} 個', granted) : '') });
   return true;
 }
 
@@ -47,13 +48,13 @@ export function unlockSummary(w: WorldState): string[] {
   const r = RANKS[Math.min(w.rank, RANKS.length - 1)];
   const prev = RANKS[Math.max(0, w.rank - 1)];
   const out: string[] = [];
-  if (r.maxLevels > prev.maxLevels) out.push(`棚の段数 最大 ${r.maxLevels} 段`);
-  if (r.maxExpansions > prev.maxExpansions) out.push(`面積拡張 ${r.maxExpansions >= 99 ? '無制限' : `${r.maxExpansions} 回まで`}`);
+  if (r.maxLevels > prev.maxLevels) out.push(tr('棚の段数 最大 {0} 段', r.maxLevels));
+  if (r.maxExpansions > prev.maxExpansions) out.push(tr('面積拡張 {0}', r.maxExpansions >= 99 ? tr('無制限') : tr('{0} 回まで', r.maxExpansions)));
   const kinds = availableItemIds(w).length;
-  out.push(`商品 ${kinds} 種類（新商品: ${availableItemIds(w)
+  out.push(tr('商品 {0} 種類（新商品: {1}）', kinds, availableItemIds(w)
     .slice(-Math.max(0, kinds - (w.rank ? availableItemIdsAt(w.rank - 1) : 0)))
     .map((id) => ITEMS.find((i) => i.id === id)?.name)
-    .join('・')}）`);
+    .join(tr('・'))));
   return out;
 }
 

@@ -1,5 +1,6 @@
 import { icon, type IconName } from './icon';
 import { $, el } from './layout';
+import { tr } from '../i18n';
 
 export type PanelId = 'build' | 'upgrades' | 'inventory' | 'settings' | 'station' | 'debug' | 'robots' | 'port' | 'store';
 
@@ -43,7 +44,7 @@ export class BottomBar {
   show(id: PanelId): void {
     if (this.current !== id) this.sheetBody.scrollTop = 0; // 別のパネルに切り替えたら先頭から
     this.current = id;
-    const titles: Record<PanelId, string> = { build: '建設モード', upgrades: 'アップグレード', inventory: '在庫', settings: '設定', station: 'ステーション', debug: 'サンドボックス', robots: 'ロボ一覧', port: 'ポート', store: '追加機能ストア' };
+    const titles: Record<PanelId, string> = { build: tr('建設モード'), upgrades: tr('アップグレード'), inventory: tr('在庫'), settings: tr('設定'), station: tr('ステーション'), debug: tr('サンドボックス'), robots: tr('ロボ一覧'), port: tr('ポート'), store: tr('追加機能ストア') };
     this.sheetTitle.textContent = titles[id];
     this.sheet.classList.toggle('is-compact', id === 'build');
     this.refresh();
@@ -59,7 +60,7 @@ export class BottomBar {
     const r = this.renderers.get(this.current);
     this.sheetBody.replaceChildren();
     if (r) r(this.sheetBody);
-    else this.sheetBody.append(el('p', { class: 'muted', text: 'このパネルは後のマイルストーンで実装します。' }));
+    else this.sheetBody.append(el('p', { class: 'muted', text: tr('このパネルは後のマイルストーンで実装します。') }));
   }
 
   close(): void {

@@ -5,6 +5,7 @@ import { backpressureFactor, itemInStock, lateClockStart, lateLimitTicks, queued
 import type { Order, WorldState } from '../sim/types';
 import { $, el } from './layout';
 import { iconImg } from './icons';
+import { tr } from '../i18n';
 
 interface CardRefs {
   root: HTMLElement;
@@ -49,13 +50,13 @@ export class OrderSheet {
     const q = queuedCount(w);
     this.queueBadge.hidden = q === 0;
     const bp = backpressureFactor(w);
-    const txt = bp > 1 ? `+${q} 受注抑制 ×${bp.toFixed(1)}` : `+${q}`;
+    const txt = bp > 1 ? tr('+{0} 受注抑制 ×{1}', q, bp.toFixed(1)) : `+${q}`;
     if (this.queueBadge.dataset.txt !== txt) {
       this.queueBadge.dataset.txt = txt;
       // スマホでは 2 行（+N / 抑制 ×1.1）の小さなチップになる
-      this.queueBadge.replaceChildren(el('span', { text: `+${q}` }), ...(bp > 1 ? [el('small', { text: ` 抑制 ×${bp.toFixed(1)}` })] : []));
+      this.queueBadge.replaceChildren(el('span', { text: `+${q}` }), ...(bp > 1 ? [el('small', { text: tr(' 抑制 ×{0}', bp.toFixed(1)) })] : []));
     }
-    this.queueBadge.title = bp > 1 ? 'キューが長いので、新しいオーダーの到着間隔を伸ばしています' : '';
+    this.queueBadge.title = bp > 1 ? tr('キューが長いので、新しいオーダーの到着間隔を伸ばしています') : '';
   }
 
   private signature(w: WorldState, o: Order): string {
