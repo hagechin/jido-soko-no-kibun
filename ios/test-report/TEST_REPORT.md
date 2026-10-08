@@ -176,3 +176,154 @@ StoreManagerTests.swift:48: testRestoreFindsTransactionsMadeOutsideTheApp : fail
 4. CSS で `safe-area-inset-left/right` に対応する（横向きのノッチ対策）。
 5. `sync-web.sh` の Node バージョンの下限を 22 に上げる。
 6. 受注抑制バッジとオーダー秒数の重なりを直す。空ビンが上限のときは購入ボタンを無効にする。
+
+---
+
+# 再テスト（第2回）: 修正コミット `7fde20e` に対して
+
+- 実施日: 2026-10-08
+- 対象コミット: `7fde20e`（`ios/Web/BUILD_INFO`: `commit=7fde20e`, `node=v22.14.0`）
+- 実行環境: 第1回と同じです（Xcode 27.0 (27A266a)、SDK iPhoneSimulator 27.0）。
+- Node: `nvm use 22` は使えませんでした。`~/.npmrc` に `prefix` の設定があり、nvm が拒否するためです。そこで nvm で入れた v22.14.0 を PATH の先頭に置いて実行しました（`nvm use 22` と同じ状態）。
+
+## 結果まとめ（第2回）
+
+| 項目 | 第1回 | 第2回 |
+|---|---|---|
+| 準備 (sync-web.sh) | NG | **OK**（Node 22.14 で成功。Node 20.9 では「22.12 以上を使ってください」と表示して止まることも確認） |
+| ビルド（テストターゲットの Info.plist） | NG | **OK**（`GENERATE_INFOPLIST_FILE=YES` を渡さなくてもビルドできる） |
+| コンパイル（`await` 漏れ） | NG | **OK** |
+| 自動テスト iOS 26.5（iPhone 17e / iPad Air 11-inch (M4)） | FAILED | **FAILED**（StoreManagerTests 4件が Code=3 で失敗。ほかは全部パス） |
+| 自動テスト iOS 27.0（iPhone 17e） | — | **FAILED**（StoreManagerTests のうち返金テスト 1件だけ失敗） |
+| iOS 26 シミュレータで起動 | OK | **OK** |
+| M1 起動 | OK（条件付き） | **OK**（ボタンが中央揃えになり、ラベルも付いた） |
+| M2 回転（ノッチ） | NG | **OK** |
+| M3 保存 | OK | 再確認せず（今回は重点項目外） |
+| M4 画面を点けっぱなし | OK | 再確認せず |
+| M5 振動 | 未実施 | 未実施（実機のみ） |
+| M6 復帰後のカメラ | OK（ズームインが残る） | **OK**（ズームインは解消） |
+| M7 Web インスペクタ | 未実施 | 未実施 |
+
+## 自動テスト（第2回）
+
+### iOS 26.5（TESTPLAN どおりのコマンド）
+
+iPhone 17e (26.5) と iPad Air 11-inch (M4) (26.5) で、同じ結果になりました。
+
+| スイート | 結果 |
+|---|---|
+| BridgeTests (3) / SaveStoreTests (2) / SchemeHandlerTests (3) | 全部パス |
+| LaunchUITests (2) | iPad: 全部パス。iPhone: `testTimeAdvancesWhileRunning` が失敗（下の「注意」を参照）。シミュレータを初期化した後は全部パス |
+| StoreManagerTests (4) | **4件とも失敗**。内容は第1回と同じで、ログに `SKInternalErrorDomain Code=3` が 20 回出る |
+
+```
+StoreManagerTests.swift:25: testLoadsFourNonConsumables : XCTAssertEqual failed: ("[]") is not equal to ("["jp.hakoniwa.ds.robots", ...]")
+StoreManagerTests.swift:36: testPurchaseUnlocksSandboxAndNotifies : failed: caught error: "productNotFound"
+StoreManagerTests.swift:48: testRestoreFindsTransactionsMadeOutsideTheApp : failed: caught error: "notEntitled"
+StoreManagerTests.swift:58: testRefundedPurchaseIsRevoked : failed: caught error: "productNotFound"
+```
+
+### StoreManagerTests の切り分け（TESTPLAN 2 節の手順 1〜3）
+
+| 手順 | 実行環境 | 結果 |
+|---|---|---|
+| 1. SDK と同じ OS のシミュレータで同じコマンド | iPhone 17e (iOS 27.0)、xcodebuild | **3件パス / 1件失敗**。Code=3 は 0 回。失敗は `testRefundedPurchaseIsRevoked` |
+| 2. Xcode の GUI で ⌘U | iPhone 17e (iOS 27.0)、Xcode のテスト実行 | 手順 1 と同じ（3件パス / `testRefundedPurchaseIsRevoked` が失敗） |
+| 3. `-only-testing:HakoniwaDSTests/StoreManagerTests` で単独実行 | iPhone 17e (iOS 26.5)、xcodebuild | **4件とも失敗**（Code=3） |
+| 追加: `xcrun simctl erase` で初期化してから全体を再実行 | iPhone 17e (iOS 26.5) | **4件とも失敗**（Code=3）。他のスイートは全部パス |
+| 追加: Xcode で返金テストを単独実行 | iPhone 17e (iOS 27.0) | `testRefundedPurchaseIsRevoked` は単独でも失敗。たまたま失敗するのではなく、毎回失敗する |
+
+- Xcode の GUI（手順 2）は、実行先に iOS 27 系のシミュレータしか出ません。そのため iOS 26.5 では ⌘U を試せていません。
+
+**結論**
+- Code=3（商品が 0 件になる）は、**Xcode 27 (SDK 27.0) と iOS 26.5 シミュレータの組み合わせで必ず起きます**。CLI と GUI のどちらで実行したか、単独で実行したか、シミュレータを初期化したかは関係ありません。
+- **SDK と同じ iOS 27.0 なら、商品の取得・購入・復元は通ります。**
+- **iOS 27.0 で残る失敗は 1 件だけ**で、こちらは環境ではなくテストかアプリ側の問題と見られます。
+
+```
+StoreManagerTests.swift:63: -[HakoniwaDSTests.StoreManagerTests testRefundedPurchaseIsRevoked] : XCTAssertFalse failed
+```
+
+- `session.refundTransaction(identifier:)` の直後に `await store.refreshEntitlements()` を呼んでも、`purchased` に `jp.hakoniwa.ds.limits` が残ったままです。
+- `Transaction.currentEntitlements` に、返金がまだ反映されていない（`revocationDate == nil` のまま返ってくる）可能性があります。
+- 修正案（どちらか）:
+  - 返金のあと、`Transaction.updates` 経由で権利が更新されるのを待つ（期待値付きで数秒ポーリングする）。
+  - `refreshEntitlements` で、返金された取引が currentEntitlements からまだ消えていない場合も除外する。
+
+### 注意: `LaunchUITests.testTimeAdvancesWhileRunning` がセーブの状態に左右される
+
+- 失敗箇所: `LaunchUITests.swift:30: XCTAssertTrue failed`（`第1週` の表示を待つ処理）
+- 前回の手動確認で使ったシミュレータにはセーブが残っていて、ゲーム内の日付が第1週ではありませんでした。その状態だと失敗します。
+- `simctl erase` で初期化した後や、未使用のシミュレータではパスします。
+- 修正案（どちらか）:
+  - UI テストの起動引数で、セーブを初期化して起動するモードを用意する（例: `-uiTestingReset`）。
+  - 「第1週」に頼らず、「年目」を含む日付が出ればよしとする。
+
+### その他（xcodebuild がハングする）
+
+- iOS 27.0 で xcodebuild を実行したとき、全テストが終わって UI テストも `passed` と出たあと、xcodebuild が終了しませんでした。4 分以上待ってから強制終了しています。
+- `simctl erase` の直後に実行したときは、`Mach error -308 (ipc/mig) server died` でアプリを起動できずに止まりました。`simctl bootstatus -b` でシミュレータの起動完了を待ってから実行すると問題ありません。
+- いずれも環境側の問題と見られます。参考までに書いておきます。
+
+## 手動確認（第2回、M2・M6 を重点に）
+
+- 実行環境: iPhone 17e。iOS 26.5 では起動のみ確認し、操作が必要な項目は iOS 27.0 で行いました。
+- 横向きの画面サイズは 844×390pt で、左右のセーフエリアはそれぞれ 47pt です。
+
+### M1 起動: OK
+
+- iOS 26.5 では、シミュレータを初期化した直後の状態で正常に起動しました（`r2-m1-launch-ios26.5.png`）。
+- 縦向きでは、HUD は y=48 から始まり、下部ボタンの下端は y=801 です。Dynamic Island やホームインジケータと重なりません。「ロボをタップして選択」も見切れていません。
+- 下部の 6 ボタンにラベルが付きました（ロボ一覧 / 建設 / 強化 / 在庫 / 設定 / 眺めモード）。配置も中央揃えになっています（x=55〜335、中心 195）。
+
+### M2 横向きのノッチ: OK（修正を確認）
+
+| 要素 | landscapeLeft | landscapeRight |
+|---|---|---|
+| 受注抑制バッジ | x=54 | x=54 |
+| コイン表示 | x≈55〜73 | x≈55〜73 |
+| オーダーカード #1 | x=97 | x=97 |
+| 下部ボタン（6 個） | x=282〜562（中央揃え） | 同じ |
+| 一時停止 / 速度ボタン | x=696〜791 | x=697〜791 |
+| 照準ボタン | x=745〜789 | x=745〜789 |
+
+- 左右どちら向きでも、すべてセーフエリアの内側（x=47〜797）に収まっています（`r2-m2-landscapeLeft-ios27.png`、`r2-m2-landscapeRight-ios27.png`）。修正前は x≈6〜10 でした。
+- オーダーカード #5 が右端で切れていますが、横スクロールする行なので想定どおりです。
+- 3D ビューの高さは 146pt のままで、倉庫が小さく見えます（第1回と同じで、今回の修正対象外）。
+
+### M6 復帰後のカメラ: OK（修正を確認）
+
+- (a) 通常の構図: 照準でリセットした後、倉庫の床は画面幅の約 44% です（`r2-m6-a-normal-camera-ios27.png`）。
+- (b) 眺めモードに入ると拡大されます。× で抜けると (a) と同じ構図に戻りました。
+- (c) 通常画面のままホームへ戻り、約 46 秒後に復帰しました（`r2-m6-c-resume-ios27.png`）。
+  - **カメラは通常の構図のままで、ズームインしませんでした。**
+  - 進行は実時間どおり反映されていました（オーダー秒数は 89s→134s で +45s、日付は 11月第4週→12月第1週）。
+  - 「離席中の進行を反映しています」の表示は、復帰直後のキャプチャにも写っていません（即再開と判断）。
+- (d) 眺めモードのままホームへ戻り、約 42 秒後に復帰しました（`r2-m6-d-resume-in-calm-ios27.png`）。
+  - 眺めモードのまま再開し、× で抜けると通常の構図に戻りました。
+  - オーダー秒数は +73s で、実時間の 72 秒と一致しています。
+
+### 第1回で指摘した点の確認
+
+| 指摘 | 結果 |
+|---|---|
+| 受注抑制バッジが #2 の秒数表示に重なる | **修正済み**。バッジはカード #1 の左（x=7〜48）に移った |
+| 空ビン「あと 0 個」でも購入ボタンが押せる | **修正済み**。ボタンが Disabled になった。コインは足りているので、上限による無効化（`r2-upgrades-empty-bin-disabled-ios27.png`） |
+| 設定パネルの中身が約 39pt ずれる | **修正済み**。約 26 秒開いたまま 3 回撮影し、要素の位置は 3 回とも同じ |
+| 下部ボタンにアクセシビリティラベルが無い・左寄せ | **修正済み** |
+| 復帰後にカメラがズームインする | **修正済み**（M6 参照） |
+| 横向きでノッチに食い込む | **修正済み**（M2 参照） |
+
+### 新しく気になった点（どれも軽微）
+
+1. **起動直後だけカメラの構図が違う**（`r2-m1-launch-camera-ios27.png`）: 倉庫の床がほぼ画面幅いっぱいに映り、向きも通常と違います。回転させたり照準でリセットしたりすると、通常の構図に戻ります。セーブから再開したとき（お留守番レポートの後）の初期カメラが、通常と違う可能性があります。
+2. **眺めモードの下部ピルが左寄り**: x≈10〜294 で、中心が約 152 です（画面の中心は 195）。
+3. **同じトーストが 2 枚同時に出る**: 「評判が下がった（オーダーが溜まりすぎ）」が 2 枚同時に表示されていました（`r2-m6-c-resume-ios27.png`）。
+4. **「最終セーブ」の時刻が更新されない**: 設定パネルを開いている約 50 秒の間、「最終セーブ 11:11:03」のままでした。30 秒ごとの自動セーブなら少なくとも 1 回は更新されるはずです。表示の更新漏れか、パネルを開いている間は自動セーブが止まっている可能性があります。
+
+## 修正のお願い（第2回、優先度順）
+
+1. `testRefundedPurchaseIsRevoked`: iOS 27.0 で、返金のあとも権利が残る問題（上記の修正案を参照）。
+2. StoreKit テストの実行先を TESTPLAN に明記する: Xcode 27 では、iOS 27.0 のシミュレータで実行する。iOS 26.x では Code=3 で動かない。
+3. `LaunchUITests.testTimeAdvancesWhileRunning` が、残っているセーブに左右されないようにする。
+4. 起動直後のカメラ構図、眺めモードのピルの位置、トーストの重複、「最終セーブ」の時刻（いずれも軽微）。
