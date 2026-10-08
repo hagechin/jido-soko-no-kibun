@@ -8,7 +8,7 @@ import { ROBOT } from '../data/balance';
 import { commandFetch, commandRetrieve } from './commands';
 import { footprint } from './footprint';
 import { cellAt, isFloorWalkable } from './grid';
-import { layerOf, shapeOf } from './layers';
+import { layerOf, shapeOf, speedLevelOf } from './layers';
 import { createRuntime, stepSim } from './sim';
 import { buyDrone, buyDoubleDecker, buyAmr } from './shop';
 import type { Robot, WorldState } from './types';
@@ -118,6 +118,59 @@ describe('ドローン搬送ロボ（空中レイヤー）', () => {
       if (reached.every(Boolean)) break;
     }
     expect(reached).toEqual([true, true, true, true]);
+  });
+
+  it('自動配車: 暇な地上ロボが先にいても、出庫ビンはドローンが先に取りに行く', () => {
+    const w = quiet(5);
+    const rt = createRuntime();
+    w.automation.dispatch = 1;
+    const port = w.ports[0];
+    const bin = createBin(w, 'apple', 10);
+    bin.purpose = 'pick';
+    port.outbound.push(bin.id);
+    // 地上ロボ（id が若い）は全員暇。ドローンは最後に追加する
+    const drone = addRobot(w, 'amr', w.waitSpots[0].x, w.waitSpots[0].z, 'drone');
+    stepSim(w, rt);
+    expect(drone.job?.type).toBe('fetch');
+    const ground = w.robots.filter((r) => r.kind === 'amr' && r.variant !== 'drone');
+    expect(ground.some((r) => r.job?.type === 'fetch')).toBe(false);
+  });
+
+  it('自動配車: ドローンは近さより「拾われていないビンが一番多いポート」へ向かう', () => {
+    const w = quiet(6);
+    const rt = createRuntime();
+    w.automation.dispatch = 1;
+    w.robots = w.robots.filter((r) => r.kind !== 'amr'); // 地上ロボ抜き
+    const [near, far] = [w.ports[0], w.ports[w.ports.length - 1]];
+    for (let i = 0; i < 3; i++) {
+      const b = createBin(w, 'apple', 10);
+      b.purpose = 'pick';
+      far.outbound.push(b.id);
+    }
+    const b = createBin(w, 'apple', 10);
+    b.purpose = 'pick';
+    near.outbound.push(b.id);
+    const drone = addRobot(w, 'amr', near.x, near.z, 'drone');
+    stepSim(w, rt);
+    expect(drone.job?.type).toBe('fetch');
+    expect((drone.job as { portId: number }).portId).toBe(far.id);
+  });
+
+  it('暇なドローンは待機スポットではなくポートの真上でホバリングして待つ', () => {
+    const w = quiet(7);
+    const rt = createRuntime();
+    w.automation.dispatch = 1;
+    const drone = addRobot(w, 'amr', w.waitSpots[0].x, w.waitSpots[0].z, 'drone');
+    const n = until(w, rt, () => w.ports.some((p) => p.x === drone.pose.x && p.z === drone.pose.z) && !drone.moveTo, 1500);
+    expect(n).toBeLessThan(1500);
+    until(w, rt, () => false, 50);
+    expect(w.ports.some((p) => p.x === drone.pose.x && p.z === drone.pose.z)).toBe(true);
+  });
+
+  it('ドローンは速度 Lv が 1 段階上（上限は maxSpeedLevel）', () => {
+    expect(speedLevelOf({ variant: 'drone', speedLevel: 0 })).toBe(Math.min(ROBOT.maxSpeedLevel, ROBOT.droneSpeedBonus));
+    expect(speedLevelOf({ variant: 'drone', speedLevel: ROBOT.maxSpeedLevel })).toBe(ROBOT.maxSpeedLevel);
+    expect(speedLevelOf({ variant: 'standard', speedLevel: 0 })).toBe(0);
   });
 
   it('購入: 上限 4 台。搬送ロボの上限とは別枠', () => {

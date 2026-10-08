@@ -13,7 +13,7 @@ import { rand } from './rng';
 import { stagingGoal } from './robots';
 import type { Runtime } from './runtime';
 import type { Robot, Vec2, WorldState } from './types';
-import { isDrone, layerOf as robotLayer, occupancyOf, shapeOf } from './layers';
+import { isDrone, layerOf as robotLayer, occupancyOf, shapeOf, speedLevelOf } from './layers';
 
 function layerOf(rt: Runtime, r: Robot) {
   const l = robotLayer(r);
@@ -135,7 +135,7 @@ function planOne(w: WorldState, rt: Runtime, r: Robot): void {
     startKeys: overlapping.size ? new Set(occupancyNow(r).map((c) => c.z * w.width + c.x)) : undefined,
     startTick,
     shape: shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel),
-    moveTicks: moveTicksFor(r.speedLevel),
+    moveTicks: moveTicksFor(speedLevelOf(r)),
     turnTicks: ROBOT.turnTicks,
     passable: passableFor(w, r),
     isGoal,
