@@ -818,3 +818,7 @@ npm run preview   # http://localhost:4321 で確認
 - 後処理は three の examples/jsm（同梱）。CDN・追加依存なし。Lucide の camera / image アイコンを追加
 - 確認: `photo.test.ts` 4 件（画角・絞り・サイズ・コマ数）、全 143 件通過。ヘッドレス（PC／スマホ）で P → パネル 5 行・HUD 非表示、135mm/F1.4/1/8/モノクロ/3:2 で画角 10.2°・黒帯、タップで「ピント: N m」、Enter で 2400×1600 の JPEG（約 500KB）、「起動画面にする」で localStorage に約 200KB、Esc で視点・画角・HUD が復帰、再読み込みでスプラッシュに写真。コンソールエラー 0。ソフトウェア描画では撮影に 65 秒かかる（GPU なら数秒以内の見込み。実機で確認）
 - 未確認: iOS の共有シートと起動画像のオーバーレイ（Swift。次のラウンドで）
+## 価格の変更（release/1.0）
+
+- ★ 決定: サンドボックスモード ¥320 → ¥500、上限突破パック ¥480 → ¥500（App Store の価格帯に 480 円が無い）。特別ロボ ¥600・サポーター ¥1,200 は据え置き。`Products.storekit`（ローカルの StoreKit 構成）、`STORE.md`、`SPEC-iOS.md` を更新
+- 実際のアプリの表示価格は StoreKit が App Store Connect の設定から取ってくる（`Product.displayPrice`、国・通貨に応じて変わる）。`.storekit` の値はシミュレータでのテストとスクリーンショット用
