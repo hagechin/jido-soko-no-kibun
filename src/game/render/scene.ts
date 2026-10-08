@@ -488,6 +488,7 @@ export class WarehouseRenderer {
         const y = this.droneHeight(w);
         this.robotBatch.add(x, y, z, 0.5, 0.16, 0.5, this.robotColors.drone, rot);
         this.robotBatch.add(x, y + 0.1, z, 0.3, 0.06, 0.3, this.robotColors.droneDark, rot);
+        // ローターは実機どおり、隣り合うものが逆回転（対角どうしが同じ向き）。トルクを打ち消す配置
         const spin = ((w.tick + alpha) * 0.9) % (Math.PI * 2);
         for (const [dx, dz] of [
           [-0.42, -0.42],
@@ -495,9 +496,10 @@ export class WarehouseRenderer {
           [-0.42, 0.42],
           [0.42, 0.42],
         ]) {
+          const dir = dx * dz > 0 ? 1 : -1; // 左前・右後ろが時計回り、右前・左後ろが反時計回り
           this.robotBatch.add(x + dx * 0.55, y, z + dz * 0.55, 0.5, 0.05, 0.08, this.robotColors.droneDark, Math.atan2(dz, dx));
-          this.robotBatch.add(x + dx, y + 0.06, z + dz, 0.34, 0.03, 0.08, COLORS.rotor, spin);
-          this.robotBatch.add(x + dx, y + 0.06, z + dz, 0.08, 0.03, 0.34, COLORS.rotor, spin);
+          this.robotBatch.add(x + dx, y + 0.06, z + dz, 0.34, 0.03, 0.08, COLORS.rotor, spin * dir);
+          this.robotBatch.add(x + dx, y + 0.06, z + dz, 0.08, 0.03, 0.34, COLORS.rotor, spin * dir);
         }
         r.carrying.forEach((id, i) => {
           this.robotBatch.add(x, y - 0.2 - bh / 2 - i * bh, z, RENDER.binSize * 0.8, bh * 0.9, RENDER.binSize * 0.8, this.binColor(w, id));
