@@ -36,6 +36,7 @@ export function createWorld(opts: WorldOptions = {}): WorldState {
     tick: 0,
     speed: 1,
     difficulty: 'normal',
+    economy: 'standard',
     width,
     height,
     cells: new Array<CellKind>(width * height).fill('floor'),

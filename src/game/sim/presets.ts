@@ -3,6 +3,7 @@
  * レイアウトはプログラムで生成し、在庫・ロボ・アップグレード・自動化をまとめて設定する。
  */
 import { ITEMS } from '../data/items';
+import { rankShippedAt } from './pricing';
 import { LEVELS, ORDERS, RANKS } from '../data/balance';
 import { createRng, rand, randInt } from './rng';
 import { addRobot, createBin, createWorld } from './world';
@@ -97,7 +98,7 @@ export function buildPreset(id: PresetId, opts: PresetOptions = {}): WorldState 
   w.expansions = mega ? 6 : 2;
   w.coins = mega ? 50_000 : 5_000;
   w.reputation = mega ? 90 : 70;
-  w.stats.totalShipped = RANKS[rank].shipped;
+  w.stats.totalShipped = rankShippedAt(w, rank);
   w.automation = { dispatch: mega ? 3 : 2, restock: true, relocate: mega, amrPriority: 'balanced', lastRetrieveTick: 0 };
 
   // ロボを増やす（既定の 1+1 に追加）

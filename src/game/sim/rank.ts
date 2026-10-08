@@ -4,6 +4,7 @@ import { ITEMS } from '../data/items';
 import { availableItemIds } from './orders';
 import { addCoins } from './economy';
 import { grantEmptyBin } from './shop';
+import { rankBonusAt, rankShippedAt } from './pricing';
 import type { WorldState } from './types';
 
 export function rankName(w: WorldState): string {
@@ -12,14 +13,14 @@ export function rankName(w: WorldState): string {
 
 export function nextRankRequirement(w: WorldState): { shipped: number; area: number } | null {
   const next = RANKS[w.rank + 1];
-  return next ? { shipped: next.shipped, area: next.area } : null;
+  return next ? { shipped: rankShippedAt(w, w.rank + 1), area: next.area } : null;
 }
 
 export function checkRankUp(w: WorldState): boolean {
   const next = RANKS[w.rank + 1];
   if (!next) return false;
   const area = w.width * w.height;
-  if (w.stats.totalShipped < next.shipped || area < next.area) return false;
+  if (w.stats.totalShipped < rankShippedAt(w, w.rank + 1) || area < next.area) return false;
   const beforeItems = availableItemIds(w);
   w.rank++;
   const afterItems = availableItemIds(w);
@@ -33,7 +34,7 @@ export function checkRankUp(w: WorldState): boolean {
     pickers[0].assignedItems.push(item);
   }
   // 昇格ボーナス（★）: コインと、新商品の数だけ空ビン（棚に空きがあるぶんだけ）。新商品を入荷口から取り込めずに止まるのを防ぐ
-  const bonus = RANKS[Math.min(w.rank, RANKS.length - 1)].bonusCoins;
+  const bonus = rankBonusAt(w, w.rank);
   if (bonus > 0) addCoins(w, bonus);
   let granted = 0;
   for (let i = 0; i < newItems; i++) if (grantEmptyBin(w)) granted++;

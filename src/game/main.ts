@@ -286,6 +286,12 @@ class Game {
           this.world.difficulty = d;
           this.bar.refresh();
         },
+        economy: this.world.economy ?? 'standard',
+        setEconomy: (e) => {
+          this.world.economy = e;
+          this.save();
+          this.bar.refresh();
+        },
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
         openStore: () => this.bar.show('store'),

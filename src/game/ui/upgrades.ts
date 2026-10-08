@@ -1,4 +1,5 @@
 import { icon } from './icon';
+import { automationPrice, dispatchPrice, price } from '../sim/pricing';
 /** アップグレードショップ（§4.4 / §9.4） */
 import { ADVISOR, AUTOMATION, BIN, BUILD, LIMITS, RANKS, ROBOT } from '../data/balance';
 import {
@@ -31,7 +32,7 @@ import { limitsFor } from '../sim/limits';
 import { expansionCost } from '../sim/build';
 import { limitHint, specialRobotsHint } from './limitHint';
 import { hasFeature } from '../platform/entitlements';
-import { isDrone } from '../sim/layers';
+import { isDrone, speedLevelOf } from '../sim/layers';
 import { el, showToast } from './layout';
 
 export interface UpgradeContext {
@@ -73,16 +74,16 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   body.append(row(w.levels >= lim.maxLevels ? `棚の段数 ${w.levels}（MAX）` : `棚の段数 ${w.levels} → ${w.levels + 1}`, lvCost, () => upgradeLevels(w), ctx, `全スタックに +1 段。保管量が増える代わりに掘り出しが発生する${limitHint(w.levels >= lim.maxLevels, `段数 ${LIMITS.expanded.maxLevels} まで`)}`, lvLocked));
   body.append(row(`ビン容量 ${w.binCapacity} → ${w.binCapacity + 10}`, binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, '1 ビンに入る個数'));
   const binsLeft = Math.max(0, freeBinSlots(w) - reservedSlots(w));
-  body.append(row('空ビン 1 個', BIN.emptyBinCost, binsLeft > 0 ? () => buyEmptyBin(w) : null, ctx, `空きのあるスタックの頂上に置く（買えるのはあと ${binsLeft} 個。掘り出し用に ${reservedSlots(w)} スロットは空けておく）`));
+  body.append(row('空ビン 1 個', price(w, BIN.emptyBinCost), binsLeft > 0 ? () => buyEmptyBin(w) : null, ctx, `空きのあるスタックの頂上に置く（買えるのはあと ${binsLeft} 個。掘り出し用に ${reservedSlots(w)} スロットは空けておく）`));
   const areaMax = expansionCost(w, 'east') === null && expansionCost(w, 'south') === null;
   body.append(row(areaMax ? `面積拡張 ${w.width}×${w.height}（MAX）` : '面積拡張（東へ +4 列／南へ +4 行）', null, null, ctx, areaMax ? `これ以上は広げられません${limitHint(true, `${LIMITS.expanded.maxWidth}×${LIMITS.expanded.maxHeight} まで`)}` : '建設モードのツールバーから行います', areaMax ? undefined : '建設'));
-  body.append(el('p', { class: 'muted small', text: `スタック ${BUILD.stackCost} / ポート ${BUILD.portCost} / ステーション ${BUILD.pickStationCost} コイン。「建設」で配置します` }));
+  body.append(el('p', { class: 'muted small', text: `スタック ${price(w, BUILD.stackCost)} / ポート ${price(w, BUILD.portCost)} / ステーション ${price(w, BUILD.pickStationCost)} コイン。「建設」で配置します` }));
 
   body.append(el('h4', { text: 'ロボット' }));
   const shelves = w.robots.filter((r) => r.kind === 'shelf').length;
   const amrs = w.robots.filter((r) => r.kind === 'amr' && !isDrone(r)).length;
-  body.append(row('棚ロボ追加', ROBOT.shelfRobotCost, shelves < lim.maxShelfRobots ? () => buyShelfRobot(w) : null, ctx, `現在 ${shelves} 台（上限 ${lim.maxShelfRobots}）${limitHint(shelves >= lim.maxShelfRobots, `${LIMITS.expanded.maxShelfRobots} 台まで`)}`));
-  body.append(row('搬送ロボ追加', ROBOT.amrCost, amrs < lim.maxAmrs ? () => buyAmr(w) : null, ctx, `現在 ${amrs} 台（上限 ${lim.maxAmrs}）${limitHint(amrs >= lim.maxAmrs, `${LIMITS.expanded.maxAmrs} 台まで`)}`));
+  body.append(row('棚ロボ追加', price(w, ROBOT.shelfRobotCost), shelves < lim.maxShelfRobots ? () => buyShelfRobot(w) : null, ctx, `現在 ${shelves} 台（上限 ${lim.maxShelfRobots}）${limitHint(shelves >= lim.maxShelfRobots, `${LIMITS.expanded.maxShelfRobots} 台まで`)}`));
+  body.append(row('搬送ロボ追加', price(w, ROBOT.amrCost), amrs < lim.maxAmrs ? () => buyAmr(w) : null, ctx, `現在 ${amrs} 台（上限 ${lim.maxAmrs}）${limitHint(amrs >= lim.maxAmrs, `${LIMITS.expanded.maxAmrs} 台まで`)}`));
   // 特別ロボ（iOS の特別ロボパック）
   const special = hasFeature('specialRobots');
   const drones = w.robots.filter((r) => isDrone(r)).length;
@@ -90,8 +91,8 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   // ドローンの買い時: 地上ロボが横付けで順番待ちしている規模になってから。小さいうちは地上ロボで足りる
   const queued = (ctx.amrStaged ?? 0) >= ADVISOR.stagedRatio;
   const droneTiming = queued ? '★ 今が買い時: 搬送ロボが横付けで順番待ちしています' : '大きな倉庫で特に威力を発揮（搬送ロボがポートで順番待ちするようになったら「おすすめ」でお知らせ。今の規模では地上ロボで足りています）';
-  body.append(row('ドローン搬送ロボ追加', ROBOT.droneCost, special && drones < ROBOT.maxDrones ? () => buyDrone(w) : null, ctx, `棚の上を飛び越えて運ぶ（速度 +1 段階）。地上の渋滞と横付けの枠を受けず、一番溜まっているポートへ真っ先に向かい、暇なときはポートの上で待機。${droneTiming}。現在 ${drones} 台（上限 ${ROBOT.maxDrones}）${specialRobotsHint()}`, special ? undefined : 'ロック'));
-  body.append(row('ダブルデッカー棚ロボ追加', ROBOT.doubleDeckerCost, special && shelves < lim.maxShelfRobots ? () => buyDoubleDecker(w) : null, ctx, `ビンを 2 段持てる棚ロボ。1 個掘れば届くビンは退避の往復なしで取り出し、深い掘り出しも 2 個ずつ運ぶ。狭い棚でも 1 台で棚ロボ 2 台ぶんの働きをするので序盤から活躍。棚ロボの上限に含む${specialRobotsHint()}`, special ? undefined : 'ロック'));
+  body.append(row('ドローン搬送ロボ追加', price(w, ROBOT.droneCost), special && drones < ROBOT.maxDrones ? () => buyDrone(w) : null, ctx, `棚の上を飛び越えて運ぶ（速度 +1 段階）。地上の渋滞と横付けの枠を受けず、一番溜まっているポートへ真っ先に向かい、暇なときはポートの上で待機。${droneTiming}。現在 ${drones} 台（上限 ${ROBOT.maxDrones}）${specialRobotsHint()}`, special ? undefined : 'ロック'));
+  body.append(row('ダブルデッカー棚ロボ追加', price(w, ROBOT.doubleDeckerCost), special && shelves < lim.maxShelfRobots ? () => buyDoubleDecker(w) : null, ctx, `ビンを 2 段持てる棚ロボ。1 個掘れば届くビンは退避の往復なしで取り出し、深い掘り出しも 2 個ずつ運ぶ。狭い棚でも 1 台で棚ロボ 2 台ぶんの働きをするので序盤から活躍。棚ロボの上限に含む${specialRobotsHint()}`, special ? undefined : 'ロック'));
 
   const allCost = upgradeAllRobotsCost(w);
   body.append(el('h4', { text: 'ロボの強化（全機）' }));
@@ -99,25 +100,25 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const r = w.robots.find((r) => r.id === ctx.selectedRobotId) ?? null;
   body.append(el('h4', { text: r ? `${r.name} の強化（機体ごと）` : 'ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）' }));
   if (r) {
-    body.append(row(`速度 Lv${r.speedLevel} → ${r.speedLevel + 1}`, speedUpgradeCost(r), () => upgradeSpeed(w, r.id), ctx, '移動速度 +20%/Lv'));
-    if (r.kind === 'shelf') body.append(row(`リフト速度 Lv${r.liftLevel} → ${r.liftLevel + 1}`, liftUpgradeCost(r), () => upgradeLift(w, r.id), ctx, '掘り出し・上げ下ろしの時間短縮'));
+    body.append(row(`速度 Lv${r.speedLevel} → ${r.speedLevel + 1}`, speedUpgradeCost(r, w), () => upgradeSpeed(w, r.id), ctx, isDrone(r) ? `移動速度 +20%/Lv。ドローンは飛行で +1 段階（いまの実効 Lv${speedLevelOf(r)}）` : '移動速度 +20%/Lv'));
+    if (r.kind === 'shelf') body.append(row(`リフト速度 Lv${r.liftLevel} → ${r.liftLevel + 1}`, liftUpgradeCost(r, w), () => upgradeLift(w, r.id), ctx, '掘り出し・上げ下ろしの時間短縮'));
     if (r.kind === 'amr') {
       const c = ROBOT.cargo[r.cargoLevel];
       const n = ROBOT.cargo[Math.min(r.cargoLevel + 1, lim.maxCargoLevel)];
-      body.append(row(r.cargoLevel >= lim.maxCargoLevel ? `積載 ${c.bins} ビン（MAX）` : `積載 ${c.bins} → ${n.bins} ビン`, cargoUpgradeCost(r), () => upgradeCargo(w, r.id), ctx, `ビンを積み重ねて運び、必要なステーションを順に回る${limitHint(r.cargoLevel >= lim.maxCargoLevel, `積載 ${ROBOT.cargo[LIMITS.expanded.maxCargoLevel].bins} ビンまで`)}`));
+      body.append(row(r.cargoLevel >= lim.maxCargoLevel ? `積載 ${c.bins} ビン（MAX）` : `積載 ${c.bins} → ${n.bins} ビン`, cargoUpgradeCost(r, w), () => upgradeCargo(w, r.id), ctx, `ビンを積み重ねて運び、必要なステーションを順に回る${limitHint(r.cargoLevel >= lim.maxCargoLevel, `積載 ${ROBOT.cargo[LIMITS.expanded.maxCargoLevel].bins} ビンまで`)}`));
     }
   }
 
   body.append(el('h4', { text: 'ピッカー' }));
   for (const s of w.stations.filter((s) => s.kind === 'pick')) {
-    body.append(row(`ステーション(${s.x},${s.z}) ピック速度 Lv${s.level} → ${s.level + 1}`, pickerUpgradeCost(s), () => upgradePicker(w, s.id), ctx, `担当: ${s.assignedItems.length} 品目`));
+    body.append(row(`ステーション(${s.x},${s.z}) ピック速度 Lv${s.level} → ${s.level + 1}`, pickerUpgradeCost(s, w), () => upgradePicker(w, s.id), ctx, `担当: ${s.assignedItems.length} 品目`));
   }
 
   body.append(el('h4', { text: '自動化 AI' }));
   const ai: [string, string, number | null, string][] = [
-    ['dispatch', `自動配車AI Lv${w.automation.dispatch + 1}`, w.automation.dispatch < 3 ? AUTOMATION.dispatchCosts[w.automation.dispatch] : null, ['搬送ロボがポートのビンを自動で運ぶ（棚ロボの取り出しはまだ手動）', '棚ロボがオーダーを見て自動で取り出す。ここから放置できる', '同じ商品を含むオーダーをまとめて取り出す（バッチ最適化）'][w.automation.dispatch] ?? ''],
-    ['restock', '自動補充AI', w.automation.restock ? null : AUTOMATION.restockCost, '入荷があると該当ビンを自動で入荷ステーションへ'],
-    ['relocate', '在庫再配置AI', w.automation.relocate ? null : AUTOMATION.relocateCost, '暇なときに人気商品を上段へ並べ替える'],
+    ['dispatch', `自動配車AI Lv${w.automation.dispatch + 1}`, w.automation.dispatch < 3 ? dispatchPrice(w, w.automation.dispatch) : null, ['搬送ロボがポートのビンを自動で運ぶ（棚ロボの取り出しはまだ手動）', '棚ロボがオーダーを見て自動で取り出す。ここから放置できる', '同じ商品を含むオーダーをまとめて取り出す（バッチ最適化）'][w.automation.dispatch] ?? ''],
+    ['restock', '自動補充AI', w.automation.restock ? null : automationPrice(w, AUTOMATION.restockCost), '入荷があると該当ビンを自動で入荷ステーションへ'],
+    ['relocate', '在庫再配置AI', w.automation.relocate ? null : automationPrice(w, AUTOMATION.relocateCost), '暇なときに人気商品を上段へ並べ替える'],
   ];
   for (const [id, label, cost, desc] of ai) {
     const unlockRank = id === 'dispatch' ? [AUTOMATION.unlockRank.dispatch1, AUTOMATION.unlockRank.dispatch2, AUTOMATION.unlockRank.dispatch3][w.automation.dispatch] ?? 0 : id === 'restock' ? AUTOMATION.unlockRank.restock : AUTOMATION.unlockRank.relocate;

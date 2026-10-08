@@ -416,6 +416,24 @@ export const DIFFICULTY: Record<DifficultyId, { name: string; desc: string; inte
 };
 export const DIFFICULTY_ORDER: DifficultyId[] = ['easy', 'normal', 'hard', 'superhard'];
 
+/**
+ * 経済モード（★）: 難易度（受注まわり）とは別の軸。コインの貯まりやすさと値段を変える。
+ *  - coinFactor: 報酬の倍率（難易度の coinFactor と掛け合わせ）
+ *  - coinPerItemByRank: 商品 1 個の単価（null なら REWARD.coinPerItemByRank）。ロングランはランクで単価がほぼ上がらない（インフレの軸を切る）
+ *  - costFactor: ロボ・建設・面積拡張・段数・ビン・機体とピッカーの強化、すべての値段の倍率
+ *  - automationCostFactor: 自動化 AI の値段の倍率（自動化は遠ざけすぎない）
+ *  - rankShippedFactor: 昇格に要る累計出荷数の倍率
+ *  - rankBonusFactor: 昇格ボーナスのコインの倍率
+ * ロングランの目安（1x・自動化が揃った倉庫の収入 rank0 ≈ 35、rank2 ≈ 250、rank4 ≈ 1,100 コイン/分）:
+ * 自動化（配車 Lv2）まで約 1 時間、メガDC まで約 6 時間。★ 実測で調整すること
+ */
+export type EconomyId = 'standard' | 'longrun';
+export const ECONOMY_MODES: Record<EconomyId, { name: string; desc: string; coinFactor: number; coinPerItemByRank: readonly number[] | null; costFactor: number; automationCostFactor: number; rankShippedFactor: number; rankBonusFactor: number }> = {
+  standard: { name: '標準', desc: 'コインはどんどん貯まり、ランクが上がると単価も上がる。自動化を眺めるまでが早い', coinFactor: 1, coinPerItemByRank: null, costFactor: 1, automationCostFactor: 1, rankShippedFactor: 1, rankBonusFactor: 1 },
+  longrun: { name: 'ロングラン', desc: 'コインが貯まりにくく（報酬 ×0.4、単価はランクでほぼ上がらない）、ロボと設備は 3 倍、自動化 AI は 1.5 倍、昇格に要る出荷数は 1.5 倍。しっかり調整すれば自動化まで約 1 時間、メガDC まで約 6 時間', coinFactor: 0.4, coinPerItemByRank: [10, 11, 12, 13, 14], costFactor: 3, automationCostFactor: 1.5, rankShippedFactor: 1.5, rankBonusFactor: 0.5 },
+};
+export const ECONOMY_ORDER: EconomyId[] = ['standard', 'longrun'];
+
 /** 建設コスト（§9.4） */
 export const BUILD = {
   stackCost: 30,

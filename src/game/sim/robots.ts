@@ -753,7 +753,8 @@ function amrReturn(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { 
 /** 表示用: ロボの状態を短い日本語に */
 export function describeRobot(w: WorldState, r: Robot): string {
   const job = r.job as RobotJob | null;
-  if (!job) return r.phase === 'moving' ? '移動中' : '待機中';
+  const overPort = isDrone(r) && w.ports.some((p) => p.x === r.pose.x && p.z === r.pose.z);
+  if (!job) return r.phase === 'moving' ? '移動中' : overPort ? 'ポートの上で待機中' : '待機中';
   switch (job.type) {
     case 'retrieve': {
       const b = w.bins[job.binId];
@@ -777,6 +778,7 @@ export function describeRobot(w: WorldState, r: Robot): string {
     case 'return':
       return 'ポートへ返却中';
     case 'park':
+      if (isDrone(r)) return overPort && job.x === r.pose.x && job.z === r.pose.z ? 'ポートの上で待機中' : 'ポートの上へ';
       return '待機スポットへ';
   }
 }
