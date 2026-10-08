@@ -17,7 +17,7 @@ import {
 import type { CellKind } from '../data/balance';
 import { ITEMS } from '../data/items';
 import { createRng } from './rng';
-import type { Bin, Robot, RobotKind, Station, StationKind, WorldState } from './types';
+import type { Bin, Robot, RobotKind, RobotVariant, Station, StationKind, WorldState } from './types';
 
 export interface WorldOptions {
   seed?: number;
@@ -205,12 +205,13 @@ function addStation(w: WorldState, kind: StationKind, x: number, z: number): Sta
   return s;
 }
 
-export function addRobot(w: WorldState, kind: RobotKind, x: number, z: number): Robot {
+export function addRobot(w: WorldState, kind: RobotKind, x: number, z: number, variant: RobotVariant = 'standard'): Robot {
   const id = w.nextIds.robot++;
-  const count = w.robots.filter((r) => r.kind === kind).length + 1;
+  const count = w.robots.filter((r) => r.kind === kind && (r.variant ?? 'standard') === variant).length + 1;
   const r: Robot = {
     id,
     kind,
+    ...(variant !== 'standard' ? { variant } : {}),
     pose: { x, z, dir: 0 },
     moveTo: null,
     actRemaining: 0,
@@ -226,7 +227,7 @@ export function addRobot(w: WorldState, kind: RobotKind, x: number, z: number): 
     cargoLevel: 0,
     stuckTicks: 0,
     goal: null,
-    name: kind === 'shelf' ? `棚ロボ ${count}` : `搬送ロボ ${count}`,
+    name: variant === 'drone' ? `ドローン ${count}` : variant === 'double' ? `ダブルデッカー ${count}` : kind === 'shelf' ? `棚ロボ ${count}` : `搬送ロボ ${count}`,
   };
   w.robots.push(r);
   return r;

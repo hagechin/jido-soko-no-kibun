@@ -146,6 +146,10 @@ export const ROBOT = {
   liftUpgradeCosts: [150, 350, 800],
   shelfRobotCost: 300,
   amrCost: 250,
+  /** 特別ロボ（iOS の特別ロボパック）。ドローンは空中を飛ぶ搬送ロボ（上限 maxDrones 台、搬送ロボの上限とは別枠）、ダブルデッカーは 2 段持ちの棚ロボ（棚ロボの上限に含む） */
+  droneCost: 900,
+  maxDrones: 4,
+  doubleDeckerCost: 650,
   /** 同時に存在できる台数の上限（描画負荷の安全弁。上限突破パックで LIMITS.expanded に） */
   maxShelfRobots: 40,
   maxAmrs: 60,

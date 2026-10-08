@@ -1,4 +1,5 @@
 /** 購入・アップグレード（§4.4 / §9.4）。コインの確認と上限チェックはすべてここで行う */
+import { isDrone } from './layers';
 import { ROBOT } from '../data/balance';
 import { cellAt, isFloorWalkable } from './grid';
 import { addRobot, createBin } from './world';
@@ -21,21 +22,48 @@ function occupiedCells(w: WorldState): Set<string> {
   return s;
 }
 
-/** 棚ロボを追加（空いているスタックの上に置く） */
-export function buyShelfRobot(w: WorldState): ShopResult {
+/** 棚ロボを追加（空いているスタックの上に置く）。variant = 'double' でダブルデッカー（特別ロボ、棚ロボの上限に含む） */
+export function buyShelfRobot(w: WorldState, variant: 'standard' | 'double' = 'standard'): ShopResult {
   if (w.robots.filter((r) => r.kind === 'shelf').length >= limitsFor(w).maxShelfRobots) return { ok: false, reason: `棚ロボはこれ以上増やせません（上限 ${limitsFor(w).maxShelfRobots} 台）` };
   const occ = occupiedCells(w);
   const spot = w.stacks.find((s) => !occ.has(`${s.x},${s.z}`));
   if (!spot) return { ok: false, reason: '置き場所（空いているスタック）がありません' };
-  const p = pay(w, ROBOT.shelfRobotCost);
+  const p = pay(w, variant === 'double' ? ROBOT.doubleDeckerCost : ROBOT.shelfRobotCost);
   if (!p.ok) return p;
-  addRobot(w, 'shelf', spot.x, spot.z);
+  addRobot(w, 'shelf', spot.x, spot.z, variant);
+  return { ok: true };
+}
+
+export function buyDoubleDecker(w: WorldState): ShopResult {
+  return buyShelfRobot(w, 'double');
+}
+
+/** ドローン搬送ロボを追加（特別ロボ）: 空中レイヤーなので、他のドローンが居ないマスならどこにでも置ける（待機スポット優先）。上限 maxDrones */
+export function buyDrone(w: WorldState): ShopResult {
+  const drones = w.robots.filter((r) => isDrone(r));
+  if (drones.length >= ROBOT.maxDrones) return { ok: false, reason: `ドローンはこれ以上増やせません（上限 ${ROBOT.maxDrones} 台）` };
+  const taken = new Set(drones.map((r) => `${r.pose.x},${r.pose.z}`));
+  let spot = w.waitSpots.find((s) => !taken.has(`${s.x},${s.z}`)) ?? null;
+  if (!spot) {
+    outer: for (let z = 0; z < w.height; z++) {
+      for (let x = 0; x < w.width; x++) {
+        if (!taken.has(`${x},${z}`)) {
+          spot = { x, z };
+          break outer;
+        }
+      }
+    }
+  }
+  if (!spot) return { ok: false, reason: '置き場所がありません' };
+  const p = pay(w, ROBOT.droneCost);
+  if (!p.ok) return p;
+  addRobot(w, 'amr', spot.x, spot.z, 'drone');
   return { ok: true };
 }
 
 /** 搬送ロボを追加（空いている待機スポット → 空いている床） */
 export function buyAmr(w: WorldState): ShopResult {
-  if (w.robots.filter((r) => r.kind === 'amr').length >= limitsFor(w).maxAmrs) return { ok: false, reason: `搬送ロボはこれ以上増やせません（上限 ${limitsFor(w).maxAmrs} 台）` };
+  if (w.robots.filter((r) => r.kind === 'amr' && !isDrone(r)).length >= limitsFor(w).maxAmrs) return { ok: false, reason: `搬送ロボはこれ以上増やせません（上限 ${limitsFor(w).maxAmrs} 台）` };
   const occ = occupiedCells(w);
   let spot = w.waitSpots.find((s) => !occ.has(`${s.x},${s.z}`)) ?? null;
   if (!spot) {

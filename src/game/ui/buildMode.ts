@@ -3,6 +3,9 @@ import { icon, iconText, type IconName } from './icon';
 import { BUILD_COST, BUILD_LABEL, expansionCells, expansionCost, maxExpansionsForRank, type BuildKind, type ExpandDir } from '../sim/build';
 import type { WorldState } from '../sim/types';
 import { el } from './layout';
+import { limitsFor } from '../sim/limits';
+import { LIMITS } from '../data/balance';
+import { limitHint } from './limitHint';
 
 export type BuildTool = BuildKind | 'erase' | 'move';
 
@@ -37,12 +40,16 @@ export const BUILD_TOOL_ORDER: BuildTool[] = ['stack', 'port', 'pickStation', 'i
 
 /** 「30 🪙」の代わり: コインアイコン + 数字 */
 function coinCost(n: number): HTMLElement {
-  return el('span', { class: 'cost' }, icon('coins', 12), document.createTextNode(String(n)));
+  return el('span', { class: 'cost' }, icon('coins', 12), document.createTextNode(n.toLocaleString('ja-JP')));
 }
+
+/** ツールバーの横スクロール位置（描き直しても戻らないように覚えておく） */
+let toolsScroll = 0;
 
 export function renderBuild(body: HTMLElement, ctx: BuildContext): void {
   const w = ctx.world;
   const tools = el('div', { class: 'build-tools' });
+  tools.addEventListener('scroll', () => (toolsScroll = tools.scrollLeft), { passive: true });
   const list: BuildTool[] = BUILD_TOOL_ORDER;
   list.forEach((t, i) => {
     const label = t === 'erase' ? '撤去' : t === 'move' ? '移動' : BUILD_LABEL[t];
@@ -63,11 +70,15 @@ export function renderBuild(body: HTMLElement, ctx: BuildContext): void {
     tools.append(ex);
   }
   body.append(tools);
+  tools.scrollLeft = toolsScroll;
   if (ctx.onOpenEditor) {
     const open = el('button', { class: 'btn primary', type: 'button', title: 'L' }, iconText('layers', 'レイアウトエディタ（倉庫を停止して俯瞰で配置換え）', 16), el('kbd', { class: 'key', text: 'L' }));
     open.addEventListener('click', () => ctx.onOpenEditor!());
     body.append(el('div', { class: 'settings-row' }, open));
   }
   const hint = ctx.state.tool === 'erase' ? '撤去する設備をタップ（無料）' : ctx.state.tool === 'move' ? (ctx.state.held ? '移動先のセルをタップ' : '動かす設備をタップ') : `${BUILD_LABEL[ctx.state.tool]} を置くセルをタップ`;
-  body.append(el('div', { class: 'build-hint' }, el('span', { text: hint }), el('span', { class: 'muted small', text: `　${w.width}×${w.height} マス / 建設中はシミュレーション停止` })));
+  const lim = limitsFor(w);
+  const atMax = expansionCost(w, 'east') === null && expansionCost(w, 'south') === null;
+  const capHint = limitHint(atMax, `${LIMITS.expanded.maxWidth}×${LIMITS.expanded.maxHeight} まで`);
+  body.append(el('div', { class: 'build-hint' }, el('span', { text: hint }), el('span', { class: 'muted small', text: `　${w.width}×${w.height} マス（上限 ${lim.maxWidth}×${lim.maxHeight}${capHint}） / 建設中はシミュレーション停止` })));
 }

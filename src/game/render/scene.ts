@@ -33,6 +33,7 @@ import { Effects, groundColorForMonth } from './effects';
 import type { Robot, WorldState } from '../sim/types';
 import { BoxBatch, shade } from './voxel';
 import { shapeFor } from '../sim/footprint';
+import { isDoubleDecker, isDrone } from '../sim/layers';
 import { CameraController } from './camera';
 import type { QualitySettings } from './quality';
 
@@ -59,8 +60,12 @@ const COLORS = {
   frame: '#6c7a89',
   rail: '#55606c',
   shelfRobot: '#e04b4b',
+  doubleDecker: '#e08a2b',
   amr: '#3a7bd5',
   amrDark: '#2b5aa0',
+  drone: '#5fc9f8',
+  droneDark: '#2c6f8f',
+  rotor: '#2a2f36',
   person: '#f6c6a8',
   shirtPick: '#2e8b57',
   shirtInbound: '#d2691e',
@@ -181,6 +186,11 @@ export class WarehouseRenderer {
 
   railHeight(w: WorldState): number {
     return RENDER.railBaseHeight + w.levels * RENDER.binHeight + 0.15;
+  }
+
+  /** ドローンの飛行高さ（棚ロボの上） */
+  droneHeight(w: WorldState): number {
+    return this.railHeight(w) + 1.1;
   }
 
   private rebuildStatic(w: WorldState): void {
@@ -305,7 +315,7 @@ export class WarehouseRenderer {
     this.iconBatch.dispose();
     const maxBins = w.stacks.length * Math.max(w.levels, 1) + 64 + INBOUND_WORKER.dockDisplayMax * w.inboundDock.length * 2;
     this.binBatch = new BoxBatch(maxBins, { castShadow: sh });
-    this.robotBatch = new BoxBatch(w.robots.length * 12 + 64, { castShadow: sh });
+    this.robotBatch = new BoxBatch(w.robots.length * 24 + 64, { castShadow: sh }); // ドローンは箱が多い（腕・ローター）
     this.iconBatch = new BoxBatch((w.stacks.length + w.ports.length * 8 + w.robots.length * 4) * ICON_VOXELS_MAX);
     this.dynamicGroup.clear();
     this.dynamicGroup.add(this.binBatch.mesh, this.robotBatch.mesh, this.iconBatch.mesh, this.highlightBatch.mesh);
@@ -325,6 +335,13 @@ export class WarehouseRenderer {
       if (sizeChanged) {
         this.controls.setWarehouse(w.width, w.height);
         this.controls.fitForAspect(this.camera.aspect);
+        // 霧と描画距離は倉庫の大きさに合わせる（64×48 で床が霧に隠れないように）
+        const diag = Math.hypot(w.width, w.height);
+        const fog = this.scene.fog as Fog;
+        fog.near = Math.max(60, diag * 2.5);
+        fog.far = Math.max(140, diag * 5);
+        this.camera.far = Math.max(300, diag * 6);
+        this.camera.updateProjectionMatrix();
       }
       this.lastTick = -1;
     }
@@ -443,10 +460,45 @@ export class WarehouseRenderer {
         dirF = r.pose.dir + d * t;
       }
       const rot = (dirF * Math.PI) / 2;
-      if (r.kind === 'shelf') {
+      if (isDrone(r)) {
+        // ドローン: 棚ロボより上の空中レイヤー。本体＋4 本の腕とローター、ビンは下にぶら下げる
+        const y = this.droneHeight(w);
+        this.robotBatch.add(x, y, z, 0.5, 0.16, 0.5, COLORS.drone, rot);
+        this.robotBatch.add(x, y + 0.1, z, 0.3, 0.06, 0.3, COLORS.droneDark, rot);
+        const spin = ((w.tick + alpha) * 0.9) % (Math.PI * 2);
+        for (const [dx, dz] of [
+          [-0.42, -0.42],
+          [0.42, -0.42],
+          [-0.42, 0.42],
+          [0.42, 0.42],
+        ]) {
+          this.robotBatch.add(x + dx * 0.55, y, z + dz * 0.55, 0.5, 0.05, 0.08, COLORS.droneDark, Math.atan2(dz, dx));
+          this.robotBatch.add(x + dx, y + 0.06, z + dz, 0.34, 0.03, 0.08, COLORS.rotor, spin);
+          this.robotBatch.add(x + dx, y + 0.06, z + dz, 0.08, 0.03, 0.34, COLORS.rotor, spin);
+        }
+        r.carrying.forEach((id, i) => {
+          this.robotBatch.add(x, y - 0.2 - bh / 2 - i * bh, z, RENDER.binSize * 0.8, bh * 0.9, RENDER.binSize * 0.8, this.binColor(w, id));
+        });
+        if (r.id === this.selectedRobotId) {
+          this.selectionRing.visible = true;
+          this.selectionRing.position.set(x, y - 0.15, z);
+        }
+      } else if (r.kind === 'shelf') {
         const y = rh + 0.25;
-        this.robotBatch.add(x, y, z, 0.78, 0.36, 0.78, COLORS.shelfRobot, rot);
-        this.robotBatch.add(x, y + 0.24, z, 0.5, 0.12, 0.5, shade(COLORS.shelfRobot, -0.15), rot);
+        const body = isDoubleDecker(r) ? COLORS.doubleDecker : COLORS.shelfRobot;
+        this.robotBatch.add(x, y, z, 0.78, 0.36, 0.78, body, rot);
+        this.robotBatch.add(x, y + 0.24, z, 0.5, 0.12, 0.5, shade(body, -0.15), rot);
+        if (isDoubleDecker(r)) {
+          // 2 段持ちの目印: 四隅の支柱とレールの下の第 2 デッキ
+          for (const [dx, dz] of [
+            [-0.34, -0.34],
+            [0.34, -0.34],
+            [-0.34, 0.34],
+            [0.34, 0.34],
+          ]) {
+            this.robotBatch.add(x + dx, rh - bh, z + dz, 0.06, bh * 2, 0.06, shade(body, -0.3));
+          }
+        }
         // 車輪
         for (const [dx, dz] of [
           [-0.32, -0.32],
@@ -551,6 +603,7 @@ export class WarehouseRenderer {
     };
     const ground = hitAt(0);
     const rail = hitAt(this.railHeight(w) + 0.2);
+    const air = hitAt(this.droneHeight(w));
     let best: { res: PickResult; d: number } | null = null;
     const consider = (res: PickResult, px: number, pz: number, pt: Vector3 | null, bonus = 0) => {
       if (!pt) return;
@@ -561,7 +614,7 @@ export class WarehouseRenderer {
       // 指示中（preferStatic）は、通りかかった動いているロボにタップを横取りされないようにする
       if (preferStatic && r.moveTo) continue;
       this.robotWorldPos(r, alpha, this.tmpPos);
-      consider({ kind: 'robot', id: r.id, x: r.pose.x, z: r.pose.z }, this.tmpPos.x, this.tmpPos.z, r.kind === 'shelf' ? rail : ground, 0.25);
+      consider({ kind: 'robot', id: r.id, x: r.pose.x, z: r.pose.z }, this.tmpPos.x, this.tmpPos.z, isDrone(r) ? air : r.kind === 'shelf' ? rail : ground, 0.25);
     }
     for (const s of w.stacks) consider({ kind: 'stack', id: s.id, x: s.x, z: s.z }, s.x + 0.5, s.z + 0.5, rail);
     for (const p of w.ports) consider({ kind: 'port', id: p.id, x: p.x, z: p.z }, p.x + 0.5, p.z + 0.5, ground);

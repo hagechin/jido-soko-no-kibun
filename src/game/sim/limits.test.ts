@@ -31,7 +31,7 @@ describe('上限突破（I4）', () => {
     expect(w.robots.filter((r) => r.kind === 'amr').length).toBe(LIMITS.base.maxAmrs);
     const stop = buyAmr(w);
     expect(stop.ok).toBe(false);
-    expect(stop.reason).toContain('上限 60');
+    expect(stop.ok ? '' : stop.reason).toContain('上限 60');
     setLimitsExpanded(true);
     while (buyAmr(w).ok) n++;
     expect(w.robots.filter((r) => r.kind === 'amr').length).toBe(LIMITS.expanded.maxAmrs);

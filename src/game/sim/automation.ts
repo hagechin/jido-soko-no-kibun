@@ -8,6 +8,8 @@
  *  在庫再配置AI: 暇なときに人気商品を上段へ
  * 手動指示（manual）が入っているロボには割り当てない。
  */
+import { layerOf } from './layers';
+import { passableFor } from './goals';
 import { AUTOMATION, PATHING, PORT } from '../data/balance';
 import { demandFor } from '../data/seasons';
 import { cellAt, isFloorWalkable, isRailWalkable, manhattan, neighbors4 } from './grid';
@@ -332,16 +334,15 @@ function unblockStuck(w: WorldState, rt: Runtime): void {
     if (!stuck.goal || stuck.stuckTicks < PATHING.stuckTicks || stuck.stuckTicks % PATHING.replanIntervalTicks !== 0) continue;
     const targets = goalTargetCells(w, stuck.goal);
     for (const o of w.robots) {
-      if (o === stuck || o.kind !== stuck.kind || o.job || o.queue.length || o.actRemaining > 0) continue;
+      if (o === stuck || layerOf(o) !== layerOf(stuck) || o.job || o.queue.length || o.actRemaining > 0) continue;
       const near = manhattan(o.pose, stuck.pose) <= 2 || targets.some((c) => manhattan(o.pose, c) <= 2);
       if (!near) continue;
       // 暇なロボをランダムな通行可能セル（今の場所から 2 マス以上離れた所）へ
       const cells: { x: number; z: number }[] = [];
+      const pass = passableFor(w, o);
       for (let z = 0; z < w.height; z++) {
         for (let x = 0; x < w.width; x++) {
-          const k = cellAt(w, x, z);
-          const ok = o.kind === 'shelf' ? isRailWalkable(k) : isFloorWalkable(k);
-          if (!ok || manhattan({ x, z }, o.pose) < 2) continue;
+          if (!pass(x, z) || manhattan({ x, z }, o.pose) < 2) continue;
           if (w.ports.some((p) => manhattan(p, { x, z }) <= 1)) continue;
           cells.push({ x, z });
         }
@@ -437,7 +438,7 @@ export function diagnoseIdle(w: WorldState): string[] {
   for (const r of w.robots) if (r.stuckTicks >= AUTOMATION.staleRetrieveTicks) out.push(`[!] ${r.name} が ${Math.round(r.stuckTicks / 10)} 秒動けていない: ${describeRobot(w, r)} @(${r.pose.x},${r.pose.z})${r.carrying.length ? `、持っているビン: ${r.carrying.map((id) => `${w.bins[id]?.item ?? '空'} ${w.bins[id]?.qty ?? 0} 個`).join('、')}` : ''}`);
   const at = new Map<string, Robot>();
   for (const r of w.robots) {
-    const k = `${r.kind}:${r.pose.x},${r.pose.z}`;
+    const k = `${layerOf(r)}:${r.pose.x},${r.pose.z}`;
     const o = at.get(k);
     if (o) out.push(`[!] ${o.name} と ${r.name} が同じマス (${r.pose.x},${r.pose.z}) に重なっている`);
     at.set(k, r);

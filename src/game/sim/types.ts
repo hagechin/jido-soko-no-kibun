@@ -67,6 +67,8 @@ export interface StationWork {
 }
 
 export type RobotKind = 'shelf' | 'amr';
+/** 変種（特別ロボ、SPEC-iOS §1）: drone = 空中レイヤーの搬送ロボ、double = 2 段持ちの棚ロボ。無ければ標準 */
+export type RobotVariant = 'standard' | 'drone' | 'double';
 
 export interface Pose {
   x: number;
@@ -106,6 +108,8 @@ export type RobotPhase =
 export interface Robot {
   id: number;
   kind: RobotKind;
+  /** 特別ロボ（無ければ標準。古いセーブにも無い） */
+  variant?: RobotVariant;
   /** 論理位置（アンカーセル）と向き */
   pose: Pose;
   /** 移動中の目的セル。null なら停止中 */

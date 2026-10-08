@@ -10,6 +10,7 @@ import { footprint, shapeFor, turnSweep } from './footprint';
 import { moveTicksFor } from './pathfinding';
 import type { Runtime } from './runtime';
 import type { AmrJob, Goal, Robot, RobotJob, ShelfJob, Stack, Vec2, WorldState } from './types';
+import { isDoubleDecker, isDrone, layerOf, shapeOf, shelfSlots } from './layers';
 
 export function liftTicks(r: Robot): number {
   return ROBOT.liftTicksByLevel[Math.min(r.liftLevel, ROBOT.liftTicksByLevel.length - 1)];
@@ -153,6 +154,11 @@ export function destinationOf(w: WorldState, r: Robot, binId: number): number | 
  * 混雑制御: ステーション／ポートへ同時に向かえる搬送ロボの数は、隣接する床（横付けできる場所）の数まで。
  * あふれた分は待機スポットで順番待ちする（通路でその場待ちして塞がないため）
  */
+/** ポート／ステーションに着ける位置: 地上の搬送ロボは隣の床、ドローンはそのマスの真上 */
+function dockGoal(r: Robot, at: Vec2): Goal {
+  return isDrone(r) ? { type: 'cell', x: at.x, z: at.z } : { type: 'adjacent', x: at.x, z: at.z };
+}
+
 export function approachCapacity(w: WorldState, x: number, z: number): number {
   return Math.max(1, approachCells(w, x, z).length);
 }
@@ -160,7 +166,7 @@ export function approachCapacity(w: WorldState, x: number, z: number): number {
 function headingTo(w: WorldState, kind: 'station' | 'port', id: number, except: Robot): number {
   let n = 0;
   for (const o of w.robots) {
-    if (o === except || o.kind !== 'amr' || !o.job) continue;
+    if (o === except || o.kind !== 'amr' || isDrone(o) || !o.job) continue; // ドローンは上から着けるので横付けの枠を使わない
     const j = o.job;
     if (kind === 'station' && j.type === 'deliver' && j.stationId === id && !j.staged) n++;
     if (kind === 'port' && (j.type === 'fetch' || j.type === 'return') && j.portId === id && !(j.type === 'fetch' && j.staged)) n++;
@@ -255,7 +261,7 @@ export function executeMovement(w: WorldState, rt: Runtime, r: Robot): void {
   // 進む先に同じ層のロボが実際に居る（購入で置かれた直後など、予約表に載る前のロボ）ときも進まずに引き直す（重なりを物理的に防ぐ）
   if (next.type !== 'wait') {
     const pass = passableFor(w, r);
-    const shape = shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel);
+    const shape = shapeOf(r);
     const cells = next.type === 'turn' ? turnSweep(next.from, next.to.dir) : footprint(next.to, shape, []);
     if (!cells.every((c) => pass(c.x, c.z)) || cellsOccupiedByOthers(w, r, cells)) {
       rt.plans.delete(r.id);
@@ -281,12 +287,13 @@ export function executeMovement(w: WorldState, rt: Runtime, r: Robot): void {
 
 /** cells のどれかを、同じ層の他ロボが今占有している（居る、または移動中の行き先にしている）か */
 function cellsOccupiedByOthers(w: WorldState, r: Robot, cells: Vec2[]): boolean {
-  const mine = new Set(footprint(r.pose, shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel), []).map((c) => `${c.x},${c.z}`));
+  const mine = new Set(footprint(r.pose, shapeOf(r), []).map((c) => `${c.x},${c.z}`));
   const keys = new Set(cells.map((c) => `${c.x},${c.z}`).filter((k) => !mine.has(k)));
   if (!keys.size) return false;
+  const layer = layerOf(r);
   for (const o of w.robots) {
-    if (o === r || o.kind !== r.kind) continue;
-    const shape = shapeFor(o.kind === 'shelf' ? 0 : o.cargoLevel);
+    if (o === r || layerOf(o) !== layer) continue;
+    const shape = shapeOf(o);
     for (const c of footprint(o.pose, shape, [])) if (keys.has(`${c.x},${c.z}`)) return true;
     if (o.moveTo) for (const c of footprint(o.moveTo, shape, [])) if (keys.has(`${c.x},${c.z}`)) return true;
   }
@@ -353,6 +360,9 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
       const top = stack.bins[stack.bins.length - 1];
       if (top === job.binId) {
         beginAction(r, 'lifting', lt, 10);
+      } else if (isDoubleDecker(r) && stack.bins[stack.bins.length - 2] === job.binId) {
+        // ★ ダブルデッカー: 目的ビンの上が 1 個だけなら、それを持ち上げたまま目的ビンも取り、上のビンはその場で戻す（退避先への往復なし）
+        beginAction(r, 'lifting', lt, 14);
       } else {
         // 掘り出し: 退避先が必要
         const temp = pickStackWithRoom(w, stack, stack.id, ROBOT.digLevelWeight, stack.bins[stack.bins.length - 1]);
@@ -364,7 +374,7 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
     }
     case 10: {
       stack.bins.pop();
-      r.carrying = [job.binId];
+      r.carrying.push(job.binId);
       const bin = w.bins[job.binId];
       if (!bin.purpose) bin.purpose = defaultPurpose(w, bin);
       r.phase = 'idle';
@@ -374,11 +384,39 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
     }
     case 11: {
       const top = stack.bins.pop()!;
-      r.carrying = [top];
+      r.carrying.push(top);
       r.phase = 'idle';
+      // ダブルデッカー: 2 個目も持てて、まだ目的ビンが頂上でなければ続けて持ち上げる（退避の往復を半分に）
+      if (r.carrying.length < shelfSlots(r) && stack.bins.length && stack.bins[stack.bins.length - 1] !== job.binId) {
+        beginAction(r, 'lifting', lt, 11);
+        return;
+      }
       r.step = 12;
       const temp = w.stacks.find((s) => s.id === r.digging!.tempStackId)!;
       setGoal(rt, r, { type: 'cell', x: temp.x, z: temp.z });
+      return;
+    }
+    case 14: {
+      // ダブルデッカー: 上のビンを持ち上げた → 続けて目的ビンを持ち上げる
+      r.carrying.push(stack.bins.pop()!);
+      beginAction(r, 'lifting', lt, 15);
+      return;
+    }
+    case 15: {
+      // 目的ビンも持ち上げた（2 段持ち）→ 上のビンを元のスタックへ戻す
+      const target = stack.bins.pop()!;
+      r.carrying.push(target);
+      const bin = w.bins[target];
+      if (!bin.purpose) bin.purpose = defaultPurpose(w, bin);
+      beginAction(r, 'lifting', lt, 16);
+      return;
+    }
+    case 16: {
+      const idx = r.carrying.findIndex((id) => id !== job.binId);
+      if (idx >= 0) stack.bins.push(r.carrying.splice(idx, 1)[0]);
+      r.phase = 'idle';
+      r.step = 20;
+      setGoal(rt, r, { type: 'cell', x: port.x, z: port.z });
       return;
     }
     case 12: {
@@ -401,6 +439,11 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
       temp.bins.push(r.carrying.pop()!);
       r.digging!.movedBins.push(temp.bins[temp.bins.length - 1]);
       r.phase = 'idle';
+      if (r.carrying.length) {
+        // ダブルデッカー: もう 1 個も降ろす（退避先に空きが無ければ 12 で別を探す）
+        r.step = 12;
+        return;
+      }
       r.step = 0;
       setGoal(rt, r, { type: 'cell', x: stack.x, z: stack.z });
       return;
@@ -423,7 +466,8 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
       return;
     }
     case 21: {
-      port.outbound.push(r.carrying.pop()!);
+      const i = r.carrying.indexOf(job.binId);
+      port.outbound.push(i >= 0 ? r.carrying.splice(i, 1)[0] : r.carrying.pop()!);
       r.phase = 'idle';
       finishJob(w, rt, r);
       return;
@@ -552,8 +596,8 @@ function amrFetch(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { t
   if (!port) return finishJob(w, rt, r);
   switch (r.step) {
     case 0: {
-      // 混雑制御: 横付けできる台数を超えていたら待機スポットで順番待ち
-      if (!atGoal(w, r) || job.staged) {
+      // 混雑制御: 横付けできる台数を超えていたら待機スポットで順番待ち（ドローンは上から着けるので対象外）
+      if (!isDrone(r) && (!atGoal(w, r) || job.staged)) {
         const busy = headingTo(w, 'port', port.id, r);
         if (busy >= approachCapacity(w, port.x, port.z)) {
           job.staged = true;
@@ -563,7 +607,7 @@ function amrFetch(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { t
         }
         job.staged = false;
       }
-      setGoal(rt, r, { type: 'adjacent', x: port.x, z: port.z });
+      setGoal(rt, r, dockGoal(r, port));
       if (!atGoal(w, r)) return;
       const loadable = nextLoadableBin(w, r, port);
       if (loadable !== null && r.carrying.length < cargoCapacity(r)) {
@@ -643,8 +687,8 @@ function amrDeliver(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, {
     st = w.stations.find((s) => s.id === next)!;
   }
   if (r.step === 0) {
-    // 混雑制御: 横付けできる台数を超えていたら待機スポットで順番待ち
-    if (!atGoal(w, r) || job.staged) {
+    // 混雑制御: 横付けできる台数を超えていたら待機スポットで順番待ち（ドローンは対象外）
+    if (!isDrone(r) && (!atGoal(w, r) || job.staged)) {
       const busy = headingTo(w, 'station', st.id, r);
       if (busy >= approachCapacity(w, st.x, st.z)) {
         job.staged = true;
@@ -655,7 +699,7 @@ function amrDeliver(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, {
       }
       job.staged = false;
     }
-    setGoal(rt, r, { type: 'adjacent', x: st.x, z: st.z });
+    setGoal(rt, r, dockGoal(r, st));
     if (!atGoal(w, r)) return;
     if (st.work && st.work.robotId !== r.id) return; // 他のロボを処理中 → 待つ
     r.phase = 'working';
@@ -682,7 +726,7 @@ function amrReturn(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { 
   }
   switch (r.step) {
     case 0: {
-      setGoal(rt, r, { type: 'adjacent', x: port.x, z: port.z });
+      setGoal(rt, r, dockGoal(r, port));
       if (!atGoal(w, r)) return;
       if (port.returns.length >= PORT.returnCapacity) return; // 満杯 → 待つ
       beginAction(r, 'loading', ROBOT.loadTicksPerBin, 1);
@@ -711,6 +755,7 @@ export function describeRobot(w: WorldState, r: Robot): string {
       const b = w.bins[job.binId];
       const what = b?.item ? b.item : '空ビン';
       if (r.step === 11 || r.step === 12 || r.step === 13) return `掘り出し中（${what}）`;
+      if (r.step >= 14 && r.step <= 16) return `2 段持ちで取り出し中（${what}）`;
       if (r.step >= 20) return `ポートへ運搬中（${what}）`;
       return `取り出しへ（${what}）`;
     }

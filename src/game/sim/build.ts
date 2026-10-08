@@ -6,7 +6,8 @@
 import { BUILD, EXPANSION, GRID, RANKS } from '../data/balance';
 import type { CellKind } from '../data/balance';
 import { approachCells, cellAt, inBounds, isAdjacentToStack, isFacingFloor, isFloorWalkable, isRailWalkable, neighbors4 } from './grid';
-import { footprint, shapeFor } from './footprint';
+import { footprint } from './footprint';
+import { isDrone, shapeOf } from './layers';
 import { createBin, placeCell, removeCell } from './world';
 import type { WorldState } from './types';
 import { limitsFor } from './limits';
@@ -32,7 +33,8 @@ export const BUILD_LABEL: Record<BuildKind, string> = {
 
 function robotOn(w: WorldState, x: number, z: number): boolean {
   for (const r of w.robots) {
-    const shape = shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel);
+    if (isDrone(r)) continue; // 空中なので建設の邪魔にならない
+    const shape = shapeOf(r);
     const cells = footprint(r.pose, shape, []);
     if (r.moveTo) cells.push(...footprint(r.moveTo, shape, []));
     if (cells.some((c) => c.x === x && c.z === z)) return true;

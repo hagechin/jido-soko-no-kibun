@@ -212,6 +212,11 @@ button {
   transform: translateX(-50%);
   z-index: 12; /* シート（5〜7）より手前、モーダル（20）より奥 */
   pointer-events: none;
+}
+/* パネルが開いているときはボタンに重ならないよう、3D ビューの上側に出す */
+.app:has(#sheet:not([hidden])) .toasts {
+  bottom: auto;
+  top: 56px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1140,6 +1145,12 @@ body.is-calm .mini-hud {
 }
 .robot-dot.amr {
   background: #3b8fd6;
+}
+.robot-dot.drone {
+  background: #5fc9f8;
+}
+.robot-dot.double {
+  background: #e08a2b;
 }
 .slot-empty {
   display: inline-block;

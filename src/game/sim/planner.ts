@@ -13,9 +13,11 @@ import { rand } from './rng';
 import { stagingGoal } from './robots';
 import type { Runtime } from './runtime';
 import type { Robot, Vec2, WorldState } from './types';
+import { isDrone, layerOf as robotLayer, occupancyOf, shapeOf } from './layers';
 
 function layerOf(rt: Runtime, r: Robot) {
-  return r.kind === 'shelf' ? rt.rail : rt.floor;
+  const l = robotLayer(r);
+  return l === 'rail' ? rt.rail : l === 'air' ? rt.air : rt.floor;
 }
 
 function reserveCells(rt: Runtime, w: WorldState, r: Robot, cells: Vec2[], from: number, to: number): void {
@@ -24,10 +26,7 @@ function reserveCells(rt: Runtime, w: WorldState, r: Robot, cells: Vec2[], from:
 }
 
 function occupancyNow(r: Robot): Vec2[] {
-  const shape = shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel);
-  const cells = footprint(r.pose, shape, []);
-  if (r.moveTo) cells.push(...footprint(r.moveTo, shape, []));
-  return cells;
+  return occupancyOf(r);
 }
 
 /** 動く必要があるロボか */
@@ -49,6 +48,7 @@ export function updatePlanning(w: WorldState, rt: Runtime): void {
   if (now % PATHING.pruneIntervalTicks === 0) {
     rt.floor.prune(now);
     rt.rail.prune(now);
+    rt.air.prune(now);
   }
   // 新しく現れたロボ（購入など）は現在位置を無期限予約しておく。そこを通る予定だった他ロボには経路を引き直させる（突っ込んで重ならないように）
   for (const r of w.robots) {
@@ -146,7 +146,7 @@ function planOne(w: WorldState, rt: Runtime, r: Robot): void {
   };
   let path = findPath(req);
   if (path) planStats.found++;
-  if (!path && r.kind === 'amr' && r.stuckTicks >= PATHING.retreatTicks) {
+  if (!path && r.kind === 'amr' && !isDrone(r) && r.stuckTicks >= PATHING.retreatTicks) {
     // 長く行けない: その場に居座らず待機スポットへ退避して通路を空ける（本来の目標には後で再挑戦）
     const g = stagingGoal(w, r);
     if (g && g.type === 'cell' && !(g.x === start.x && g.z === start.z)) {
@@ -189,7 +189,7 @@ function overlappingRobots(w: WorldState, r: Robot): Set<number> {
   const mine = new Set(occupancyNow(r).map((c) => `${c.x},${c.z}`));
   const out = new Set<number>();
   for (const o of w.robots) {
-    if (o === r || o.kind !== r.kind) continue;
+    if (o === r || robotLayer(o) !== robotLayer(r)) continue;
     if (occupancyNow(o).some((c) => mine.has(`${c.x},${c.z}`))) out.add(o.id);
   }
   return out;
@@ -204,7 +204,7 @@ export function resolveOverlaps(w: WorldState, rt: Runtime): void {
   const pairs: [Robot, Robot][] = [];
   for (const r of w.robots) {
     for (const c of occupancyNow(r)) {
-      const k = `${r.kind}:${c.x},${c.z}`;
+      const k = `${robotLayer(r)}:${c.x},${c.z}`;
       const o = seen.get(k);
       if (o && o !== r && !pairs.some(([a, b]) => (a === o && b === r) || (a === r && b === o))) pairs.push([o, r]);
       seen.set(k, r);
@@ -243,13 +243,10 @@ export function resolveOverlaps(w: WorldState, rt: Runtime): void {
 function nearestFreeCell(w: WorldState, r: Robot): Vec2 | null {
   const occ = new Set<string>();
   for (const o of w.robots) {
-    if (o === r || o.kind !== r.kind) continue;
+    if (o === r || robotLayer(o) !== robotLayer(r)) continue;
     for (const c of occupancyNow(o)) occ.add(`${c.x},${c.z}`);
   }
-  const ok = (x: number, z: number) => {
-    const k = cellAt(w, x, z);
-    return r.kind === 'shelf' ? isRailWalkable(k) : isFloorWalkable(k);
-  };
+  const ok = passableFor(w, r);
   const seen = new Set<string>([`${r.pose.x},${r.pose.z}`]);
   const queue: Vec2[] = [{ x: r.pose.x, z: r.pose.z }];
   let head = 0;
@@ -271,6 +268,7 @@ export function replanAll(w: WorldState, rt: Runtime): void {
   const now = w.tick;
   rt.floor.clear();
   rt.rail.clear();
+  rt.air.clear();
   rt.plans.clear();
   rt.needsPlan.clear();
   rt.known = new Set(w.robots.map((r) => r.id));

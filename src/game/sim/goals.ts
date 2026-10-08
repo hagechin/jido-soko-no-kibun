@@ -1,11 +1,18 @@
 /** ゴール判定（占有マスを考慮） */
-import { approachCells, cellAt, isFloorWalkable, isRailWalkable } from './grid';
-import { footprint, shapeFor } from './footprint';
+import { approachCells, cellAt, inBounds, isFloorWalkable, isRailWalkable } from './grid';
+import { footprint } from './footprint';
+import { layerOf, shapeOf } from './layers';
 import type { Goal, Pose, Robot, Vec2, WorldState } from './types';
 
 export function passableFor(w: WorldState, r: Robot): (x: number, z: number) => boolean {
-  if (r.kind === 'shelf') return (x, z) => isRailWalkable(cellAt(w, x, z));
-  return (x, z) => isFloorWalkable(cellAt(w, x, z));
+  switch (layerOf(r)) {
+    case 'rail':
+      return (x, z) => isRailWalkable(cellAt(w, x, z));
+    case 'air':
+      return (x, z) => inBounds(w, x, z); // ドローン: 範囲内ならどこでも（棚の上も飛び越える）
+    default:
+      return (x, z) => isFloorWalkable(cellAt(w, x, z));
+  }
 }
 
 /** ゴールが「含むべきセル」の集合 */
@@ -23,7 +30,7 @@ export function goalTargetCells(w: WorldState, goal: Goal): Vec2[] {
 export function makeGoalTest(w: WorldState, r: Robot, goal: Goal): { isGoal: (p: Pose) => boolean; cells: Vec2[] } {
   const targets = goalTargetCells(w, goal);
   const keys = new Set(targets.map((c) => `${c.x},${c.z}`));
-  const shape = shapeFor(r.kind === 'shelf' ? 0 : r.cargoLevel);
+  const shape = shapeOf(r);
   const pass = passableFor(w, r);
   const tmp: Vec2[] = [];
   const isGoal = (p: Pose): boolean => {

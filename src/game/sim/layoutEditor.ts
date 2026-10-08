@@ -6,6 +6,7 @@
  *  finishEdit: ロボを倉庫に戻して再開。元に戻すなら restoreLayout
  * sim は DOM を知らない。2D の描画・操作は ui/layoutEditor.ts
  */
+import { layerOf } from './layers';
 import { BUILD } from '../data/balance';
 import type { CellKind } from '../data/balance';
 import { approachCells, cellAt, inBounds, isAdjacentToStack, isFacingFloor, isFloorWalkable, isRailWalkable, neighbors4 } from './grid';
@@ -252,9 +253,9 @@ export function finishEdit(w: WorldState): EditResult {
   for (let z = 0; z < w.height; z++) for (let x = 0; x < w.width; x++) if (cellAt(w, x, z) === 'floor' && !w.ports.some((p) => approachCells(w, p.x, p.z).some((a) => a.x === x && a.z === z))) floorCells.push({ x, z });
   for (let z = 0; z < w.height; z++) for (let x = 0; x < w.width; x++) if (cellAt(w, x, z) === 'floor') floorCells.push({ x, z });
   const place = (r: WorldState['robots'][number], cells: Vec2[]) => {
-    const c = cells.find((c) => !used.has(`${r.kind}:${c.x},${c.z}`));
+    const c = cells.find((c) => !used.has(`${layerOf(r)}:${c.x},${c.z}`));
     if (!c) return false;
-    used.add(`${r.kind}:${c.x},${c.z}`);
+    used.add(`${layerOf(r)}:${c.x},${c.z}`);
     r.pose = { x: c.x, z: c.z, dir: 0 };
     return true;
   };
