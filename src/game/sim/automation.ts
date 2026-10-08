@@ -8,7 +8,7 @@
  *  在庫再配置AI: 暇なときに人気商品を上段へ
  * 手動指示（manual）が入っているロボには割り当てない。
  */
-import { layerOf } from './layers';
+import { isDrone, layerOf } from './layers';
 import { passableFor } from './goals';
 import { AUTOMATION, PATHING, PORT } from '../data/balance';
 import { demandFor } from '../data/seasons';
@@ -365,9 +365,16 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
   // 配分（restockAmrCap）のぶんは入荷ビンだけを運ぶ専任にし、残りはピックのビンを運ぶ。専任の枠が余っていればピック側も入荷ビンを運んでよい
   const targeting = new Map<number, number>();
   let inboundAmrs = 0;
+  const drone = isDrone(r);
   for (const o of w.robots) {
     if (o.kind !== 'amr') continue;
-    for (const j of [o.job, ...o.queue]) if (j?.type === 'fetch') targeting.set(j.portId, (targeting.get(j.portId) ?? 0) + 1);
+    for (const j of [o.job, ...o.queue]) {
+      if (j?.type !== 'fetch') continue;
+      // ★ ドローンから見ると、横付けの順番待ち（staged）で足止めされている地上ロボは「向かっている」うちに数えない。
+      //   溜まっているポートへ真っ先に飛ぶのがドローンの役目
+      if (drone && j.staged && !isDrone(o)) continue;
+      targeting.set(j.portId, (targeting.get(j.portId) ?? 0) + 1);
+    }
     const j = o.job;
     const carriesInbound = o.carrying.some((id) => w.bins[id]?.purpose === 'inbound');
     if ((j?.type === 'fetch' && j.only === 'inbound') || (j && j.type !== 'park' && carriesInbound)) inboundAmrs++;
@@ -375,11 +382,26 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
   const purposeOfBin = (id: number) => (w.bins[id]?.purpose === 'inbound' ? 'inbound' : 'pick');
   const hasPurpose = (p: WorldState['ports'][number], purpose: 'pick' | 'inbound') => p.outbound.some((id) => purposeOfBin(id) === purpose);
   const avail = (p: WorldState['ports'][number]) => p.outbound.length > (targeting.get(p.id) ?? 0);
+  // ドローンはどこへでも同じように飛べるので、近さより「誰にも拾われていないビンが一番多いポート」を選ぶ（同点なら近い方）
+  const pickPort = (filter: (p: WorldState['ports'][number]) => boolean): WorldState['ports'][number] | null => {
+    if (!drone) return nearestPort(w, r.pose.x, r.pose.z, filter, true);
+    let best: WorldState['ports'][number] | null = null;
+    let bestScore = -Infinity;
+    for (const p of w.ports) {
+      if (!filter(p)) continue;
+      const score = (p.outbound.length - (targeting.get(p.id) ?? 0)) * 1000 - manhattan(r.pose, p);
+      if (score > bestScore) {
+        bestScore = score;
+        best = p;
+      }
+    }
+    return best;
+  };
   // 専任は入荷モード／欠品が入荷口にあるときだけ。普段は優先設定でポートを選ぶだけ（積む順も優先設定）
   const dedicated = restockMode(w) || urgentRestock(w);
   const cap = dedicated ? restockAmrCap(w) : 0;
   if (dedicated && inboundAmrs < cap) {
-    const port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, 'inbound'), true);
+    const port = pickPort((p) => avail(p) && hasPurpose(p, 'inbound'));
     if (port) {
       r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false, only: 'inbound' };
       r.step = 0;
@@ -390,7 +412,7 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
   let port = null as WorldState['ports'][number] | null;
   if (dedicated) {
     // ピック側: ピックのビンがあるポートを先に。入荷ビンは専任に任せる（専任が 0 台なら誰でも運ぶ）
-    port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, 'pick'), true);
+    port = pickPort((p) => avail(p) && hasPurpose(p, 'pick'));
     if (port) {
       r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false, only: cap > 0 ? 'pick' : undefined };
       r.step = 0;
@@ -398,14 +420,14 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
     }
     if (cap > 0) return false;
   } else if (pri !== 'balanced') {
-    port = nearestPort(w, r.pose.x, r.pose.z, (p) => avail(p) && hasPurpose(p, pri === 'pick' ? 'pick' : 'inbound'), true);
+    port = pickPort((p) => avail(p) && hasPurpose(p, pri === 'pick' ? 'pick' : 'inbound'));
     if (port) {
       r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false };
       r.step = 0;
       return true;
     }
   }
-  port = nearestPort(w, r.pose.x, r.pose.z, avail, true); // 停止中のポートの出庫ビンも運ぶ
+  port = pickPort(avail); // 停止中のポートの出庫ビンも運ぶ
   if (!port) return false;
   r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false };
   r.step = 0;
@@ -514,16 +536,28 @@ export function updateAutomation(w: WorldState, rt: Runtime): void {
 
 
 
-  // 搬送ロボ: AI の仕事 → 暇なら待機スポットへ
+  // 搬送ロボ: AI の仕事 → 暇なら待機スポットへ。★ ドローンを先に割り当てる（地上ロボに仕事を先取りされて暇にならないように）
   const claimed = new Set<string>();
-  for (const r of w.robots) {
-    if (r.kind !== 'amr') continue;
+  const amrs = w.robots.filter((r) => r.kind === 'amr').sort((a, b) => Number(isDrone(b)) - Number(isDrone(a)));
+  for (const r of amrs) {
     if (r.job?.type === 'park') claimed.add(`${r.job.x},${r.job.z}`);
     claimed.add(`${r.pose.x},${r.pose.z}`);
   }
-  for (const r of w.robots) {
-    if (r.kind !== 'amr' || !idle(r)) continue;
+  for (const r of amrs) {
+    if (!idle(r)) continue;
     if (assignAmrJob(w, r)) continue;
+    if (isDrone(r)) {
+      // ドローンは待機スポットではなく、ポートの真上でホバリングして待つ（ビンが出た瞬間に積める）。1 ポートに 1 台
+      if (w.ports.some((p) => p.x === r.pose.x && p.z === r.pose.z)) continue;
+      const port = nearestPort(w, r.pose.x, r.pose.z, (p) => !claimed.has(`${p.x},${p.z}`), true);
+      if (port) {
+        r.job = { type: 'park', x: port.x, z: port.z, manual: false };
+        r.step = 0;
+        claimed.add(`${port.x},${port.z}`);
+        setGoal(rt, r, null);
+      }
+      continue;
+    }
     const onSpot = w.waitSpots.some((s) => s.x === r.pose.x && s.z === r.pose.z);
     if (onSpot) continue;
     let best = null as { x: number; z: number } | null;
@@ -543,9 +577,9 @@ export function updateAutomation(w: WorldState, rt: Runtime): void {
       setGoal(rt, r, null);
     }
   }
-  // 待機スポットで暇にしている搬送ロボも AI の仕事は受ける
-  for (const r of w.robots) {
-    if (r.kind !== 'amr' || !idle(r)) continue;
+  // 待機スポットで暇にしている搬送ロボも AI の仕事は受ける（ドローンが先）
+  for (const r of amrs) {
+    if (!idle(r)) continue;
     assignAmrJob(w, r);
   }
   // 詰まっているロボがいたら、その近くで暇にしている同じ層のロボをどかす（§4.3 デッドロック解消）

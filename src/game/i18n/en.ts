@@ -632,7 +632,7 @@ export const EN: Record<string, string> = {
   '搬送ロボ追加': 'Add AMR',
   '特別ロボ': 'Special robots',
   'ドローン搬送ロボ追加': 'Add drone AMR',
-  '棚の上を飛び越えて運ぶ。地上の渋滞と横付けの枠を受けない。現在 {0} 台（上限 {1}）{2}': 'Flies over the shelves. Ignores ground traffic and docking limits. Now {0} (limit {1}){2}',
+  '棚の上を飛び越えて運ぶ（速度 +1 段階）。地上の渋滞と横付けの枠を受けず、一番溜まっているポートへ真っ先に向かい、暇なときはポートの上で待機。現在 {0} 台（上限 {1}）{2}': 'Flies over the shelves (speed +1 level). Ignores ground traffic and docking limits, heads first for the port with the biggest backlog, and hovers over a port when idle. Now {0} (limit {1}){2}',
   'ロック': 'Locked',
   'ダブルデッカー棚ロボ追加': 'Add double-decker shelf robot',
   'ビンを 2 段持てる棚ロボ。1 個掘れば届くビンは退避の往復なしで取り出し、深い掘り出しも 2 個ずつ運ぶ。棚ロボの上限に含む{0}': 'A shelf robot holding two bins. A bin one level down is retrieved without a detour, and deep digs carry two at a time. Counts toward the shelf robot limit{0}',
