@@ -58,6 +58,7 @@ xcodebuild test -project HakoniwaDS.xcodeproj -scheme HakoniwaDS \
 | M20 | 設定 → 「iCloud のセーブを確認」 | 新しいセーブが無ければ「この端末より新しくありません」などのトースト |
 | M21 | 起動 | 濃紺の起動画面のあと、同じ色の「箱庭！ディストリビューション／倉庫を準備しています…」が出て、倉庫が描けたらフェードして消える（真っ暗な時間が無い） |
 | M22 | Edit Scheme → Run → Arguments で `-demo` にチェック → Run（セーブは上書きされる） | メガDC（40×24、棚 360、ロボ 28 台＋ドローン 3 台＋ダブルデッカー 2 台）で始まり、全機能が解放されている。`ios/STORE.md` 6 節の 7 枚のスクリーンショットが撮れる |
+| M23 | iPhone・iPad でレイアウトエディタ（建設 → L）／ iPad 縦向きでメイン画面 | エディタのツールバーがステータスバー・Dynamic Island の下に入らない。iPad 縦向きで右のオーダー列の見出し「オーダー」がステータスバーに隠れない |
 | M13 | Xcode の Debug → StoreKit → Manage Transactions で購入を Refund | 数秒以内に「購入状態を反映しました」のトーストが出て、サンドボックス画面の入口が消える |
 
 ## 4. 報告のフォーマット

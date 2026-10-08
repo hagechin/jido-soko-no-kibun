@@ -170,6 +170,8 @@ button {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* 右の列は画面の最上段から始まる（iPad の縦向きなど）のでステータスバーぶんを空ける */
+  padding-top: var(--sa-top);
 }
 .orders {
   position: relative;
@@ -421,6 +423,7 @@ button {
     border-bottom: 1px solid var(--line);
     flex-direction: row;
     align-items: stretch;
+    padding-top: 0; /* スマホでは HUD の下に並ぶ */
   }
   .orders-head {
     display: none;
@@ -1275,6 +1278,8 @@ body.is-calm .mini-hud {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* .app を丸ごと覆うので、セーフエリア（ステータスバー・ノッチ・ホームバー）を自分で空ける */
+  padding: var(--sa-top) var(--sa-right) var(--sa-bottom) var(--sa-left);
 }
 .editor-stage {
   flex: 1;
