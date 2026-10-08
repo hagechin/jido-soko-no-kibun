@@ -26,8 +26,6 @@ final class StoreManager: ObservableObject {
         }
     }
 
-    deinit { updates?.cancel() }
-
     func loadProducts() async {
         do {
             let fetched = try await Product.products(for: Self.productIDs)

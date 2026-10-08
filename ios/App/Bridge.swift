@@ -21,6 +21,7 @@ final class Bridge {
     private let store: StoreManager
     private let saves = SaveStore()
 
+    @MainActor
     init(webView: WKWebView, store: StoreManager) {
         self.webView = webView
         self.store = store

@@ -43,6 +43,7 @@ struct WebView: UIViewRepresentable {
 
         init(store: StoreManager) { self.store = store }
 
+        @MainActor
         func attach(_ webView: WKWebView) {
             bridge = Bridge(webView: webView, store: store)
         }
