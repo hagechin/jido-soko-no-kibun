@@ -1,6 +1,6 @@
 name: HakoniwaDS
 options:
-  bundleIdPrefix: jp.hakoniwa
+  bundleIdPrefix: jp.hatte.hakoniwa
   developmentLanguage: ja
   deploymentTarget:
     iOS: "26.0"
@@ -9,7 +9,7 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1,2"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: "hatte"
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
