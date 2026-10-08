@@ -9,6 +9,8 @@ import { tr } from '../i18n';
 
 export type CalmCamera = 'auto' | 'manual';
 
+type WakeLockSentinelLike = { release: () => Promise<void>; addEventListener?: (type: 'release', fn: () => void) => void };
+
 export interface CalmSettings {
   fps: number; // 30 | 15
   wakeLock: boolean;
@@ -46,7 +48,7 @@ export class CalmMode {
   private suggest = $('calm-suggest');
   private lastInteraction = performance.now();
   private suggested = false;
-  private wakeLock: { release: () => Promise<void> } | null = null;
+  private wakeLock: WakeLockSentinelLike | null = null;
   private miniText = el('span', { class: 'mini-text' });
   private miniMode = el('button', { class: 'btn mini-btn', type: 'button', title: tr(tr(tr('カメラ: AUTO（自動）／ MANUAL（WASD・矢印キー・ドラッグ）。M キーでも切替'))) });
   private miniExit = el('button', { class: 'btn mini-btn', type: 'button', title: tr(tr(tr('眺めモードを終了（Esc）'))) }, icon('x', 14));
@@ -78,6 +80,17 @@ export class CalmMode {
       else if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) this.setCamera(this.settings.camera === 'auto' ? 'manual' : 'auto');
     });
     this.renderMiniMode();
+    // 画面の点けっぱなしは眺めモードに限らず、設定がオンならいつでも（ページが見えている間）
+    this.applyWakeLock();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.applyWakeLock();
+    });
+  }
+
+  /** 設定どおりに Wake Lock を取る／放す（ブラウザはページが隠れると勝手に放すので、見えるたびに取り直す） */
+  applyWakeLock(): void {
+    if (this.settings.wakeLock) void this.requestWakeLock();
+    else this.releaseWakeLock();
   }
 
   /** カメラモードを切り替える（設定にも保存） */
@@ -99,7 +112,7 @@ export class CalmMode {
     this.active = true;
     document.body.classList.add('is-calm');
     this.suggest.hidden = true;
-    this.requestWakeLock();
+    this.applyWakeLock();
     this.onEnter?.();
     showToast(this.settings.camera === 'manual' ? tr(tr(tr('眺めモード（MANUAL）。WASD・矢印で視点移動、Esc か右下の × で戻ります'))) : tr(tr(tr('眺めモード。画面をタップで戻ります'))), 3000);
   }
@@ -108,7 +121,6 @@ export class CalmMode {
     if (!this.active) return;
     this.active = false;
     document.body.classList.remove('is-calm');
-    this.releaseWakeLock();
     this.onExit?.();
   }
 
@@ -134,10 +146,14 @@ export class CalmMode {
       nativeTry('wakeLock', { on: true });
       return;
     }
-    const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } };
-    if (!nav.wakeLock) return;
+    const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<WakeLockSentinelLike> } };
+    if (!nav.wakeLock || this.wakeLock || document.visibilityState !== 'visible') return;
     try {
-      this.wakeLock = await nav.wakeLock.request('screen');
+      const lock = await nav.wakeLock.request('screen');
+      this.wakeLock = lock;
+      lock.addEventListener?.('release', () => {
+        if (this.wakeLock === lock) this.wakeLock = null;
+      });
     } catch {
       this.wakeLock = null;
     }
@@ -162,16 +178,18 @@ export class CalmMode {
       });
       row.append(b);
     }
+    body.append(row);
+    body.append(el('h4', { text: '画面' }));
     const supported = 'wakeLock' in navigator || native.available;
     const wl = el('button', { class: `btn${this.settings.wakeLock ? ' is-active' : ''}`, type: 'button' }, iconText('smartphone', supported ? tr(tr(tr('画面を点けっぱなし'))) : tr(tr(tr('画面点けっぱなし（非対応）')))));
     if (!supported) wl.setAttribute('disabled', 'true');
     wl.addEventListener('click', () => {
       this.settings.wakeLock = !this.settings.wakeLock;
       saveCalmSettings(this.settings);
+      this.applyWakeLock();
       this.renderSettingsInto(body);
     });
-    row.append(wl);
-    body.append(row);
+    body.append(el('div', { class: 'settings-row' }, wl), el('p', { class: 'muted small', text: 'オンにすると、眺めモードに限らずアプリを開いている間は自動ロックしません（省電力のため、画面を閉じるかアプリを切り替えると解除され、戻ると再び有効）' }));
     const cam = el('div', { class: 'settings-row' });
     for (const [mode, label] of [['auto', tr(tr(tr('AUTO（自動カメラ）')))], ['manual', tr(tr(tr('MANUAL（キーボード）')))]] as [CalmCamera, string][]) {
       const b = el('button', { class: `btn${this.settings.camera === mode ? ' is-active' : ''}`, type: 'button', text: label });

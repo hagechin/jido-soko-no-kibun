@@ -100,13 +100,37 @@ export function restockMode(w: WorldState): boolean {
   return stockFill(w) < AUTOMATION.lowStockFill || dock > stocked;
 }
 
-/** 表示中のオーダーが待っている欠品商品が入荷口にある */
+/**
+ * 緊急の補充（★）: 入荷口にある商品のうち、欠品しているか欠品しそうなものがある。
+ *  - オーダー（表示中だけでなくキューで待っているものも）が待っている欠品商品が入荷口にある
+ *  - 入荷口にある商品の棚の在庫が AUTOMATION.urgentStockBins 杯分を下回っている（欠品しそう）
+ * このときは棚ロボがピックより先に空ビン（埋まっていれば掘り出してでも）を入荷ステーションへ運び、ポートの出庫枠もピックと同じ条件で使う
+ */
 export function urgentRestock(w: WorldState): boolean {
-  if (!w.pallets.length) return false;
-  const stockNow = new Set<string>();
-  for (const b of Object.values(w.bins)) if (b.item && b.qty > 0) stockNow.add(b.item);
+  return urgentRestockItems(w).size > 0;
+}
+
+export function urgentRestockItems(w: WorldState): Set<string> {
+  const out = new Set<string>();
+  if (!w.pallets.length) return out;
+  const stock = new Map<string, number>();
+  for (const b of Object.values(w.bins)) if (b.item) stock.set(b.item, (stock.get(b.item) ?? 0) + b.qty);
+  // 詰められるビンが棚に無い商品は「緊急」にしない（空ビンも同じ商品の空きのあるビンも無ければ、空ビンを買うしかない。
+  //  緊急のままにすると他の商品のビンを入荷ステーションへ運び続けて、ピックが止まる）
+  const emptyInStack = w.stacks.some((s) => s.bins.some((id) => w.bins[id]?.item === null));
+  const partialInStack = new Set<string>();
+  for (const s of w.stacks) for (const id of s.bins) {
+    const b = w.bins[id];
+    if (b?.item && b.qty < w.binCapacity) partialInStack.add(b.item);
+  }
+  const canStuff = (item: string) => emptyInStack || partialInStack.has(item);
   const palletItems = new Set(w.pallets.map((p) => p.item));
-  return visibleOrders(w).some((o) => o.lines.some((l) => l.picked < l.qty && !stockNow.has(l.item) && palletItems.has(l.item)));
+  for (const item of palletItems) {
+    const s = stock.get(item) ?? 0;
+    if ((s <= 0 || s < w.binCapacity * AUTOMATION.urgentStockBins) && canStuff(item)) out.add(item);
+  }
+  for (const o of w.orders) for (const l of o.lines) if (l.picked < l.qty && !(stock.get(l.item) ?? 0) && palletItems.has(l.item) && canStuff(l.item)) out.add(l.item);
+  return out;
 }
 
 /** 入荷作業に回す割合（優先設定 → 入荷モードで引き上げ）。入荷口に山が無ければ 0 */
@@ -143,7 +167,9 @@ export function restockShelfCap(w: WorldState): number {
 export function restockAmrCap(w: WorldState): number {
   const amrs = w.robots.filter((o) => o.kind === 'amr').length;
   if (!w.pallets.length) return 0;
-  return Math.min(amrs, Math.max(1, Math.round(amrs * restockShare(w))));
+  // ★ 搬送ロボが 1 台しかない倉庫では専任にしない（唯一の 1 台が入荷ビンだけを運ぶとピックが止まり、遅延で評判が落ちる）。入荷ビンは手が空いたときに運ぶ
+  const floor = amrs >= AUTOMATION.dedicatedAmrMinFleet ? 1 : 0;
+  return Math.min(amrs, Math.max(floor, Math.round(amrs * restockShare(w))));
 }
 
 // ------------------------------------------------------------------ 棚ロボ
@@ -228,17 +254,22 @@ function assignRestock(w: WorldState, r: Robot, inFlight: Set<number>): boolean 
     if (inboundInFlight < cap) {
       const palletItems = new Set(w.pallets.map((p) => p.item));
       const backlog = w.pallets.reduce((a, p) => a + p.qty, 0);
-      // 表示中オーダーが待っている欠品商品が入荷口にあるとき、または滞留が多いときは空ビン（1 往復で満杯にできる）を優先
-      const urgent = visibleOrders(w).some((o) => o.lines.some((l) => l.picked < l.qty && !stockNow.has(l.item) && palletItems.has(l.item)));
+      // 欠品（または欠品しそう）の商品が入荷口にあるとき、または滞留が多いときは空ビン（1 往復で満杯にできる）を優先。空ビンが埋まっていれば掘り出す
+      const urgentItems = urgentRestockItems(w);
+      const urgent = urgentItems.size > 0;
       const bigBacklog = backlog >= w.binCapacity * AUTOMATION.preferEmptyBacklogBins;
       const empties = () => stackedBinsOf(w, (b) => b.item === null).filter((o) => !inFlight.has(o.binId));
-      const partial = () => stackedBinsOf(w, (b) => b.item !== null && palletItems.has(b.item) && b.qty < w.binCapacity).filter((o) => !inFlight.has(o.binId));
-      let options = urgent || bigBacklog ? empties() : partial();
-      if (!options.length) options = urgent || bigBacklog ? partial() : empties();
+      const partial = (items: Set<string>) => stackedBinsOf(w, (b) => b.item !== null && items.has(b.item) && b.qty < w.binCapacity).filter((o) => !inFlight.has(o.binId));
+      // 緊急: 空ビン（埋まっていれば掘り出す）→ 欠品商品そのものの空きのあるビン。滞留が多い: 空ビン → 何かの空きのあるビン。普段: 空きのあるビン → 空ビン
+      let options = urgent || bigBacklog ? empties() : partial(palletItems);
+      if (!options.length) options = urgent ? partial(urgentItems) : bigBacklog ? partial(palletItems) : empties();
+      if (!options.length && urgent) options = partial(palletItems);
       if (options.length) {
         const pick = options[0];
         const inboundSt = w.stations.find((s) => s.kind === 'inbound') ?? null;
-        const port = bestPort(w, pick.stack, inboundSt, (p) => outboundLoad(w, p.id) <= PORT.outboundCapacity - headroom);
+        // ★ 緊急の補充はピックと同じ条件でポートを使う（ピック用に 2 枠空けておく条件だと、忙しい倉庫ではいつまでも補充が始まらない）
+        const need = urgent ? Math.min(headroom, AUTOMATION.urgentPortHeadroom) : headroom;
+        const port = bestPort(w, pick.stack, inboundSt, (p) => outboundLoad(w, p.id) <= PORT.outboundCapacity - need);
         if (port) {
           w.bins[pick.binId].purpose = 'inbound';
           r.job = { type: 'retrieve', stackId: pick.stack.id, binId: pick.binId, portId: port.id, manual: false };
