@@ -320,7 +320,7 @@ button {
 @media (max-width: 899px) {
   :root {
     --hud-h: 48px;
-    --bar-h: 60px;
+    --bar-h: 84px; /* 選択中ロボの行（1 行）＋ボタンの行 */
   }
   .app {
     grid-template-columns: 1fr;
@@ -384,8 +384,23 @@ button {
   .bottom-actions {
     gap: 3px;
   }
+  /* 文字が切れないよう、選択中の情報はボタンの上の行に */
+  .bottombar {
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 4px;
+    padding-top: 4px;
+  }
   .selected {
+    flex-basis: 100%;
+    order: -1;
+    justify-content: center;
     font-size: 12px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+  }
+  .selected-inner {
+    gap: 8px;
   }
   .sheet {
     width: 100%;

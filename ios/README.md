@@ -41,3 +41,11 @@ ios/
     PrivacyInfo.xcprivacy プライバシーマニフェスト（トラッキング無し）
     Assets.xcassets       アプリアイコン
 ```
+
+## テスト
+
+自動テストと手動確認の手順は [TESTPLAN.md](./TESTPLAN.md)。要約:
+
+```sh
+cd ios && xcodebuild test -project HakoniwaDS.xcodeproj -scheme HakoniwaDS -destination 'platform=iOS Simulator,name=iPhone 17e'
+```

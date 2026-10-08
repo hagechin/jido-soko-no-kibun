@@ -2,7 +2,7 @@ name: HakoniwaDS
 options:
   bundleIdPrefix: jp.hakoniwa
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 settings:
   base:
@@ -55,13 +55,46 @@ targets:
         UIViewControllerBasedStatusBarAppearance: true
         ITSAppUsesNonExemptEncryption: false
         UIApplicationSupportsIndirectInputEvents: true
+  HakoniwaDSTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/Unit
+      - path: App/Products.storekit
+        buildPhase: resources
+    dependencies:
+      - target: HakoniwaDS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: jp.hakoniwa.ds.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/HakoniwaDS.app/HakoniwaDS
+        BUNDLE_LOADER: $(TEST_HOST)
+  HakoniwaDSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/UI
+    dependencies:
+      - target: HakoniwaDS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: jp.hakoniwa.ds.uitests
+        TEST_TARGET_NAME: HakoniwaDS
 schemes:
   HakoniwaDS:
     build:
       targets:
         HakoniwaDS: all
+        HakoniwaDSTests: [test]
+        HakoniwaDSUITests: [test]
     run:
       config: Debug
+      storeKitConfiguration: App/Products.storekit
+    test:
+      config: Debug
+      targets:
+        - HakoniwaDSTests
+        - HakoniwaDSUITests
       storeKitConfiguration: App/Products.storekit
     archive:
       config: Release

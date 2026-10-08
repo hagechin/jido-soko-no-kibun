@@ -17,7 +17,7 @@ struct HakoniwaDSApp: App {
             ContentView()
                 .environmentObject(store)
                 .preferredColorScheme(.dark)
-                .onChange(of: scenePhase) { phase in
+                .onChange(of: scenePhase) { _, phase in
                     switch phase {
                     case .background: BridgeEvents.shared.emit("background", payload: [:])
                     case .active: BridgeEvents.shared.emit("foreground", payload: [:])

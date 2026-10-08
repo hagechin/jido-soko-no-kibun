@@ -28,7 +28,7 @@ struct WebView: UIViewRepresentable {
         webView.backgroundColor = UIColor(red: 0x1d / 255, green: 0x27 / 255, blue: 0x33 / 255, alpha: 1)
         webView.allowsBackForwardNavigationGestures = false
         #if DEBUG
-        if #available(iOS 16.4, *) { webView.isInspectable = true }
+        webView.isInspectable = true
         #endif
         context.coordinator.attach(webView)
         webView.load(URLRequest(url: URL(string: "\(AppSchemeHandler.scheme)://app/index.html")!))
@@ -74,15 +74,26 @@ final class AppSchemeHandler: NSObject, WKURLSchemeHandler {
         "webp": "image/webp", "ico": "image/x-icon", "woff": "font/woff", "woff2": "font/woff2", "wasm": "application/wasm", "txt": "text/plain", "map": "application/json",
     ]
 
+    /// 拡張子 → Content-Type（テスト用に公開）
+    static func mimeType(forExtension ext: String) -> String {
+        mime[ext.lowercased()] ?? "application/octet-stream"
+    }
+
+    /// 要求パス → 同梱ファイルの URL（テスト用に公開）。"/" は index.html
+    static func fileURL(forPath path: String, webRoot: URL) -> URL {
+        var p = path
+        if p.isEmpty || p == "/" { p = "/index.html" }
+        return webRoot.appendingPathComponent(String(p.dropFirst()))
+    }
+
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
         guard let url = urlSchemeTask.request.url else { return }
-        var path = url.path
-        if path.isEmpty || path == "/" { path = "/index.html" }
+        let path = url.path
         guard let webRoot = Bundle.main.url(forResource: "Web", withExtension: nil) else {
             urlSchemeTask.didFailWithError(NSError(domain: "HakoniwaDS", code: 404, userInfo: [NSLocalizedDescriptionKey: "Web folder missing (run ios/sync-web.sh)"]))
             return
         }
-        let fileURL = webRoot.appendingPathComponent(String(path.dropFirst()))
+        let fileURL = Self.fileURL(forPath: path, webRoot: webRoot)
         guard let data = try? Data(contentsOf: fileURL) else {
             let response = HTTPURLResponse(url: url, statusCode: 404, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain"])!
             urlSchemeTask.didReceive(response)
@@ -90,8 +101,7 @@ final class AppSchemeHandler: NSObject, WKURLSchemeHandler {
             urlSchemeTask.didFinish()
             return
         }
-        let ext = fileURL.pathExtension.lowercased()
-        let type = Self.mime[ext] ?? "application/octet-stream"
+        let type = Self.mimeType(forExtension: fileURL.pathExtension)
         let headers = ["Content-Type": type, "Content-Length": String(data.count), "Cache-Control": "no-cache", "Access-Control-Allow-Origin": "*"]
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: headers)!
         urlSchemeTask.didReceive(response)

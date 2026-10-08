@@ -595,3 +595,15 @@ npm run preview   # http://localhost:4321 で確認
 - JS プラットフォーム層: `platform/native.ts`（Promise ベースの呼び出し、タイムアウト、イベント購読。ネイティブが無ければ即失敗）、`platform/entitlements.ts`（商品 → 機能フラグ `specialRobots / limits / sandbox / cosmetics`、サポーターは全部。開発用に localStorage `jido-soko-no-kibun:features` = `all` で Web 版でも解放を確認できる）
 - 組み込み: 起動時にネイティブのセーブと購入状態を取り込んでから開始（Web 版は即開始）。セーブは Documents にも保存、新規開始で削除。眺めモードの画面点灯は `isIdleTimerDisabled`、出荷で軽い触覚・昇格で成功の触覚、背面に回ったらセーブ
 - 確認: この環境では Xcode が無いのでビルドは未確認（Mac で `./ios/sync-web.sh && cd ios && xcodegen generate` → Run）。ブラウザでネイティブの振りをするブリッジを注入し、起動時に `load` と `entitlements` が呼ばれ、セーブで `save` が飛び、`is-native` クラスが付くことを確認。Web 版は従来どおり起動。全 119 件通過
+
+---
+
+## iOS: フッタの文字切れ・対象 iOS 26・XCTest（Mac 側のエージェントが実行）
+
+- 実機報告: iPhone 18 / 17e で起動。フッタの「ロボをタップして選択」が切れる → スマホ幅（899px 以下）で下部バーを 84px の 2 段にし、選択表示を 1 段目いっぱいに（`game.css`）。390px で文字が切れないことを確認
+- 対象 OS を iOS 26 以降に変更（`project.yml` の deploymentTarget 26.0）。「iOS 26 系が起動できなかった」の原因は未特定（ビルドエラー／シミュレータ起動／白画面のどれかを TESTPLAN で確認してもらう）
+- ★ Swift のコンパイルは Linux では出来ないので、Mac 側（Xcode で待機している別エージェント）に実行してもらうテスト一式を用意:
+  - `HakoniwaDSTests`（XCTest + StoreKitTest）: `SchemeHandlerTests`（MIME・ルート→index.html・同梱 Web の存在・sw.js 無し）、`SaveStoreTests`（保存／読込／削除・キーのサニタイズ）、`BridgeTests`（JSON と JS 文字列のエスケープ）、`StoreManagerTests`（`SKTestSession` で 4 商品の取得・購入→"purchased"・復元・返金で権利が消える）
+  - `HakoniwaDSUITests`（XCUITest）: 起動して WebView 内に「年目」が出る・5 秒で受注の秒表示が変わる・スクリーンショット添付
+  - `ios/TESTPLAN.md`: 準備（`sync-web.sh` → `xcodegen generate`）、`xcodebuild test …` のコマンド、手動確認 M1〜M7、報告形式
+- Swift 側の小修正: `AppSchemeHandler.mimeType / fileURL` を static に切り出し（テストから呼べるように）、`onChange(of:)` を新 API に、`isInspectable` の availability ガードを撤去（iOS 26 以降のため）
