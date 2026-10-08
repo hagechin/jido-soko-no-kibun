@@ -106,8 +106,8 @@ No network, no account, no ads. Works offline. Japanese and English.
 | 商品 ID | 参照名 | 表示名 | 説明 | 価格帯の目安 |
 |---|---|---|---|---|
 | `jp.hatte.hakoniwa.ds.robots` | Special Robots | 特別ロボパック | ドローン搬送ロボとダブルデッカー棚ロボ | ¥600 |
-| `jp.hatte.hakoniwa.ds.limits` | Limit Breaker | 上限突破パック | ロボ上限 80/120、積載 Lv4、段数 12、倉庫 64×48 | ¥480 |
-| `jp.hatte.hakoniwa.ds.sandbox` | Sandbox | サンドボックスモード | コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断 | ¥320 |
+| `jp.hatte.hakoniwa.ds.limits` | Limit Breaker | 上限突破パック | ロボ上限 80/120、積載 Lv4、段数 12、倉庫 64×48 | ¥500 |
+| `jp.hatte.hakoniwa.ds.sandbox` | Sandbox | サンドボックスモード | コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断 | ¥500 |
 | `jp.hatte.hakoniwa.ds.supporter` | Supporter | サポーターパック | 全部入り ＋ 金色ロボスキン ＋ 倉庫カラーテーマ | ¥1,200 |
 
 - 各商品に審査用スクリーンショット（ストア画面 `r4-m8-store-ios27.png` のような、商品が並んだ画面）を付ける

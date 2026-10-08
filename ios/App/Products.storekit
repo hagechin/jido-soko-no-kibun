@@ -14,7 +14,7 @@
       "type" : "NonConsumable"
     },
     {
-      "displayPrice" : "480",
+      "displayPrice" : "500",
       "familyShareable" : true,
       "internalID" : "1002",
       "localizations" : [
@@ -25,7 +25,7 @@
       "type" : "NonConsumable"
     },
     {
-      "displayPrice" : "320",
+      "displayPrice" : "500",
       "familyShareable" : true,
       "internalID" : "1003",
       "localizations" : [
