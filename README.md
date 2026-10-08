@@ -38,3 +38,15 @@ CLI の場合は `npx lolipop deploy`（ブラウザでのログインが必要�
 - `src/game/audio/` — WebAudio 合成サウンド
 - `src/game/data/` — 数値（`balance.ts`）、商品、ドット絵、季節
 - `scripts/` — PWA アイコン生成、Service Worker テンプレート
+
+
+## ブランチ運用（v1.0 以降）
+
+| ブランチ | 役割 |
+|---|---|
+| `release/1.0` | リリース候補（v1.0.0-rc1 = `bb64f3d`）。実機確認と提出に使う。直すのは不具合だけ。直したら開発ブランチへも取り込む |
+| `claude/nifty-feynman-opfzeb` | 開発の本線。機能ブランチをここへ取り込む |
+| `feature/photo-mode` | フォトモード（カメラ配置・画角・絞り・シャッター・エフェクト、撮った写真を起動画面に） |
+| `feature/i18n` | 英語対応（文字列の辞書化 → 英語） |
+
+Mac 側のテストは、提出前の確認は `release/1.0`、新機能の確認はその機能ブランチで行う。
