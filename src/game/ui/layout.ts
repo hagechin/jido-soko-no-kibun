@@ -56,6 +56,9 @@ function placeToasts(host: HTMLElement): void {
     const overOrders = orR && orR.bottom <= vr.top + 1 && orR.height > 40;
     host.style.bottom = 'auto';
     host.style.top = overOrders ? `${Math.round(orR.top - vr.top + 6)}px` : '8px';
+    // オーダー列に収まるのは 1 つだけ（2 つ目はシートの見出しにかかる）
+    while (host.children.length > 1) host.firstElementChild?.remove();
+    return;
   }
   // シートが開いている間は 2 つまで（ボタンを覆わない）
   while (host.children.length > 2) host.firstElementChild?.remove();

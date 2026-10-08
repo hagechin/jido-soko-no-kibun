@@ -16,9 +16,10 @@ struct WebView: UIViewRepresentable {
         // 起動前に「ネイティブあり」を知らせる
         // 起動引数 -resetSave（UI テスト用）: Documents のセーブを消し、JS 側にも localStorage を消すよう伝える
         let resetSave = CommandLine.arguments.contains("-resetSave")
-        if resetSave { SaveStore().deleteAll() }
+        let demo = CommandLine.arguments.contains("-demo") // スクリーンショット・審査デモ用: メガDC ＋ 特別ロボのセーブで起動
+        if resetSave || demo { SaveStore().deleteAll() }
         let boot = """
-        window.__nativeInfo = { platform: 'ios', version: '\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0")', build: '\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0")', reset: \(resetSave ? "true" : "false") };
+        window.__nativeInfo = { platform: 'ios', version: '\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0")', build: '\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0")', reset: \(resetSave ? "true" : "false"), demo: \(demo ? "true" : "false") };
         """
         config.userContentController.addUserScript(WKUserScript(source: boot, injectionTime: .atDocumentStart, forMainFrameOnly: true))
 

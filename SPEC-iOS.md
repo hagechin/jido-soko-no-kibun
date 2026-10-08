@@ -107,6 +107,8 @@ Swift → JS: `window.__native.reply(id, { ok, result | error })` / `window.__na
 | I6 | 見た目（スキン・テーマ）、iCloud 同期 | 設定で切替、別端末でセーブが見える |
 | I7 | 提出準備: アイコン、起動画面、プライバシーマニフェスト、スクリーンショット、審査メモ | App Store Connect にアップロードできる |
 
+I7 の成果物: `ios/STORE.md`（App 情報・説明・キーワード・課金 4 本の登録内容・審査メモ・プライバシー回答・スクリーンショットの撮り方・提出チェックリスト）、`src/pages/privacy.astro` / `support.astro`（Web 版と同じドメインで配信するプライバシーポリシーとサポートページ。URL を App Store Connect に入れる）、起動スプラッシュ（`#splash`。WebView が動き出すまでの暗い時間を無くす）、デモ起動（`-demo` / `?demo`。メガDC ＋ 特別ロボ ＋ 全機能解放のセーブで起動。スクリーンショットと審査デモ用）、`developmentLanguage: ja` / `CFBundleDevelopmentRegion: ja`
+
 ## 6. 判断（★）
 
 - Capacitor ではなく自前シェル: 依存ゼロの方針と揃え、必要な機能（配信・ブリッジ・課金・触覚・画面点灯）は小さい

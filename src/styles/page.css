@@ -1,0 +1,42 @@
+/* 静的ページ（プライバシーポリシー・サポート）。外部フォント・CDN は使わない */
+:root {
+  --bg: #1d2733;
+  --text: #eef3f8;
+  --muted: #9fb0c3;
+  --accent-2: #4fc3f7;
+}
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  line-height: 1.7;
+}
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+.page h1 {
+  font-size: 24px;
+  margin: 0 0 4px;
+}
+.page h2 {
+  font-size: 18px;
+  margin: 28px 0 8px;
+}
+.page h3 {
+  font-size: 15px;
+  margin: 18px 0 4px;
+}
+.page p,
+.page li {
+  font-size: 15px;
+}
+.muted {
+  color: var(--muted);
+}
+a {
+  color: var(--accent-2);
+}

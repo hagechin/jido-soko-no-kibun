@@ -17,8 +17,8 @@ final class LaunchUITests: XCTestCase {
         let app = launchFresh()
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.waitForExistence(timeout: 20), "WKWebView が出ない")
-        // HUD の日付「1年目 4月 第1週」など「年目」を含む文字が出る = JS が動いている
-        let date = web.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "年目")).firstMatch
+        // HUD の日付（PC「1年目 4月 第1週」／スマホ「1年4月1週」）が出る = JS が動いている
+        let date = web.staticTexts.containing(NSPredicate(format: "label MATCHES %@", "^[0-9]+年.*[0-9]+週$")).firstMatch
         XCTAssertTrue(date.waitForExistence(timeout: 30), "HUD の日付が出ない（JS が動いていない可能性）")
         // 下のバーのボタン（設定）がタップできる大きさ
         let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -31,7 +31,7 @@ final class LaunchUITests: XCTestCase {
         let app = launchFresh()
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.waitForExistence(timeout: 20))
-        let date = web.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "年目")).firstMatch
+        let date = web.staticTexts.containing(NSPredicate(format: "label MATCHES %@", "^[0-9]+年.*[0-9]+週$")).firstMatch
         XCTAssertTrue(date.waitForExistence(timeout: 30), "HUD の日付が出ない")
         // 1 週 = 90 秒（ゲーム内）。4x にして待つ代わりに、オーダーカードの経過秒が増えることで動作を確かめる
         let order = web.staticTexts.containing(NSPredicate(format: "label MATCHES %@", "^[0-9]+s$")).firstMatch

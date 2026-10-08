@@ -52,6 +52,7 @@ import { applyTheme, effectiveCosmetics, loadCosmetics, saveCosmetics } from './
 import { cloudAvailable, cloudEnabled, cloudLoad, onCloudChanged, setCloudEnabled, shouldOfferCloud } from './platform/cloud';
 import { deserialize } from './sim/save';
 import { formatDate } from './sim/calendar';
+import { installDemoSave, isDemoRequested } from './ui/demo';
 import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
@@ -1043,9 +1044,18 @@ class Game {
 // iOS アプリではネイティブの保存と購入状態を先に取り込んでから始める（Web 版は即開始）
 void (async () => {
   await Promise.all([preloadNativeSave(), initEntitlements()]);
+  if (isDemoRequested()) installDemoSave(); // スクリーンショット・審査デモ用
   setLimitsExpanded(hasFeature('limits'));
   const game = new Game();
   game.start();
+  // 起動スプラッシュを消す（最初の描画が済んでから）
+  const splash = document.getElementById('splash');
+  if (splash) {
+    requestAnimationFrame(() => {
+      splash.classList.add('is-done');
+      setTimeout(() => (splash.hidden = true), 400);
+    });
+  }
   // デバッグ用にグローバルへ（本番でも無害）
   (window as unknown as { game: Game }).game = game;
   game.applyCosmetics();

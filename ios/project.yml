@@ -1,6 +1,7 @@
 name: HakoniwaDS
 options:
   bundleIdPrefix: jp.hakoniwa
+  developmentLanguage: ja
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
@@ -41,6 +42,7 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: 箱庭！DS
+        CFBundleDevelopmentRegion: ja
         CFBundleName: HakoniwaDS
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -102,6 +104,7 @@ schemes:
       commandLineArguments:
         "-storeOffline": false
         "-resetSave": false
+        "-demo": false
     test:
       config: Debug
       targets:

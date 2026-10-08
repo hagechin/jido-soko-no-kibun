@@ -912,6 +912,37 @@ button {
   color: var(--accent-2);
 }
 
+/* ---------- 起動スプラッシュ（JS が動き出すまで） ---------- */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #1d2733; /* iOS の起動画面と同じ色 */
+  color: #eef3f8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: opacity 0.35s ease;
+}
+.splash.is-done {
+  opacity: 0;
+  pointer-events: none;
+}
+.splash[hidden] {
+  display: none;
+}
+.splash-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.splash-sub {
+  font-size: 13px;
+  color: #9fb0c3;
+}
+
 /* ---------- モーダル・イベント演出 ---------- */
 .modal {
   position: absolute;
