@@ -7,10 +7,10 @@ import { native } from './native';
 export type Feature = 'specialRobots' | 'limits' | 'sandbox' | 'cosmetics';
 
 export const PRODUCTS = {
-  robots: 'jp.hakoniwa.ds.robots',
-  limits: 'jp.hakoniwa.ds.limits',
-  sandbox: 'jp.hakoniwa.ds.sandbox',
-  supporter: 'jp.hakoniwa.ds.supporter',
+  robots: 'jp.hatte.hakoniwa.ds.robots',
+  limits: 'jp.hatte.hakoniwa.ds.limits',
+  sandbox: 'jp.hatte.hakoniwa.ds.sandbox',
+  supporter: 'jp.hatte.hakoniwa.ds.supporter',
 } as const;
 
 const FEATURES_OF: Record<string, Feature[]> = {

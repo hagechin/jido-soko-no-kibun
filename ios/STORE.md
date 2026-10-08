@@ -6,7 +6,7 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 
 | 項目 | 値 |
 |---|---|
-| Bundle ID | `jp.hakoniwa.ds`（`project.yml`。変えるなら StoreKit の商品 ID と `Products.storekit` も合わせる） |
+| Bundle ID | `jp.hatte.hakoniwa.ds`（`project.yml`。変えるなら StoreKit の商品 ID と `Products.storekit` も合わせる） |
 | 表示名 | 箱庭！DS（ホーム画面）。App Store 上の名前は「箱庭！ディストリビューション」 |
 | バージョン / ビルド | `MARKETING_VERSION 1.0.0` / `CURRENT_PROJECT_VERSION 1`（`project.yml`） |
 | チーム | `project.yml` の `DEVELOPMENT_TEAM` にチーム ID を入れる（iCloud の KVS 識別子にチーム接頭辞が付く） |
@@ -68,10 +68,10 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 
 | 商品 ID | 参照名 | 表示名 | 説明 | 価格帯の目安 |
 |---|---|---|---|---|
-| `jp.hakoniwa.ds.robots` | Special Robots | 特別ロボパック | ドローン搬送ロボとダブルデッカー棚ロボ | ¥600 |
-| `jp.hakoniwa.ds.limits` | Limit Breaker | 上限突破パック | ロボ上限 80/120、積載 Lv4、段数 12、倉庫 64×48 | ¥480 |
-| `jp.hakoniwa.ds.sandbox` | Sandbox | サンドボックスモード | コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断 | ¥320 |
-| `jp.hakoniwa.ds.supporter` | Supporter | サポーターパック | 全部入り ＋ 金色ロボスキン ＋ 倉庫カラーテーマ | ¥1,200 |
+| `jp.hatte.hakoniwa.ds.robots` | Special Robots | 特別ロボパック | ドローン搬送ロボとダブルデッカー棚ロボ | ¥600 |
+| `jp.hatte.hakoniwa.ds.limits` | Limit Breaker | 上限突破パック | ロボ上限 80/120、積載 Lv4、段数 12、倉庫 64×48 | ¥480 |
+| `jp.hatte.hakoniwa.ds.sandbox` | Sandbox | サンドボックスモード | コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断 | ¥320 |
+| `jp.hatte.hakoniwa.ds.supporter` | Supporter | サポーターパック | 全部入り ＋ 金色ロボスキン ＋ 倉庫カラーテーマ | ¥1,200 |
 
 - 各商品に審査用スクリーンショット（ストア画面 `r4-m8-store-ios27.png` のような、商品が並んだ画面）を付ける
 - ファミリー共有: オン（`Products.storekit` と同じ）

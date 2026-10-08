@@ -5,10 +5,10 @@ import StoreKit
 @MainActor
 final class StoreManager: ObservableObject {
     static let productIDs: [String] = [
-        "jp.hakoniwa.ds.robots",
-        "jp.hakoniwa.ds.limits",
-        "jp.hakoniwa.ds.sandbox",
-        "jp.hakoniwa.ds.supporter",
+        "jp.hatte.hakoniwa.ds.robots",
+        "jp.hatte.hakoniwa.ds.limits",
+        "jp.hatte.hakoniwa.ds.sandbox",
+        "jp.hatte.hakoniwa.ds.supporter",
     ]
 
     @Published private(set) var products: [Product] = []

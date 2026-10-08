@@ -9,7 +9,7 @@
       "localizations" : [
         { "description" : "ドローン搬送ロボとダブルデッカー棚ロボ", "displayName" : "特別ロボパック", "locale" : "ja" }
       ],
-      "productID" : "jp.hakoniwa.ds.robots",
+      "productID" : "jp.hatte.hakoniwa.ds.robots",
       "referenceName" : "Special Robots",
       "type" : "NonConsumable"
     },
@@ -20,7 +20,7 @@
       "localizations" : [
         { "description" : "ロボ上限 80/120、積載 Lv4、段数 12、倉庫 64×48", "displayName" : "上限突破パック", "locale" : "ja" }
       ],
-      "productID" : "jp.hakoniwa.ds.limits",
+      "productID" : "jp.hatte.hakoniwa.ds.limits",
       "referenceName" : "Limit Breaker",
       "type" : "NonConsumable"
     },
@@ -31,7 +31,7 @@
       "localizations" : [
         { "description" : "コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断", "displayName" : "サンドボックスモード", "locale" : "ja" }
       ],
-      "productID" : "jp.hakoniwa.ds.sandbox",
+      "productID" : "jp.hatte.hakoniwa.ds.sandbox",
       "referenceName" : "Sandbox",
       "type" : "NonConsumable"
     },
@@ -42,7 +42,7 @@
       "localizations" : [
         { "description" : "全部入り ＋ 金色ロボスキン ＋ 倉庫カラーテーマ", "displayName" : "サポーターパック", "locale" : "ja" }
       ],
-      "productID" : "jp.hakoniwa.ds.supporter",
+      "productID" : "jp.hatte.hakoniwa.ds.supporter",
       "referenceName" : "Supporter",
       "type" : "NonConsumable"
     }

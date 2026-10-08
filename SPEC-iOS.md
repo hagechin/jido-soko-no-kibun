@@ -13,10 +13,10 @@ Web 版（[SPEC.md](./SPEC.md)）を WKWebView で包み、iOS 版だけの機�
 
 | 商品 ID | 名前 | 内容 | 価格の目安 |
 |---|---|---|---|
-| `jp.hakoniwa.ds.robots` | 特別ロボパック | ドローン搬送ロボ、ダブルデッカー棚ロボ | ¥600 |
-| `jp.hakoniwa.ds.limits` | 上限突破パック | ロボ上限 40/60 → 80/120、積載 Lv4（8 ビン）、段数 8 → 12、倉庫 40×28 → 64×48 | ¥480 |
-| `jp.hakoniwa.ds.sandbox` | サンドボックスモード | デバッグ画面を正式機能として解放（コイン、プリセット倉庫、時間ジャンプ、ロボ MAX、停滞診断） | ¥320 |
-| `jp.hakoniwa.ds.supporter` | サポーターパック | 上の 3 つ全部 ＋ 金色ロボスキン ＋ 倉庫カラーテーマ | ¥1,200 |
+| `jp.hatte.hakoniwa.ds.robots` | 特別ロボパック | ドローン搬送ロボ、ダブルデッカー棚ロボ | ¥600 |
+| `jp.hatte.hakoniwa.ds.limits` | 上限突破パック | ロボ上限 40/60 → 80/120、積載 Lv4（8 ビン）、段数 8 → 12、倉庫 40×28 → 64×48 | ¥480 |
+| `jp.hatte.hakoniwa.ds.sandbox` | サンドボックスモード | デバッグ画面を正式機能として解放（コイン、プリセット倉庫、時間ジャンプ、ロボ MAX、停滞診断） | ¥320 |
+| `jp.hatte.hakoniwa.ds.supporter` | サポーターパック | 上の 3 つ全部 ＋ 金色ロボスキン ＋ 倉庫カラーテーマ | ¥1,200 |
 
 機能フラグ（JS 側 `hasFeature`）: `specialRobots` / `limits` / `sandbox` / `cosmetics`。サポーターパックは全部を含む。
 

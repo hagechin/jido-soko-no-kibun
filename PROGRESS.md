@@ -791,3 +791,11 @@ npm run preview   # http://localhost:4321 で確認
 - ★ 仕様のまま: iPad 縦向きのリセット後の構図（ヘッドレスで中心が画面中央と一致。横幅いっぱいに収める結果、縦は小さめ）。`-demo` のストアは価格表示のまま（購入ではなく機能の上書きなので。価格が並ぶ画面のほうが審査向き）
 - STORE.md: 03（ダブルデッカーを選んで眺めモードで追う）と 04（おすすめは詰まったときだけ）の撮り方を追記。TESTPLAN に M23
 - 未解決: iPhone でエディタの「キャンセル」直後に WebView が 1 回固まった件（再現手順待ち）。サイバーウィークの赤い縁取りが iPad でステータスバーの裏まで広がる件（軽微、位置の特定待ち）
+
+---
+
+## バンドル ID と商品 ID を jp.hatte.hakoniwa.ds に統一
+
+- ★ 決定: バンドル ID `jp.hatte.hakoniwa.ds`（テストは `.tests` / `.uitests`）、課金の商品 ID は `jp.hatte.hakoniwa.ds.robots / limits / sandbox / supporter`。`project.yml`・`Products.storekit`・`StoreManager.swift`・`StoreManagerTests.swift`・`platform/entitlements.ts`・`SPEC-iOS.md`・`STORE.md` を置き換え。App Store Connect で商品を作るときはこの ID で
+- 10 回目のレポート: M23（エディタのツールバー、iPad のオーダー列の見出し）OK。`05-layout-editor.png` を両機種で撮り直し済み。iPad の `01-main.png` は修正前のもの（見出しがステータスバーに重なっている）なので撮り直しが要る
+- 注意: `project.yml` の `DEVELOPMENT_TEAM` はまだ "hatte"（名前）。10 文字の Team ID に差し替えが必要

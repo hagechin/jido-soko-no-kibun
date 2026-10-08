@@ -33,7 +33,7 @@ targets:
         com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: jp.hakoniwa.ds
+        PRODUCT_BUNDLE_IDENTIFIER: jp.hatte.hakoniwa.ds
         PRODUCT_NAME: HakoniwaDS
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_STRICT_CONCURRENCY: minimal
@@ -74,7 +74,7 @@ targets:
       - target: HakoniwaDS
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: jp.hakoniwa.ds.tests
+        PRODUCT_BUNDLE_IDENTIFIER: jp.hatte.hakoniwa.ds.tests
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/HakoniwaDS.app/HakoniwaDS
         BUNDLE_LOADER: $(TEST_HOST)
@@ -87,7 +87,7 @@ targets:
       - target: HakoniwaDS
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: jp.hakoniwa.ds.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: jp.hatte.hakoniwa.ds.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: HakoniwaDS
 schemes:
