@@ -48,6 +48,10 @@ import { native, nativeTry } from './platform/native';
 import { hasFeature, initEntitlements, onEntitlementsChange } from './platform/entitlements';
 import { featureStatusNode, renderStore } from './ui/store';
 import { setLimitsExpanded } from './sim/limits';
+import { applyTheme, effectiveCosmetics, loadCosmetics, saveCosmetics } from './ui/cosmetics';
+import { cloudAvailable, cloudEnabled, cloudLoad, onCloudChanged, setCloudEnabled, shouldOfferCloud } from './platform/cloud';
+import { deserialize } from './sim/save';
+import { formatDate } from './sim/calendar';
 import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
@@ -262,6 +266,7 @@ class Game {
     this.bar.registerPanel('store', (body) => renderStore(body, { refresh: () => this.bar.refresh() }));
     onEntitlementsChange(() => {
       setLimitsExpanded(hasFeature('limits'));
+      this.applyCosmetics();
       this.bar.refresh();
       // ストア画面での購入・復元は画面側が知らせる。ここで知らせるのは外から変わったとき（承認待ちの完了・返金など）
       if (this.bar.open !== 'store') showToast('購入状態を反映しました（返金・承認など）', 4000, 'check');
@@ -282,6 +287,34 @@ class Game {
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
         openStore: () => this.bar.show('store'),
+        cosmetics: {
+          unlocked: hasFeature('cosmetics'),
+          skin: loadCosmetics().skin,
+          theme: loadCosmetics().theme,
+          setSkin: (skin) => {
+            saveCosmetics({ ...loadCosmetics(), skin });
+            this.applyCosmetics();
+            this.bar.refresh();
+          },
+          setTheme: (theme) => {
+            saveCosmetics({ ...loadCosmetics(), theme });
+            this.applyCosmetics();
+            this.bar.refresh();
+          },
+          hint: native.available ? 'はサポーターパック（設定 → 追加機能 → ストア）で解放' : 'は iOS 版のサポーターパックで解放',
+        },
+        cloud: native.available
+          ? {
+              enabled: cloudEnabled(),
+              available: this.cloudAvailable,
+              setEnabled: (on) => {
+                setCloudEnabled(on);
+                if (on) this.save(true);
+                this.bar.refresh();
+              },
+              checkNow: () => void this.checkCloud(true),
+            }
+          : undefined,
         openSandbox: hasFeature('sandbox') ? () => this.bar.show('debug') : undefined,
         featureStatus: () => featureStatusNode(),
         exportSave: () => exportSaveFile(this.world),
@@ -605,14 +638,72 @@ class Game {
     this.renderer.controls.enabled = false;
   }
 
-  save(): boolean {
-    const ok = saveToStorage(this.world);
+  save(cloudNow = false): boolean {
+    const ok = saveToStorage(this.world, cloudNow);
     if (ok) {
       this.lastSavedAt = Date.now();
       const label = document.getElementById('last-saved');
       if (label) label.textContent = lastSavedText(this.lastSavedAt);
     }
     return ok;
+  }
+
+  /** 見た目（サポーターパック）を反映。機能が無ければ標準 */
+  applyCosmetics(): void {
+    const c = effectiveCosmetics();
+    this.renderer.setSkin(c.skin);
+    applyTheme(c.theme);
+    this.renderer.setBackdrop(c.theme === 'midnight' ? '#2a2638' : c.theme === 'sand' ? '#f3ead8' : '#dfe9f3');
+  }
+
+  /** iCloud にサインインしているか（起動後に調べる。null = 未確認） */
+  cloudAvailable: boolean | null = null;
+
+  /** iCloud のセーブを調べ、端末より新しければ「読み込みますか？」を出す。manual は設定のボタンから */
+  async checkCloud(manual = false): Promise<void> {
+    if (!native.available || !cloudEnabled()) return;
+    this.cloudAvailable = await cloudAvailable();
+    if (!this.cloudAvailable) {
+      if (manual) showToast('iCloud にサインインしていないので同期できません');
+      return;
+    }
+    const c = await cloudLoad();
+    if (!c) {
+      if (manual) showToast('iCloud にセーブはまだありません。次のセーブで送られます');
+      return;
+    }
+    if (!shouldOfferCloud(this.lastSavedAt, c.savedAt)) {
+      if (manual) showToast('iCloud のセーブはこの端末より新しくありません');
+      return;
+    }
+    this.offerCloudSave(c.text, c.savedAt);
+  }
+
+  /** 「iCloud に新しいセーブがあります」のモーダル（読み込むか、この端末のまま続けるか） */
+  private offerCloudSave(text: string, savedAt: number): void {
+    const res = deserialize(text);
+    if (!res.ok) return;
+    const w = res.world;
+    const when = new Date(savedAt).toLocaleString('ja-JP');
+    const summary = `${formatDate(w.calendar)}・${Math.floor(w.coins).toLocaleString('ja-JP')} コイン・ロボ ${w.robots.length} 台・出荷 ${w.stats.totalShipped} 件`;
+    const mine = `この端末: ${formatDate(this.world.calendar)}・${Math.floor(this.world.coins).toLocaleString('ja-JP')} コイン・ロボ ${this.world.robots.length} 台・出荷 ${this.world.stats.totalShipped} 件`;
+    const load = el('button', { class: 'btn primary', type: 'button', text: 'iCloud のセーブを読み込む' });
+    const keep = el('button', { class: 'btn', type: 'button', text: 'この端末のまま続ける' });
+    load.addEventListener('click', () => {
+      this.modal.hide();
+      this.loadWorld(w);
+      this.lastSavedAt = Date.now();
+      showToast('iCloud のセーブを読み込みました');
+    });
+    keep.addEventListener('click', () => this.modal.hide());
+    this.modal.show(
+      'iCloud に新しいセーブがあります',
+      el('p', { text: `別の端末で ${when} に保存されたセーブがあります。` }),
+      el('p', { class: 'small', text: `iCloud: ${summary}` }),
+      el('p', { class: 'muted small', text: mine }),
+      el('p', { class: 'muted small', text: '読み込むと、この端末の進行はそのセーブで置き換わります（次の保存で iCloud にも送られます）。' }),
+      el('div', { class: 'settings-row' }, load, keep),
+    );
   }
 
   newGame(): void {
@@ -950,8 +1041,11 @@ void (async () => {
   game.start();
   // デバッグ用にグローバルへ（本番でも無害）
   (window as unknown as { game: Game }).game = game;
+  game.applyCosmetics();
   if (native.available) {
-    native.on('background', () => game.save());
+    native.on('background', () => game.save(true)); // 背面に回るときは iCloud にも即送る
     document.documentElement.classList.add('is-native');
+    void game.checkCloud();
+    onCloudChanged(() => void game.checkCloud());
   }
 })();

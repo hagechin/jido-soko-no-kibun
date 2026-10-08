@@ -20,6 +20,32 @@
   --sa-left: env(safe-area-inset-left, 0px);
   --sa-right: env(safe-area-inset-right, 0px);
 }
+/* サポーターパックの倉庫カラーテーマ（ui/cosmetics.ts が html[data-theme] を付ける） */
+:root[data-theme='midnight'] {
+  --bg: #121018;
+  --panel: #1b1824;
+  --panel-2: #262033;
+  --line: #3a3150;
+  --text: #f1ecfa;
+  --muted: #a99cc2;
+  --accent: #ffd166;
+  --accent-2: #9d8cff;
+}
+:root[data-theme='sand'] {
+  --bg: #f1e7d6;
+  --panel: #f8f1e4;
+  --panel-2: #ece2cf;
+  --line: #d5c6ad;
+  --text: #2b2418;
+  --muted: #7a6b55;
+  --accent: #c98a1b;
+  --accent-2: #2a8fbd;
+  --danger: #c74b3c;
+  --ok: #3f8f4f;
+}
+:root[data-theme='sand'] .btn {
+  color: var(--text);
+}
 * {
   box-sizing: border-box;
 }

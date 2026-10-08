@@ -66,6 +66,13 @@ const COLORS = {
   drone: '#5fc9f8',
   droneDark: '#2c6f8f',
   rotor: '#2a2f36',
+  /** 金色スキン（サポーターパック）: 全ロボを金色に。種類の見分けは明るさで */
+  goldShelf: '#e2b53a',
+  goldDouble: '#c9931c',
+  goldAmr: '#d4a62a',
+  goldAmrDark: '#9c7514',
+  goldDrone: '#f0cc5c',
+  goldDroneDark: '#a67f1a',
   person: '#f6c6a8',
   shirtPick: '#2e8b57',
   shirtInbound: '#d2691e',
@@ -89,6 +96,22 @@ export class WarehouseRenderer {
   private miscBatch = new BoxBatch(1);
   private binBatch = new BoxBatch(1);
   private robotBatch = new BoxBatch(1);
+  /** ロボの色（スキン）。setSkin で差し替える */
+  private robotColors = { shelf: COLORS.shelfRobot, double: COLORS.doubleDecker, amr: COLORS.amr, amrDark: COLORS.amrDark, drone: COLORS.drone, droneDark: COLORS.droneDark };
+
+  /** ロボのスキン（サポーターパックの金色） */
+  setSkin(skin: 'standard' | 'gold'): void {
+    this.robotColors =
+      skin === 'gold'
+        ? { shelf: COLORS.goldShelf, double: COLORS.goldDouble, amr: COLORS.goldAmr, amrDark: COLORS.goldAmrDark, drone: COLORS.goldDrone, droneDark: COLORS.goldDroneDark }
+        : { shelf: COLORS.shelfRobot, double: COLORS.doubleDecker, amr: COLORS.amr, amrDark: COLORS.amrDark, drone: COLORS.drone, droneDark: COLORS.droneDark };
+  }
+
+  /** 3D ビューの背景と霧の色（UI テーマに合わせる） */
+  setBackdrop(color: string): void {
+    (this.scene.background as Color).set(color);
+    (this.scene.fog as Fog).color.set(color);
+  }
   private highlightBatch = new BoxBatch(64);
   private selectionRing: Mesh;
   private ground: Mesh;
@@ -463,8 +486,8 @@ export class WarehouseRenderer {
       if (isDrone(r)) {
         // ドローン: 棚ロボより上の空中レイヤー。本体＋4 本の腕とローター、ビンは下にぶら下げる
         const y = this.droneHeight(w);
-        this.robotBatch.add(x, y, z, 0.5, 0.16, 0.5, COLORS.drone, rot);
-        this.robotBatch.add(x, y + 0.1, z, 0.3, 0.06, 0.3, COLORS.droneDark, rot);
+        this.robotBatch.add(x, y, z, 0.5, 0.16, 0.5, this.robotColors.drone, rot);
+        this.robotBatch.add(x, y + 0.1, z, 0.3, 0.06, 0.3, this.robotColors.droneDark, rot);
         const spin = ((w.tick + alpha) * 0.9) % (Math.PI * 2);
         for (const [dx, dz] of [
           [-0.42, -0.42],
@@ -472,7 +495,7 @@ export class WarehouseRenderer {
           [-0.42, 0.42],
           [0.42, 0.42],
         ]) {
-          this.robotBatch.add(x + dx * 0.55, y, z + dz * 0.55, 0.5, 0.05, 0.08, COLORS.droneDark, Math.atan2(dz, dx));
+          this.robotBatch.add(x + dx * 0.55, y, z + dz * 0.55, 0.5, 0.05, 0.08, this.robotColors.droneDark, Math.atan2(dz, dx));
           this.robotBatch.add(x + dx, y + 0.06, z + dz, 0.34, 0.03, 0.08, COLORS.rotor, spin);
           this.robotBatch.add(x + dx, y + 0.06, z + dz, 0.08, 0.03, 0.34, COLORS.rotor, spin);
         }
@@ -485,7 +508,7 @@ export class WarehouseRenderer {
         }
       } else if (r.kind === 'shelf') {
         const y = rh + 0.25;
-        const body = isDoubleDecker(r) ? COLORS.doubleDecker : COLORS.shelfRobot;
+        const body = isDoubleDecker(r) ? this.robotColors.double : this.robotColors.shelf;
         this.robotBatch.add(x, y, z, 0.78, 0.36, 0.78, body, rot);
         this.robotBatch.add(x, y + 0.24, z, 0.5, 0.12, 0.5, shade(body, -0.15), rot);
         if (isDoubleDecker(r)) {
@@ -539,8 +562,8 @@ export class WarehouseRenderer {
           bl = 1.8;
           bodyRot = 0;
         }
-        this.robotBatch.add(cx, y, cz, bw, 0.3, bl, COLORS.amr, bodyRot);
-        this.robotBatch.add(cx, y + 0.17, cz, bw * 0.9, 0.06, bl * 0.9, COLORS.amrDark, bodyRot);
+        this.robotBatch.add(cx, y, cz, bw, 0.3, bl, this.robotColors.amr, bodyRot);
+        this.robotBatch.add(cx, y + 0.17, cz, bw * 0.9, 0.06, bl * 0.9, this.robotColors.amrDark, bodyRot);
         // ライト（進行方向）
         const lx = shape.w === 2 ? cx + fx * 0.85 : x + fx * 0.4;
         const lz = shape.w === 2 ? cz + fz * 0.85 : z + fz * 0.4;

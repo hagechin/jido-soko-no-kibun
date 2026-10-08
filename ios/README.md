@@ -42,6 +42,10 @@ ios/
     Assets.xcassets       アプリアイコン
 ```
 
+## iCloud 同期
+
+セーブの同期に iCloud キー値ストアを使う（`App/HakoniwaDS.entitlements`）。有料の Apple Developer Program のチームで署名すると Xcode が App ID に iCloud を付ける。無料の Personal Team では署名できないので、`project.yml` の `entitlements:` の 2 行を外して `xcodegen generate` し直す（同期の設定は「サインインしていない」扱いになり、ゲームはそのまま遊べる）。
+
 ## テスト
 
 自動テストと手動確認の手順は [TESTPLAN.md](./TESTPLAN.md)。要約:

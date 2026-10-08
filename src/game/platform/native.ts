@@ -4,7 +4,7 @@
  * Swift → JS: window.__native.reply(id, { ok, result | error }) / window.__native.emit(event, payload)
  * ネイティブが無ければ available = false で、呼び出しは即座に失敗（呼ぶ側は Web 版の挙動へ）
  */
-export type NativeEvent = 'entitlements' | 'foreground' | 'background';
+export type NativeEvent = 'entitlements' | 'foreground' | 'background' | 'cloudChanged';
 
 interface Pending {
   resolve: (v: unknown) => void;

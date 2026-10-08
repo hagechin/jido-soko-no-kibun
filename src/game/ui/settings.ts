@@ -3,6 +3,7 @@ import { iconText } from './icon';
 import { saveQuality, settingsFor, type QualityLevel } from '../render/quality';
 import { DIFFICULTY, DIFFICULTY_ORDER, type DifficultyId } from '../data/balance';
 import { el, showToast } from './layout';
+import { THEMES, type Skin, type Theme } from './cosmetics';
 
 /** 「最終セーブ」の表示（セーブのたびに main が更新する） */
 export function lastSavedText(at: number | null): string {
@@ -32,6 +33,10 @@ export interface SettingsContext {
   openSandbox?: () => void;
   /** 解放済み機能の一覧 */
   featureStatus?: () => HTMLElement;
+  /** 見た目（サポーターパック）: unlocked でなければ案内だけ */
+  cosmetics?: { unlocked: boolean; skin: Skin; theme: Theme; setSkin: (s: Skin) => void; setTheme: (t: Theme) => void; hint: string };
+  /** iCloud 同期（iOS 版のみ） */
+  cloud?: { enabled: boolean; available: boolean | null; setEnabled: (on: boolean) => void; checkNow: () => void };
 }
 
 export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
@@ -89,6 +94,31 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     body.append(row);
     if (ctx.featureStatus) body.append(ctx.featureStatus());
   }
+  if (ctx.cosmetics) {
+    const c = ctx.cosmetics;
+    body.append(el('h4', { text: '見た目' }));
+    if (!c.unlocked) body.append(el('p', { class: 'muted small', text: `金色ロボスキンと倉庫カラーテーマ${c.hint}` }));
+    else {
+      const skinRow = el('div', { class: 'settings-row' });
+      for (const [id, label] of [
+        ['standard', '標準'],
+        ['gold', '金色'],
+      ] as [Skin, string][]) {
+        const b = el('button', { class: `btn${c.skin === id ? ' is-active' : ''}`, type: 'button', text: `ロボ: ${label}` });
+        b.addEventListener('click', () => c.setSkin(id));
+        skinRow.append(b);
+      }
+      body.append(skinRow);
+      const themeRow = el('div', { class: 'settings-row' });
+      for (const t of THEMES) {
+        const b = el('button', { class: `btn${c.theme === t.id ? ' is-active' : ''}`, type: 'button', text: t.name, title: t.desc });
+        b.addEventListener('click', () => c.setTheme(t.id));
+        themeRow.append(b);
+      }
+      body.append(themeRow);
+      body.append(el('p', { class: 'muted small', text: THEMES.find((t) => t.id === c.theme)?.desc ?? '' }));
+    }
+  }
   body.append(el('h4', { text: 'セーブ' }));
   const saveBtn = el('button', { class: 'btn', type: 'button' }, iconText('save', '今すぐセーブ'));
   saveBtn.addEventListener('click', () => showToast(ctx.saveNow() ? 'セーブしました' : 'セーブできませんでした'));
@@ -105,6 +135,16 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     });
     im.append(input);
     body.append(el('div', { class: 'settings-row' }, ex, im));
+  }
+  if (ctx.cloud) {
+    const c = ctx.cloud;
+    const toggle = el('button', { class: `btn${c.enabled ? ' is-active' : ''}`, type: 'button' }, iconText('refresh-cw', c.enabled ? 'iCloud 同期: オン' : 'iCloud 同期: オフ', 14));
+    toggle.addEventListener('click', () => c.setEnabled(!c.enabled));
+    const check = el('button', { class: 'btn', type: 'button', text: 'iCloud のセーブを確認' });
+    if (!c.enabled) check.setAttribute('disabled', 'true');
+    check.addEventListener('click', () => c.checkNow());
+    const status = c.available === false ? 'iCloud にサインインしていないので同期できません（設定アプリ → Apple アカウント）' : 'セーブを iCloud に置き、別の端末で新しいセーブがあれば起動時に「読み込みますか？」と聞きます。端末のセーブを勝手に上書きはしません';
+    body.append(el('div', { class: 'settings-row' }, toggle, check), el('p', { class: 'muted small', text: status }));
   }
   const reset = el('button', { class: 'btn danger', type: 'button' }, iconText('trash-2', '新しく始める'));
   reset.addEventListener('click', () => {

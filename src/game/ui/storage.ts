@@ -3,11 +3,16 @@ import { SAVE } from '../data/balance';
 import { deserialize, serialize, type LoadResult } from '../sim/save';
 import type { WorldState } from '../sim/types';
 import { native, nativeTry } from '../platform/native';
+import { cloudPush } from '../platform/cloud';
 
-export function saveToStorage(w: WorldState): boolean {
-  const text = serialize(w);
-  // iOS アプリ: 本体は Documents（localStorage は消されることがある）。失敗しても localStorage には残す
-  if (native.available) nativeTry('save', { key: SAVE.key, data: text });
+export function saveToStorage(w: WorldState, cloudNow = false): boolean {
+  const savedAt = Date.now();
+  const text = serialize(w, savedAt);
+  // iOS アプリ: 本体は Documents（localStorage は消されることがある）。失敗しても localStorage には残す。iCloud にも（間引いて）送る
+  if (native.available) {
+    nativeTry('save', { key: SAVE.key, data: text });
+    cloudPush(text, savedAt, cloudNow);
+  }
   try {
     localStorage.setItem(SAVE.key, text);
     return true;
@@ -33,6 +38,17 @@ export async function preloadNativeSave(): Promise<void> {
     if (typeof text === 'string' && text) localStorage.setItem(SAVE.key, text);
   } catch {
     /* ネイティブに無ければ localStorage のまま */
+  }
+}
+
+/** 端末のセーブの時刻（読まずに取り出す。無ければ null） */
+export function localSavedAt(): number | null {
+  try {
+    const text = localStorage.getItem(SAVE.key);
+    const m = text && /"savedAt":\s*(\d+)/.exec(text);
+    return m ? Number(m[1]) : null;
+  } catch {
+    return null;
   }
 }
 

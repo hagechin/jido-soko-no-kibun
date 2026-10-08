@@ -20,6 +20,7 @@ final class Bridge {
     private weak var webView: WKWebView?
     private let store: StoreManager
     private let saves = SaveStore()
+    private let cloud = CloudStore()
 
     @MainActor
     init(webView: WKWebView, store: StoreManager) {
@@ -66,6 +67,19 @@ final class Bridge {
             return true
         case "haptic":
             Haptics.play(kind: p["kind"] as? String ?? "light")
+            return true
+        case "cloudStatus":
+            return ["available": cloud.available]
+        case "cloudLoad":
+            cloud.synchronize()
+            guard let r = cloud.read() else { return NSNull() }
+            return ["data": r.text, "savedAt": r.savedAt]
+        case "cloudSave":
+            guard let data = p["data"] as? String else { throw BridgeError.badParams }
+            let savedAt = (p["savedAt"] as? Double) ?? Date().timeIntervalSince1970 * 1000
+            return cloud.write(text: data, savedAt: savedAt)
+        case "cloudClear":
+            cloud.clear()
             return true
         case "products":
             // -storeOffline（手動確認 M12 用）: 商品を取れない状態を再現する

@@ -19,11 +19,15 @@ targets:
       - path: App
         excludes:
           - "Products.storekit"
+          - "HakoniwaDS.entitlements"
       - path: Web
         type: folder
         buildPhase: resources
       - path: App/Products.storekit
         buildPhase: none
+    # iCloud キー値ストア（セーブの同期）。有料の Developer Program が要る。無料の Personal Team で署名できないときは、この entitlements の行を外す
+    entitlements:
+      path: App/HakoniwaDS.entitlements
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: jp.hakoniwa.ds

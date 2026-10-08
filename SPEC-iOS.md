@@ -55,6 +55,7 @@ Web 版（[SPEC.md](./SPEC.md)）を WKWebView で包み、iOS 版だけの機�
 ### 見た目（サポーター）
 
 - 金色のロボスキン（render の色差し替え）と倉庫カラーテーマ（CSS 変数の差し替え）。設定で切替
+- 実装（I6）: `ui/cosmetics.ts`（localStorage `jido-soko-no-kibun:cosmetics`）。スキン: 標準／金色（`WarehouseRenderer.setSkin`、全ロボを金色にし種類は明るさで区別）。テーマ: 標準／ミッドナイト／サンド（`html[data-theme]` で CSS 変数を差し替え、3D ビューの背景と霧の色も合わせる）。`cosmetics` が無ければ標準に戻る（返金）。設定の「見た目」セクション（未購入は案内のみ）
 
 ## 2. ブリッジ（JS ↔ Swift）
 
@@ -79,7 +80,12 @@ Swift → JS: `window.__native.reply(id, { ok, result | error })` / `window.__na
 ## 3. セーブ
 
 - 本体: `Documents/saves/<key>.json`（アトミック書き込み）。localStorage は従来どおり書くが、起動時はネイティブの保存を優先して localStorage に流し込む
-- 書き出し／読み込み（ファイル）は Web 版と同じ JSON。iCloud 同期は後続（CloudKit か KVS、1 セーブ 160KB 程度）
+- 書き出し／読み込み（ファイル）は Web 版と同じ JSON
+- iCloud 同期（I6）: `NSUbiquitousKeyValueStore`（キー値ストア）にセーブを 1 本、zlib 圧縮して置く（`CloudStore.swift`。1 キー 1MB の制限。900KB を超えたら送らない）。entitlement `com.apple.developer.ubiquity-kvstore-identifier`（有料の Developer Program が要る。無料の Personal Team なら `project.yml` の entitlements を外す）
+  - ★ 方針: 端末のセーブが本体。クラウドは「他の端末から持ってくる」ためで、勝手に上書きしない
+  - 保存のたびに送る（60 秒に 1 回まで。背面に回るときは即）。ブリッジ: `cloudStatus` / `cloudLoad` / `cloudSave` / `cloudClear`、イベント `cloudChanged`（他の端末から届いた）
+  - 起動時・届いたとき・設定の「iCloud のセーブを確認」で、クラウドのほうが 2 秒以上新しく、自分が送ったものでなければ「iCloud に新しいセーブがあります」のモーダル（両方の要約を並べ、読み込む／この端末のまま）。読み込むと `loadWorld`
+  - 設定で同期のオン／オフ。iCloud 未サインインは案内
 
 ## 4. 画面・OS まわり
 
