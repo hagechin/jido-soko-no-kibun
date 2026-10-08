@@ -618,38 +618,65 @@ export class WarehouseRenderer {
     const rect = this.canvas.getBoundingClientRect();
     const ndc = new Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.camera);
-    // ロボは高さがあるので、レール高さの平面と地面の両方で交点を取り、近いほうを採用
+    // ★ 視線と「箱」の交差で選ぶ（以前は高さごとの平面との距離で、背の高い棚や寄った視点で外れていた）。一番手前に当たったものを採用
     const ray = this.raycaster.ray;
-    const hitAt = (y: number): Vector3 | null => {
-      if (Math.abs(ray.direction.y) < 1e-6) return null;
-      const t = (y - ray.origin.y) / ray.direction.y;
-      if (t < 0) return null;
-      return ray.origin.clone().addScaledVector(ray.direction, t);
+    const o = ray.origin;
+    const d = ray.direction;
+    const hitBox = (minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number): number | null => {
+      let tmin = 0;
+      let tmax = Infinity;
+      const axes: [number, number, number, number][] = [
+        [o.x, d.x, minX, maxX],
+        [o.y, d.y, minY, maxY],
+        [o.z, d.z, minZ, maxZ],
+      ];
+      for (const [oo, dd, lo, hi] of axes) {
+        if (Math.abs(dd) < 1e-9) {
+          if (oo < lo || oo > hi) return null;
+          continue;
+        }
+        let t1 = (lo - oo) / dd;
+        let t2 = (hi - oo) / dd;
+        if (t1 > t2) [t1, t2] = [t2, t1];
+        tmin = Math.max(tmin, t1);
+        tmax = Math.min(tmax, t2);
+        if (tmin > tmax) return null;
+      }
+      return tmin;
     };
-    const ground = hitAt(0);
-    const rail = hitAt(this.railHeight(w) + 0.2);
-    const air = hitAt(this.droneHeight(w));
-    let best: { res: PickResult; d: number } | null = null;
-    const consider = (res: PickResult, px: number, pz: number, pt: Vector3 | null, bonus = 0) => {
-      if (!pt) return;
-      const d = Math.hypot(pt.x - px, pt.z - pz) - bonus;
-      if (!best || d < best.d) best = { res, d };
+    const rh = this.railHeight(w);
+    const dh = this.droneHeight(w);
+    const bh = RENDER.binHeight;
+    let best: { res: PickResult; t: number } | null = null;
+    const consider = (res: PickResult, t: number | null, priority = 0) => {
+      if (t === null) return;
+      const tt = t - priority;
+      if (!best || tt < best.t) best = { res, t: tt };
     };
     for (const r of w.robots) {
       // 指示中（preferStatic）は、通りかかった動いているロボにタップを横取りされないようにする
       if (preferStatic && r.moveTo) continue;
       this.robotWorldPos(r, alpha, this.tmpPos);
-      consider({ kind: 'robot', id: r.id, x: r.pose.x, z: r.pose.z }, this.tmpPos.x, this.tmpPos.z, isDrone(r) ? air : r.kind === 'shelf' ? rail : ground, 0.25);
+      const x = this.tmpPos.x;
+      const z = this.tmpPos.z;
+      let t: number | null;
+      if (isDrone(r)) t = hitBox(x - 0.6, dh - 0.3 - r.carrying.length * bh, z - 0.6, x + 0.6, dh + 0.25, z + 0.6);
+      else if (r.kind === 'shelf') t = hitBox(x - 0.5, rh - 0.1, z - 0.5, x + 0.5, rh + 0.7, z + 0.5);
+      else t = hitBox(x - 0.5, 0, z - 0.5, x + 0.5, 0.55 + Math.ceil(r.carrying.length / 4) * bh, z + 0.5);
+      consider({ kind: 'robot', id: r.id, x: r.pose.x, z: r.pose.z }, t, 0.3); // ロボは少し優先（棚の上に居ても選べる）
     }
-    for (const s of w.stacks) consider({ kind: 'stack', id: s.id, x: s.x, z: s.z }, s.x + 0.5, s.z + 0.5, rail);
-    for (const p of w.ports) consider({ kind: 'port', id: p.id, x: p.x, z: p.z }, p.x + 0.5, p.z + 0.5, ground);
-    for (const s of w.stations) consider({ kind: 'station', id: s.id, x: s.x, z: s.z }, s.x + 0.5, s.z + 0.5, ground);
-    const b = best as { res: PickResult; d: number } | null;
-    if (b && b.d < 1.1) return b.res;
-    if (ground) {
-      const x = Math.floor(ground.x);
-      const z = Math.floor(ground.z);
-      if (x >= 0 && z >= 0 && x < w.width && z < w.height) return { kind: 'cell', id: 0, x, z };
+    for (const s of w.stacks) consider({ kind: 'stack', id: s.id, x: s.x, z: s.z }, hitBox(s.x, 0, s.z, s.x + 1, rh + 0.1, s.z + 1));
+    for (const pt of w.ports) consider({ kind: 'port', id: pt.id, x: pt.x, z: pt.z }, hitBox(pt.x, 0, pt.z, pt.x + 1, 0.4, pt.z + 1));
+    for (const st of w.stations) consider({ kind: 'station', id: st.id, x: st.x, z: st.z }, hitBox(st.x, 0, st.z, st.x + 1, 1.7, st.z + 1));
+    const b = best as { res: PickResult; t: number } | null;
+    if (b) return b.res;
+    if (Math.abs(d.y) > 1e-6) {
+      const t = (0 - o.y) / d.y;
+      if (t >= 0) {
+        const x = Math.floor(o.x + d.x * t);
+        const z = Math.floor(o.z + d.z * t);
+        if (x >= 0 && z >= 0 && x < w.width && z < w.height) return { kind: 'cell', id: 0, x, z };
+      }
     }
     return null;
   }

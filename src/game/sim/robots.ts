@@ -3,6 +3,7 @@
  * step の意味は各 job ごとに定義（コメント参照）。
  */
 import { PORT, ROBOT } from '../data/balance';
+import { itemDef } from '../data/items';
 import { approachCells, manhattan } from './grid';
 import { visibleOrders } from './orders';
 import { atGoal, passableFor, sameGoal } from './goals';
@@ -753,7 +754,7 @@ export function describeRobot(w: WorldState, r: Robot): string {
   switch (job.type) {
     case 'retrieve': {
       const b = w.bins[job.binId];
-      const what = b?.item ? b.item : '空ビン';
+      const what = b?.item ? itemDef(b.item).name : '空ビン';
       if (r.step === 11 || r.step === 12 || r.step === 13) return `掘り出し中（${what}）`;
       if (r.step >= 14 && r.step <= 16) return `2 段持ちで取り出し中（${what}）`;
       if (r.step >= 20) return `ポートへ運搬中（${what}）`;

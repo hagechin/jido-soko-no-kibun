@@ -34,7 +34,12 @@ export class Hud {
   constructor(onSpeed: (speed: number) => void) {
     for (const b of this.speedBtns) {
       if (b === this.cycleBtn) continue;
-      b.addEventListener('click', () => onSpeed(Number(b.dataset.speed)));
+      b.addEventListener('click', () => {
+        const s = Number(b.dataset.speed);
+        // 一時停止中にもう一度「一時停止」を押したら再開
+        if (s === 0 && this.last.speed === 0) onSpeed(this.lastNonZeroSpeed);
+        else onSpeed(s);
+      });
     }
     // スマホ用: 1つのボタンで 1x → 2x → 4x を巡回（一時停止中なら再開）
     this.cycleBtn.addEventListener('click', () => {

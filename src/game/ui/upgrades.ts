@@ -26,6 +26,7 @@ import {
 } from '../sim/shop';
 import type { WorldState } from '../sim/types';
 import { limitsFor } from '../sim/limits';
+import { expansionCost } from '../sim/build';
 import { limitHint, specialRobotsHint } from './limitHint';
 import { hasFeature } from '../platform/entitlements';
 import { isDrone } from '../sim/layers';
@@ -69,7 +70,8 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   body.append(row(`ビン容量 ${w.binCapacity} → ${w.binCapacity + 10}`, binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, '1 ビンに入る個数'));
   const binsLeft = Math.max(0, freeBinSlots(w) - reservedSlots(w));
   body.append(row('空ビン 1 個', BIN.emptyBinCost, binsLeft > 0 ? () => buyEmptyBin(w) : null, ctx, `空きのあるスタックの頂上に置く（買えるのはあと ${binsLeft} 個。掘り出し用に ${reservedSlots(w)} スロットは空けておく）`));
-  body.append(row('面積拡張（東へ +4 列／南へ +4 行）', null, null, ctx, '建設モードのツールバーから行います', '建設'));
+  const areaMax = expansionCost(w, 'east') === null && expansionCost(w, 'south') === null;
+  body.append(row(areaMax ? `面積拡張 ${w.width}×${w.height}（MAX）` : '面積拡張（東へ +4 列／南へ +4 行）', null, null, ctx, areaMax ? `これ以上は広げられません${limitHint(true, `${LIMITS.expanded.maxWidth}×${LIMITS.expanded.maxHeight} まで`)}` : '建設モードのツールバーから行います', areaMax ? undefined : '建設'));
   body.append(el('p', { class: 'muted small', text: `スタック ${BUILD.stackCost} / ポート ${BUILD.portCost} / ステーション ${BUILD.pickStationCost} コイン。「建設」で配置します` }));
 
   body.append(el('h4', { text: 'ロボット' }));

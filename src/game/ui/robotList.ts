@@ -5,6 +5,17 @@ import type { WorldState } from '../sim/types';
 import { iconImg } from './icons';
 import { el } from './layout';
 
+/** 開いたままでも状態が追いかけるように、状態の文字だけ書き換える（行の作り直しはしない） */
+export function refreshRobotListStatus(body: HTMLElement, w: WorldState): void {
+  for (const row of body.querySelectorAll<HTMLElement>('.robot-row[data-robot]')) {
+    const r = w.robots.find((x) => x.id === Number(row.dataset.robot));
+    const st = row.querySelector('.sel-status');
+    if (!r || !st) continue;
+    const text = describeRobot(w, r);
+    if (st.textContent !== text) st.textContent = text;
+  }
+}
+
 export function renderRobotList(body: HTMLElement, w: WorldState, selectedId: number | null, onSelect: (id: number) => void, onUpgrade: (id: number) => void): void {
   body.append(el('p', { class: 'muted small', text: 'タップで選択（3D ビューで指示できる）。「強化」で選択してアップグレードを開く' }));
   for (const kind of ['shelf', 'amr'] as const) {
@@ -19,7 +30,7 @@ export function renderRobotList(body: HTMLElement, w: WorldState, selectedId: nu
       const lv = kind === 'shelf' ? `速度 Lv${r.speedLevel} / リフト Lv${r.liftLevel}` : `速度 Lv${r.speedLevel} / 積載 ${ROBOT.cargo[r.cargoLevel].bins}`;
       const row = el(
         'div',
-        { class: `robot-row${r.id === selectedId ? ' is-active' : ''}` },
+        { class: `robot-row${r.id === selectedId ? ' is-active' : ''}`, 'data-robot': String(r.id) },
         el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + r.name })), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small', text: `${lv}${r.job?.manual ? ' / 手動指示中' : ''}` })),
         el('button', { class: 'btn', type: 'button', text: '強化' }),
       );

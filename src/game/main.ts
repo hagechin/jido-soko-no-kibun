@@ -57,7 +57,7 @@ import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
 import { Sound } from './audio/sound';
 import { renderDebug } from './ui/debugPanel';
-import { renderRobotList } from './ui/robotList';
+import { refreshRobotListStatus, renderRobotList } from './ui/robotList';
 import { isCyberWeek } from './sim/events';
 import { visibleOrders } from './sim/orders';
 import { exportSaveFile, importSaveFile } from './ui/storage';
@@ -256,6 +256,7 @@ class Game {
         // ?debug（開発）ではなくサンドボックスとして使ったら、セーブに印を付ける
         onAction: () => {
           if (!this.debug.enabled) this.world.flags.sandboxUsed = true;
+          setTimeout(() => this.save(), 0); // ボタンの処理が終わってから保存
         },
       }),
     );
@@ -338,7 +339,11 @@ class Game {
         },
       }),
     );
-    this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh(), buyAutomation: (id) => buyAutomation(this.world, id), hint: this.currentHint?.text ?? null }));
+    this.bar.registerPanel('upgrades', (body) => renderUpgrades(body, { world: this.world, selectedRobotId: this.selectedRobotId, refresh: () => this.bar.refresh(), buyAutomation: (id) => {
+          const r = buyAutomation(this.world, id);
+          if (r.ok) this.save();
+          return r;
+        }, hint: this.currentHint?.text ?? null }));
 
     $('btn-camera-reset').addEventListener('click', () => {
       this.cameraTouched = true;
@@ -964,6 +969,8 @@ class Game {
         this.acc -= TICK_MS;
         ticks++;
       }
+      // ロボ一覧を開いたままでも状態が追いかける（1 秒ごと、文字だけ）
+      if (ticks && this.bar.open === 'robots' && this.world.tick % TICKS_PER_SECOND === 0) refreshRobotListStatus($('sheet-body'), this.world);
       if (this.debug.enabled) {
         if (ticks) this.debug.simMs = this.debug.simMs * 0.9 + ((performance.now() - simStart) / ticks) * 0.1;
         this.debug.frames++;

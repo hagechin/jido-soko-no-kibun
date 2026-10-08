@@ -33,6 +33,29 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return e;
 }
 
+/** パネル（シート）が開いているときは、その本文やボタンに重ならないようシートのすぐ上に出す。閉じていれば 3D ビューの下端 */
+function placeToasts(host: HTMLElement): void {
+  const sheet = document.getElementById('sheet');
+  const view = host.parentElement;
+  if (!sheet || !view) return;
+  if (sheet.hidden) {
+    host.style.bottom = '';
+    host.style.top = '';
+    return;
+  }
+  const vr = view.getBoundingClientRect();
+  const sr = sheet.getBoundingClientRect();
+  const above = vr.bottom - sr.top; // シートの上端までの高さ（ビュー下端から）
+  if (above < vr.height - 60) {
+    host.style.bottom = `${Math.max(12, above + 8)}px`;
+    host.style.top = '';
+  } else {
+    // シートがビューをほぼ覆っている（スマホ）: ビューの上端に
+    host.style.bottom = 'auto';
+    host.style.top = '8px';
+  }
+}
+
 export function showToast(text: string, ms = 2200, iconName?: IconName): void {
   const host = document.getElementById('toasts');
   if (!host) return;
@@ -41,6 +64,7 @@ export function showToast(text: string, ms = 2200, iconName?: IconName): void {
   const t = el('div', { class: 'toast' }, iconName ? icon(iconName, 16) : null, el('span', { text }));
   t.dataset.text = text;
   host.append(t);
+  placeToasts(host);
   while (host.children.length > 4) host.firstElementChild?.remove();
   setTimeout(() => t.remove(), ms);
 }

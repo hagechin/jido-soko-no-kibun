@@ -238,17 +238,12 @@ button {
   transform: translateX(-50%);
   z-index: 12; /* シート（5〜7）より手前、モーダル（20）より奥 */
   pointer-events: none;
-}
-/* パネルが開いているときはボタンに重ならないよう、3D ビューの上側に出す */
-.app:has(#sheet:not([hidden])) .toasts {
-  bottom: auto;
-  top: 56px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  pointer-events: none;
   align-items: center;
 }
+/* パネルが開いているときの位置は showToast（layout.ts）がシートのすぐ上に合わせる */
 .toast {
   background: rgba(20, 28, 38, 0.9);
   color: #fff;
@@ -390,13 +385,27 @@ button {
   .hud-item.rank-name b {
     display: none;
   }
-  /* 幅が足りないときは左のグループ（コイン・評判・バッジ）だけ縮めて、日付と速度ボタンは押し出さない */
-  .hud > .hud-group:first-child {
+  /* 幅が足りないときは日付だけ縮める（コイン・評判・入荷数は欠けさせない）。速度ボタンは押し出さない */
+  .hud > .hud-group:first-child,
+  .hud > .hud-group.speed {
+    flex: none;
+  }
+  .hud > .hud-group:nth-child(2) {
     flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    justify-content: center;
+  }
+  #hud-date {
+    min-width: 0;
     overflow: hidden;
   }
-  .hud > .hud-group:not(:first-child) {
-    flex: none;
+  #hud-date b {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #hud-date .icon {
+    display: none;
   }
   #hud-rank {
     display: none;
