@@ -64,7 +64,9 @@ import { iconMarkup } from '../game/ui/icon';
         <div class="catchup" id="catchup" hidden></div>
         <button class="btn calm-suggest" id="calm-suggest" hidden><Fragment set:html={iconMarkup('flame', 16)} /> 眺めモードにする？</button>
         <button class="btn update-banner" id="update-banner" hidden><Fragment set:html={iconMarkup('refresh-cw', 16)} /> 更新があります（タップで再読み込み）</button>
+        <div class="photo-mask" id="photo-mask" hidden aria-hidden="true"></div>
       </main>
+      <div class="photo-panel" id="photo-panel" hidden aria-label="フォトモード"></div>
 
       <nav id="bottombar" class="bottombar" aria-label="操作">
         <div class="selected" id="selected-info"><span class="muted">ロボをタップして選択</span></div>

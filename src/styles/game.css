@@ -1058,13 +1058,113 @@ body.is-calm .sheet,
 body.is-calm .view-overlay,
 body.is-calm .banner,
 body.is-calm .toasts,
-body.is-calm .popup {
+body.is-calm .popup,
+body.is-photo .hud,
+body.is-photo .orders,
+body.is-photo .bottombar,
+body.is-photo .sheet,
+body.is-photo .view-overlay,
+body.is-photo .banner,
+body.is-photo .popup,
+body.is-photo .calm-suggest {
   display: none !important;
 }
-body.is-calm .app {
+body.is-calm .app,
+body.is-photo .app {
   grid-template-columns: 1fr;
   grid-template-rows: 1fr;
   grid-template-areas: 'view';
+}
+
+/* ---------- フォトモード ---------- */
+.photo-mask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+  --mask-x: 0px;
+  --mask-y: 0px;
+  box-shadow: inset var(--mask-x) var(--mask-y) 0 0 rgba(0, 0, 0, 0.82), inset calc(-1 * var(--mask-x)) calc(-1 * var(--mask-y)) 0 0 rgba(0, 0, 0, 0.82);
+}
+.photo-mask[hidden] {
+  display: none;
+}
+.photo-panel {
+  position: fixed;
+  left: var(--sa-left);
+  right: var(--sa-right);
+  bottom: 0;
+  z-index: 35;
+  padding: 6px 10px calc(8px + var(--sa-bottom));
+  background: rgba(20, 28, 38, 0.9);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  max-height: 60vh;
+  overflow: auto;
+}
+.photo-panel[hidden] {
+  display: none;
+}
+.photo-panel.is-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.photo-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.photo-title {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+}
+.photo-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
+}
+.photo-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.photo-label {
+  width: 64px;
+  color: var(--muted);
+  flex: none;
+}
+.btn.photo-opt {
+  min-height: 34px;
+  min-width: 44px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.photo-shoot {
+  min-width: 84px;
+}
+.photo-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 55vh;
+  margin: 0 auto 10px;
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+/* 起動画面に写真があるとき（index.astro のインラインスクリプトが --startup-photo を付ける） */
+.splash {
+  background-image: var(--startup-photo, none);
+  background-size: cover;
+  background-position: center;
+}
+.splash .splash-title,
+.splash .splash-sub {
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
 }
 body.is-calm .mini-hud {
   display: block;

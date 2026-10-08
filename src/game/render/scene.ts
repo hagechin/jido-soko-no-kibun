@@ -33,6 +33,7 @@ import { Effects, groundColorForMonth } from './effects';
 import type { Robot, WorldState } from '../sim/types';
 import { BoxBatch, shade } from './voxel';
 import { shapeFor } from '../sim/footprint';
+import { PhotoRig, fovForFocal, photoSize, shutterFrames, type PhotoParams } from './photo';
 import { isDoubleDecker, isDrone } from '../sim/layers';
 import { CameraController } from './camera';
 import type { QualitySettings } from './quality';
@@ -96,6 +97,78 @@ export class WarehouseRenderer {
   private miscBatch = new BoxBatch(1);
   private binBatch = new BoxBatch(1);
   private robotBatch = new BoxBatch(1);
+  /** フォトモードの後処理（null = 通常描画） */
+  private photoRig: PhotoRig | null = null;
+  private baseFov = 45;
+
+  /** フォトモードの開始／終了。開始中は後処理（ボケ・色調）付きで描き、画角は焦点距離から決める */
+  setPhotoMode(on: boolean): void {
+    if (on && !this.photoRig) {
+      this.photoRig = new PhotoRig(this.renderer, this.scene, this.camera);
+      this.baseFov = this.camera.fov;
+      this.resize();
+    } else if (!on && this.photoRig) {
+      this.photoRig.dispose();
+      this.photoRig = null;
+      this.camera.fov = this.baseFov;
+      this.camera.updateProjectionMatrix();
+    }
+  }
+
+  get photoParams(): PhotoParams | null {
+    return this.photoRig?.params ?? null;
+  }
+
+  setPhotoParams(p: PhotoParams): void {
+    if (!this.photoRig) return;
+    this.photoRig.params = p;
+    this.photoRig.apply();
+    this.camera.fov = fovForFocal(p.focalMm);
+    this.camera.updateProjectionMatrix();
+  }
+
+  /** 画面上の点までの距離（ピント合わせ用）。何にも当たらなければ null */
+  distanceAt(w: WorldState, clientX: number, clientY: number, alpha: number): number | null {
+    const hit = this.pick(w, clientX, clientY, alpha, false);
+    if (!hit) return null;
+    const y = hit.kind === 'stack' ? this.railHeight(w) * 0.6 : hit.kind === 'robot' ? 0.4 : 0.2;
+    return this.camera.position.distanceTo(new Vector3(hit.x + 0.5, y, hit.z + 0.5));
+  }
+
+  /**
+   * 撮影: 指定サイズで描いて JPEG のデータ URL にする。シャッター（モーションブラー）は、動作中のロボの補間 alpha を
+   * 少しずつ進めた複数コマを重ねて作る（シミュレーションは進めない）。描画サイズは終わったら元に戻す
+   */
+  capturePhoto(w: WorldState, alpha: number, longEdge: number, quality = 0.92): string {
+    const p = this.photoRig?.params;
+    const rect = this.canvas.getBoundingClientRect();
+    const screenRatio = rect.width / Math.max(1, rect.height);
+    const size = photoSize(p?.aspect ?? 'screen', screenRatio, longEdge);
+    const frames = shutterFrames(p?.shutterTicks ?? 0);
+    const span = p?.shutterTicks ?? 0;
+    const prevRatio = this.renderer.getPixelRatio();
+    this.renderer.setPixelRatio(1);
+    this.renderer.setSize(size.width, size.height, false);
+    this.camera.aspect = size.width / size.height;
+    this.camera.updateProjectionMatrix();
+    this.photoRig?.setSize(size.width, size.height);
+    const out = document.createElement('canvas');
+    out.width = size.width;
+    out.height = size.height;
+    const ctx = out.getContext('2d')!;
+    for (let i = 0; i < frames; i++) {
+      const a = frames === 1 ? alpha : Math.min(1, alpha + (span * i) / frames);
+      this.drawFrame(w, a, i / Math.max(1, frames - 1));
+      ctx.globalAlpha = 1 / (i + 1); // 累積平均
+      ctx.drawImage(this.canvas, 0, 0);
+    }
+    ctx.globalAlpha = 1;
+    const url = out.toDataURL('image/jpeg', quality);
+    this.renderer.setPixelRatio(prevRatio);
+    this.resize();
+    return url;
+  }
+
   /** ロボの色（スキン）。setSkin で差し替える */
   private robotColors = { shelf: COLORS.shelfRobot, double: COLORS.doubleDecker, amr: COLORS.amr, amrDark: COLORS.amrDark, drone: COLORS.drone, droneDark: COLORS.droneDark };
 
@@ -194,6 +267,7 @@ export class WarehouseRenderer {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.photoRig?.setSize(w, h);
   }
 
   /** 倉庫全体が収まる初期構図に合わせ直す（起動直後に画面サイズが変わったとき用） */
@@ -377,9 +451,16 @@ export class WarehouseRenderer {
       (this.ground.material as MeshLambertMaterial).color.set(groundColorForMonth(w.calendar.month));
     }
     if (this.gridLines) this.gridLines.visible = this.showGrid;
+    this.drawFrame(w, alpha, 0);
+  }
+
+  /** 動く物（ロボ・ハイライト）を描いて 1 コマ出す。t はシャッター合成のコマ位置（ローターの回転ずらし用） */
+  private drawFrame(w: WorldState, alpha: number, t: number): void {
+    void t;
     this.drawRobots(w, alpha);
     this.drawHighlights(w);
-    this.renderer.render(this.scene, this.camera);
+    if (this.photoRig) this.photoRig.render();
+    else this.renderer.render(this.scene, this.camera);
   }
 
   private binColor(w: WorldState, binId: number): Color | string {

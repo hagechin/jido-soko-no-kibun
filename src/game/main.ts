@@ -53,6 +53,7 @@ import { cloudAvailable, cloudEnabled, cloudLoad, onCloudChanged, setCloudEnable
 import { deserialize } from './sim/save';
 import { formatDate } from './sim/calendar';
 import { installDemoSave, isDemoRequested } from './ui/demo';
+import { PhotoMode } from './ui/photoMode';
 import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
@@ -115,6 +116,9 @@ class Game {
   /** バックグラウンド動作の前回時刻（フレームループの this.last とは別。隠れていてもフレームが走る環境があるため） */
   private bgLast = 0;
   private catchupOverlay = $('catchup');
+  /** フォトモード（★）: カメラを置いて撮る。撮った写真は起動画面に使える */
+  photo = new PhotoMode();
+  private cameraBeforePhoto: { target: Vector3; azimuth: number; polar: number; distance: number } | null = null;
   private stationPanelId: number | null = null;
   private portPanelId: number | null = null;
 
@@ -176,6 +180,41 @@ class Game {
       }
       cameraBeforeCalm = null;
     };
+    this.photo.attach({
+      onEnter: () => {
+        if (this.calm.active) this.calm.exit();
+        this.bar.close();
+        this.popup.hide();
+        const c = this.renderer.controls;
+        this.cameraBeforePhoto = { target: c.target.clone(), azimuth: c.azimuth, polar: c.polar, distance: c.distance };
+        c.enabled = true;
+        this.keyCam.enabled = true;
+        this.cameraTouched = true;
+        this.renderer.setPhotoMode(true);
+        this.renderer.resize();
+      },
+      onExit: () => {
+        this.keyCam.enabled = false;
+        this.renderer.setPhotoMode(false);
+        const c = this.renderer.controls;
+        if (this.cameraBeforePhoto) {
+          c.target.copy(this.cameraBeforePhoto.target);
+          c.azimuth = this.cameraBeforePhoto.azimuth;
+          c.polar = this.cameraBeforePhoto.polar;
+          c.distance = this.cameraBeforePhoto.distance;
+          c.update();
+          this.cameraBeforePhoto = null;
+        }
+        this.renderer.resize();
+      },
+      apply: (p) => this.renderer.setPhotoParams(p),
+      distanceAt: (x, y) => this.renderer.distanceAt(this.world, x, y, this.alpha),
+      capture: (longEdge) => this.renderer.capturePhoto(this.world, this.alpha, longEdge),
+      isPaused: () => this.world.speed === 0,
+      togglePause: () => this.setSpeed(this.world.speed === 0 ? this.lastSpeed : 0),
+      showModal: (title, ...content) => this.modal.show(title, ...content),
+      hideModal: () => this.modal.hide(),
+    });
     this.calm.onCameraChange = () => {
       if (this.calm.active) applyCalmCamera();
     };
@@ -330,6 +369,10 @@ class Game {
           });
           body.append(el('div', { class: 'settings-row' }, b, el('span', { class: 'muted small', text: 'ロボの駆動音・ピック音・出荷音・BGM（すべて合成音）' })));
           this.calm.renderSettings(body);
+          body.append(el('h4', { text: 'フォトモード' }));
+          const ph = el('button', { class: 'btn', type: 'button', title: 'P' }, iconText('camera', 'フォトモードを開く', 14), el('kbd', { class: 'key', text: 'P' }));
+          ph.addEventListener('click', () => this.photo.enter());
+          body.append(el('div', { class: 'settings-row' }, ph, el('span', { class: 'muted small', text: 'カメラを自由に置いて、焦点距離・絞り・シャッター・エフェクトを決めて撮る。撮った写真は起動画面にできる' })));
         },
         saveNow: () => this.save(),
         newGame: () => this.newGame(),
@@ -353,6 +396,7 @@ class Game {
     window.addEventListener('keydown', (e) => this.onShortcut(e));
     $('btn-calm').addEventListener('click', () => this.calm.enter());
     this.renderer.controls.onTap = (x, y) => {
+      if (this.photo.active) return this.photo.onTap(x, y); // フォトモード: タップでピント
       if (this.calm.active || this.editor.open) return; // MANUAL 中・プレビュー中のタップは視点操作の一部。ロボは選ばない
       this.onTap(x, y);
     };
@@ -412,6 +456,7 @@ class Game {
    * Space 一時停止 / [ ] 速度 / O B U I S N パネル / F カメラ / H ? ヘルプ / Esc 閉じる / 建設中は 1〜7 でツール、L でレイアウトエディタ
    */
   private onShortcut(e: KeyboardEvent): void {
+    if (this.photo.active) return; // フォトモードは自前のキー処理（Esc / Space / Enter / 視点）
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
@@ -436,6 +481,9 @@ class Game {
     else if (code === 'KeyS') panel('settings');
     else if (code === 'KeyN') {
       this.calm.enter();
+      e.preventDefault();
+    } else if (code === 'KeyP') {
+      this.photo.enter();
       e.preventDefault();
     } else if (code === 'KeyF') {
       this.renderer.controls.reset();
@@ -1013,6 +1061,12 @@ class Game {
       fx.update(this.world, Math.min(0.1, dt / 1000) * (this.world.speed === 0 ? 0.0001 : 1), this.renderer.camera, now);
       this.sound.setTempo(this.calm.active ? 'calm' : cyber ? 'cyber' : 'normal');
       this.sound.setActivity(this.world.speed === 0 ? 0 : this.world.robots.filter((r) => r.phase === 'moving').length);
+      if (this.photo.active) {
+        this.keyCam.update(Math.min(0.25, (now - this.lastRender) / 1000));
+        this.lastRender = now;
+        this.renderer.render(this.world, this.alpha);
+        return;
+      }
       if (this.calm.active) {
         // 眺めモード: 描画を 30/15fps に落とす（§10.1）
         const minInterval = 1000 / this.calm.settings.fps;
@@ -1053,6 +1107,7 @@ void (async () => {
   if (splash) {
     requestAnimationFrame(() => {
       splash.classList.add('is-done');
+      nativeTry('ready'); // iOS: 起動画像のオーバーレイを消してよい
       setTimeout(() => (splash.hidden = true), 400);
     });
   }

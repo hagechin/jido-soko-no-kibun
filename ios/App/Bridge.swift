@@ -68,6 +68,16 @@ final class Bridge {
         case "haptic":
             Haptics.play(kind: p["kind"] as? String ?? "light")
             return true
+        case "ready":
+            // Web 側の最初の描画が済んだ → 起動画像のオーバーレイを消してよい
+            NotificationCenter.default.post(name: .hakoniwaWebReady, object: nil)
+            return true
+        case "sharePhoto":
+            // フォトモードの写真を共有シートへ（写真に保存・AirDrop・メールなど）
+            guard let dataUrl = p["data"] as? String, let image = Bridge.decodeDataUrl(dataUrl) else { throw BridgeError.badParams }
+            let name = (p["name"] as? String) ?? "hakoniwa.jpg"
+            Bridge.share(image: image, name: name, from: webView)
+            return true
         case "cloudStatus":
             return ["available": cloud.available]
         case "cloudLoad":
@@ -104,6 +114,30 @@ final class Bridge {
         webView.evaluateJavaScript("window.__native && window.__native.reply(\(id), \(json))", completionHandler: nil)
     }
 
+    /// data:image/jpeg;base64,... → UIImage
+    static func decodeDataUrl(_ s: String) -> UIImage? {
+        guard let comma = s.firstIndex(of: ",") else { return nil }
+        let b64 = String(s[s.index(after: comma)...])
+        guard let data = Data(base64Encoded: b64, options: [.ignoreUnknownCharacters]) else { return nil }
+        return UIImage(data: data)
+    }
+
+    /// 共有シート。iPad はポップオーバーの起点が要る
+    @MainActor
+    static func share(image: UIImage, name: String, from webView: WKWebView?) {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        if let jpg = image.jpegData(compressionQuality: 0.92) { try? jpg.write(to: tmp) }
+        let items: [Any] = FileManager.default.fileExists(atPath: tmp.path) ? [tmp] : [image]
+        let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        guard var top = webView?.window?.rootViewController else { return }
+        while let presented = top.presentedViewController { top = presented }
+        if let pop = vc.popoverPresentationController, let view = webView {
+            pop.sourceView = view
+            pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.maxY - 80, width: 1, height: 1)
+        }
+        top.present(vc, animated: true)
+    }
+
     static func json(_ value: Any) -> String? {
         guard JSONSerialization.isValidJSONObject(value), let data = try? JSONSerialization.data(withJSONObject: value) else { return nil }
         return String(data: data, encoding: .utf8)
@@ -136,4 +170,9 @@ enum Haptics {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }
     }
+}
+
+extension Notification.Name {
+    /// Web 側（JS）の最初の描画が済んだ
+    static let hakoniwaWebReady = Notification.Name("HakoniwaWebReady")
 }
