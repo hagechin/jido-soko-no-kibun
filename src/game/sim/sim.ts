@@ -10,6 +10,7 @@ import { checkRankUp } from './rank';
 import { updateOrders } from './orders';
 import { updateStations } from './pickers';
 import { updatePlanning } from './planner';
+import { updateAchievements } from './achievements';
 import { executeMovement, updateJob, updateStuck } from './robots';
 import { createRuntime, type Runtime } from './runtime';
 import type { WorldState } from './types';
@@ -33,6 +34,7 @@ export function stepSim(w: WorldState, rt: Runtime): void {
   updateStations(w);
   checkRankUp(w);
   updatePlanning(w, rt);
+  if (w.tick % 10 === 0) updateAchievements(w);
 }
 
 /** n tick 進める（テスト・追いつき計算用） */

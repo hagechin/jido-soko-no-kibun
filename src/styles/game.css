@@ -1497,3 +1497,57 @@ kbd.key {
 .catchup[hidden] {
   display: none;
 }
+
+/* 実績（設定パネル） */
+.ach-row {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ach-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ach-name {
+  font-weight: 600;
+}
+.ach-medal {
+  margin-left: auto;
+  text-align: right;
+}
+.ach-bar {
+  height: 6px;
+  margin: 4px 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.ach-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+.ach-row.is-earned .ach-fill {
+  background: #f0cc5c;
+}
+.ach-desc {
+  opacity: 0.7;
+}
+.medal-0 {
+  opacity: 0.3;
+}
+.medal-1 {
+  color: #cd7f32;
+}
+.medal-2 {
+  color: #c8ccd2;
+}
+.medal-3 {
+  color: #f0cc5c;
+}
+.medal-4 {
+  color: #9fe8ff;
+}
+.medal-5 {
+  color: #fff3b0;
+}
