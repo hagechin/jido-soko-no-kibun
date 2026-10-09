@@ -137,14 +137,16 @@ class Game {
     const q = detectQuality();
     this.quality = q.level;
     this.renderer = new WarehouseRenderer(canvas, q, $('fx-overlay'));
-    // 初回のタップで音声を有効化（スマホのブラウザ制限 §10）
+    // 初回のタップで音声を有効化（スマホのブラウザ制限 §10）。以降のタップでも、止まっていれば立て直す（iOS の interrupted は操作からの resume が要る）
     const unlock = () => {
       this.sound.unlock();
-      document.removeEventListener('pointerdown', unlock);
-      document.removeEventListener('keydown', unlock);
+      this.sound.check(performance.now(), true);
     };
-    document.addEventListener('pointerdown', unlock);
+    document.addEventListener('pointerdown', unlock, { passive: true });
     document.addEventListener('keydown', unlock);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) this.sound.check(performance.now(), true);
+    });
     this.autoCam = new AutoCamera(this.renderer.controls);
     this.keyCam = new KeyboardCamera(this.renderer.controls);
     // 眺めモードのカメラ: AUTO は自動カメラ（タップで解除）、MANUAL はキーボードとドラッグ（Esc／× で解除）
@@ -335,6 +337,13 @@ class Game {
             this.bar.refresh();
           });
           body.append(el('div', { class: 'settings-row' }, b, el('span', { class: 'muted small', text: 'ロボの駆動音・ピック音・出荷音・BGM（すべて合成音）' })));
+          const st = el('p', { class: 'muted small', text: `BGM の状態: ${this.sound.status()}` });
+          body.append(st);
+          // 開いている間は 1 秒ごとに状態を追いかける
+          const timer = window.setInterval(() => {
+            if (!st.isConnected) return clearInterval(timer);
+            st.textContent = `BGM の状態: ${this.sound.status()}`;
+          }, 1000);
           this.calm.renderSettings(body);
         },
         saveNow: () => this.save(),
@@ -1019,6 +1028,7 @@ class Game {
       fx.update(this.world, Math.min(0.1, dt / 1000) * (this.world.speed === 0 ? 0.0001 : 1), this.renderer.camera, now);
       this.sound.setTempo(this.calm.active ? 'calm' : cyber ? 'cyber' : 'normal');
       this.sound.setActivity(this.world.speed === 0 ? 0 : this.world.robots.filter((r) => r.phase === 'moving').length);
+      this.sound.check(now); // BGM の見張り（1 秒に 1 回）
       if (this.calm.active) {
         // 眺めモード: 描画を 30/15fps に落とす（§10.1）
         const minInterval = 1000 / this.calm.settings.fps;
@@ -1067,6 +1077,11 @@ void (async () => {
   game.applyCosmetics();
   if (native.available) {
     native.on('background', () => game.save(true)); // 背面に回るときは iCloud にも即送る
+    // 前面に戻ったとき／電話などの割り込みが終わったときは BGM を立て直す
+    native.on('foreground', () => game.sound.check(performance.now(), true));
+    native.on('audioResume', () => game.sound.check(performance.now(), true));
+    // WKWebView は操作なしで音を出せる設定（mediaTypesRequiringUserActionForPlayback = []）なので、起動直後から BGM を始める
+    game.sound.unlock();
     document.documentElement.classList.add('is-native');
     void game.checkCloud();
     onCloudChanged(() => void game.checkCloud());

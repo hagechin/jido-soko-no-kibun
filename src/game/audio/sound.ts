@@ -4,6 +4,8 @@ import { AUDIO } from '../data/balance';
  *  - 初回のタップで AudioContext を作る（スマホのブラウザ制限）
  *  - ロボの駆動音（動いている台数に応じたハム）、ピック音、出荷音、コイン音
  *  - BGM: 短いアルペジオのループ。通常／サイバーウィーク（テンポ上げ）／眺めモード（静か）
+ *  - 見張り（check）: AudioContext が止まっていれば resume、閉じられていれば作り直し、BGM のタイマーが止まっていれば再開。
+ *    iOS はアプリを背面に回す／電話や他アプリの音で AudioContext が interrupted / suspended になり、戻っても自動では鳴らない
  */
 const KEY = 'jido-soko-no-kibun:sound';
 
@@ -15,6 +17,12 @@ export class Sound {
   private bgmGain: GainNode | null = null;
   private bgmTimer = 0;
   private bgmStep = 0;
+  /** BGM の直前の音を出した時刻（performance.now）と、そのときの間隔。タイマーが止まった検出用 */
+  private bgmLastAt = 0;
+  private bgmInterval = 420;
+  private lastCheck = 0;
+  /** 見張りが直した回数（設定画面の表示用） */
+  recovered = 0;
   private tempo: 'normal' | 'cyber' | 'calm' = 'normal';
   enabled = true;
   private unlocked = false;
@@ -181,11 +189,17 @@ export class Sound {
     this.bgmGain = this.ctx.createGain();
     this.bgmGain.gain.value = 0.35;
     this.bgmGain.connect(this.master);
+    this.scheduleBgm();
+  }
+
+  private scheduleBgm(): void {
     const scaleNormal = [262, 330, 392, 440, 523, 440, 392, 330];
     const scaleCyber = [294, 349, 440, 523, 587, 523, 440, 349];
     const schedule = () => {
       if (!this.ctx || !this.bgmGain) return;
       const interval = this.tempo === 'cyber' ? 180 : this.tempo === 'calm' ? 900 : 420;
+      this.bgmLastAt = performance.now();
+      this.bgmInterval = interval;
       if (this.enabled) {
         const scale = this.tempo === 'cyber' ? scaleCyber : scaleNormal;
         const f = scale[this.bgmStep % scale.length] * (this.tempo === 'calm' ? 0.5 : 1);
@@ -206,6 +220,73 @@ export class Sound {
       this.bgmTimer = window.setTimeout(schedule, interval);
     };
     schedule();
+  }
+
+  /** AudioContext の状態（表示用） */
+  state(): 'off' | 'not-started' | 'running' | 'suspended' | 'interrupted' | 'closed' {
+    if (!this.enabled) return 'off';
+    if (!this.ctx) return 'not-started';
+    const s = this.ctx.state as string;
+    return s === 'running' || s === 'suspended' || s === 'closed' || s === 'interrupted' ? (s as 'running' | 'suspended' | 'closed' | 'interrupted') : 'suspended';
+  }
+
+  /** 表示用の短い状態文 */
+  status(): string {
+    switch (this.state()) {
+      case 'off':
+        return 'オフ';
+      case 'not-started':
+        return '未開始（画面をタップすると始まります）';
+      case 'running':
+        return `再生中${this.recovered ? `（止まったのを ${this.recovered} 回立て直し）` : ''}`;
+      case 'suspended':
+      case 'interrupted':
+        return '一時停止中（タップで再開します）';
+      case 'closed':
+        return '停止（作り直します）';
+    }
+  }
+
+  /**
+   * 見張り: 毎フレーム呼んでよい（1 秒に 1 回だけ働く。force = true なら即）。
+   * 止まっていれば resume、閉じられていれば作り直し、BGM のタイマーが止まっていれば再開する
+   */
+  check(now = performance.now(), force = false): void {
+    if (!this.unlocked || !this.ctx) return;
+    if (!force && now - this.lastCheck < 1000) return;
+    this.lastCheck = now;
+    const state = this.ctx.state as string;
+    if (state === 'closed') {
+      this.rebuild();
+      return;
+    }
+    if (state !== 'running') {
+      // iOS の interrupted / suspended。resume はユーザー操作が要ることがあるので、pointerdown からも force で呼ばれる
+      void this.ctx.resume().catch(() => {});
+    }
+    // BGM のタイマーが止まっている（背面で止められた、例外で途切れた）→ 組み直す
+    if (this.bgmGain && now - this.bgmLastAt > this.bgmInterval * 3 + 1000) {
+      clearTimeout(this.bgmTimer);
+      this.recovered++;
+      this.scheduleBgm();
+    }
+  }
+
+  /** AudioContext を作り直す（閉じられたとき） */
+  private rebuild(): void {
+    clearTimeout(this.bgmTimer);
+    try {
+      this.ctx?.close().catch(() => {});
+    } catch {
+      /* ignore */
+    }
+    this.ctx = null;
+    this.master = null;
+    this.hum = null;
+    this.bgmGain = null;
+    this.unlocked = false;
+    this.recovered++;
+    this.unlock();
   }
 
   dispose(): void {

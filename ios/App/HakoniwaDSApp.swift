@@ -16,6 +16,14 @@ struct HakoniwaDSApp: App {
             BridgeEvents.shared.emit("cloudChanged", payload: ["savedAt": savedAt])
         }
         NSUbiquitousKeyValueStore.default.synchronize()
+        // 電話や他アプリの音で割り込まれたあと、終わったらセッションを戻して JS に BGM の立て直しを頼む
+        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: AVAudioSession.sharedInstance(), queue: .main) { note in
+            guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt, let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+            if type == .ended {
+                try? AVAudioSession.sharedInstance().setActive(true)
+                BridgeEvents.shared.emit("audioResume", payload: [:])
+            }
+        }
     }
 
     var body: some Scene {
@@ -26,7 +34,10 @@ struct HakoniwaDSApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     switch phase {
                     case .background: BridgeEvents.shared.emit("background", payload: [:])
-                    case .active: BridgeEvents.shared.emit("foreground", payload: [:])
+                    case .active:
+                        // 背面から戻ったらオーディオセッションを戻す（JS 側は foreground で BGM を立て直す）
+                        try? AVAudioSession.sharedInstance().setActive(true)
+                        BridgeEvents.shared.emit("foreground", payload: [:])
                     default: break
                     }
                 }

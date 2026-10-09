@@ -897,3 +897,16 @@ npm run preview   # http://localhost:4321 で確認
 - ★ 画面の点けっぱなし: 眺めモードに限らず、設定がオンならアプリを開いている間ずっと（`calmMode.ts` `applyWakeLock`。ページが隠れるとブラウザが放すので、見えるたびに取り直す。iOS は `isIdleTimerDisabled`）。設定の見出しは「眺めモード」とは別の「画面」に。TESTPLAN M4/D2 の期待値と M34
 - ★ バランスの考え方（ユーザー）: 入荷が多すぎると補充待ちが増える／入荷と補充をやりすぎると倉庫が一杯になって出荷が遅くなる／出荷をやりすぎると欠品リスク、の三つ巴。イージー・ノーマルは眺める主体、ハード・スーパーハードはシミュレーション主体で、ハード以上は入荷トラックが渋滞するほど来てよい。難易度は受注まわりだけを変え、入荷は週 1 便で商品ごとに判断する今の仕組みのままにする（変えない）
 - 15 回目のレポートの軽微な指摘（帯を右端までスクロールすると最後の注文票の手前が切れてピルとの隙間が 2pt に見える）は、スクロールの限界での止まり方なので仕様のまま
+
+---
+
+## BGM の見張り（release/1.0）
+
+- 報告（実機）: アプリを閉じて再開すると BGM が鳴らなくなる。起動時も BGM が鳴るまで遅い
+- 原因: AudioContext は最初のタップで作っていた（起動直後の無音はこれ）。iOS は背面に回る／電話や他アプリの音で AudioContext が interrupted / suspended になり、前面に戻っても自動では running に戻らない。BGM は setTimeout の連鎖なので、途切れると二度と鳴らない
+- ★ 直したもの:
+  - `audio/sound.ts` に見張り `check()`: 毎フレーム呼ばれて 1 秒に 1 回、状態が running でなければ resume、closed なら作り直し、BGM のタイマーが間隔の 3 倍以上止まっていれば組み直す。`status()` で状態文、`recovered` で立て直した回数
+  - 呼び口: メインループ（1 秒ごと）、すべての pointerdown / keydown（iOS の interrupted は操作からの resume が要る）、visibilitychange で見えたとき、ネイティブの foreground と新イベント audioResume
+  - iOS: WKWebView は `mediaTypesRequiringUserActionForPlayback = []` なので起動直後に `unlock()`（タップ不要で BGM が始まる）。前面に戻ったら `AVAudioSession.setActive(true)`、割り込み終了（interruptionNotification .ended）でも setActive して `audioResume` を JS へ
+  - 設定 → サウンドに「BGM の状態: 再生中／一時停止中（タップで再開）／停止／未開始／オフ」を 1 秒ごとに表示
+- TESTPLAN D8 と M36
