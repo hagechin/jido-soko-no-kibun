@@ -56,6 +56,11 @@ export class BottomBar {
     this.onPanelChange?.(id);
   }
 
+  /** パネルの見出しを差し替える（ステーションの座標など。show() の後に呼ぶ） */
+  setTitle(text: string): void {
+    this.sheetTitle.textContent = text;
+  }
+
   refresh(): void {
     if (!this.current) return;
     const r = this.renderers.get(this.current);

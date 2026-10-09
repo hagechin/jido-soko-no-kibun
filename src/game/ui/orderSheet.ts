@@ -69,7 +69,16 @@ export class OrderSheet {
     const head = el('div', { class: 'order-head' }, el('span', { class: 'order-no', text: `#${o.id}` }), time);
     const grid = el('div', { class: 'order-grid' });
     const cells = new Map<string, HTMLElement>();
-    for (const l of o.lines) {
+    // ★ 未完了の行を先に（スマホの縮小表示は 12 個までしか見えないので、待っている商品が隠れないように）。済みは後ろへ
+    const lines = [...o.lines].sort((a, b) => (a.picked >= a.qty ? 1 : 0) - (b.picked >= b.qty ? 1 : 0));
+    const compactMax = ORDERS.cardCompactCells;
+    lines.forEach((l, i) => {
+      if (lines.length > compactMax && i === compactMax - 1) {
+        // 縮小表示の最後の枠は「+N」の印（隠れている行の数。全部済みなら ✓ 付き）
+        const hidden = lines.slice(compactMax - 1);
+        const allDone = hidden.every((h) => h.picked >= h.qty);
+        grid.append(el('span', { class: `order-cell order-more${allDone ? ' is-done' : ''}`, title: tr('ほか {0} 行（タップで全部見る）', hidden.length) }, el('span', { class: 'order-qty', text: `+${hidden.length}` }), allDone ? el('span', { class: 'order-check' }, icon('check', 14)) : null));
+      }
       const done = l.picked >= l.qty;
       const stockout = !done && !itemInStock(w, l.item);
       const cell = el(
@@ -85,7 +94,7 @@ export class OrderSheet {
       });
       grid.append(cell);
       cells.set(l.item, cell);
-    }
+    });
     const root = el('article', { class: 'order-card', 'data-order': o.id }, head, el('div', { class: 'order-bar-wrap' }, bar), grid);
     root.addEventListener('click', () => {
       // スマホ: タップで拡大／縮小
