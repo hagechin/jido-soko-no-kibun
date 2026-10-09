@@ -75,7 +75,11 @@ function transform(src, keys, file = '') {
         keys.add(key);
         out += `tr(${q(key)})`;
         needImport = true;
-      } else out += raw;
+      } else {
+        // すでに tr( の中にあるキーも未訳チェックの対象にする
+        if (JA.test(inner) && insideT(out)) keys.add(unescape(inner, c));
+        out += raw;
+      }
       i = j;
       continue;
     }
@@ -161,7 +165,8 @@ function isRegexStart(out) {
   return /[(,=:[!&|?{};+\-*%<>~^]/.test(m[1]) || /\b(return|typeof|case)\s*$/.test(out);
 }
 function insideT(out) {
-  return /\bt\(\s*$/.test(out) || /\bt\(\s*'[^']*$/.test(out);
+  // t( と tr( の両方（包む関数は tr。以前は t( だけ見ていたので、再実行のたびに tr(tr('…')) と二重に包んでいた）
+  return /\btr?\(\s*$/.test(out) || /\btr?\(\s*'[^']*$/.test(out);
 }
 function isImport(out) {
   const line = out.slice(out.lastIndexOf('\n') + 1);

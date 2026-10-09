@@ -116,11 +116,11 @@ export function updateOrders(w: WorldState): void {
     if (o.shownTick === null) o.shownTick = w.tick;
     if (!o.penalized && w.tick - lateClockStart(o) > lateLimitTicks(o, w)) {
       o.penalized = true;
-      changeReputation(w, -difficultyOf(w).latePenaltyRep, tr(tr(tr(tr(tr(tr(tr('出荷が遅れた'))))))));
+      changeReputation(w, -difficultyOf(w).latePenaltyRep, tr('出荷が遅れた'));
     }
   }
   if (queuedCount(w) > difficultyOf(w).queuePenaltyThreshold && w.tick % ORDERS.queuePenaltyIntervalTicks === 0) {
-    changeReputation(w, -1, tr(tr(tr(tr(tr(tr(tr('オーダーが溜まりすぎ'))))))));
+    changeReputation(w, -1, tr('オーダーが溜まりすぎ'));
   }
   if (w.tick % ORDERS.unblockCheckTicks === 0) unblockVisible(w);
 }
@@ -140,7 +140,7 @@ export function unblockVisible(w: WorldState): boolean {
   if (idx < 0) return false;
   const [o] = w.orders.splice(idx, 1);
   w.orders.unshift(o);
-  w.events.push({ type: 'notice', icon: 'info', text: tr(tr(tr(tr(tr(tr(tr('#{0} を先に処理します（表示中のオーダーが全部欠品待ちのため）')))))), o.id) });
+  w.events.push({ type: 'notice', icon: 'info', text: tr('#{0} を先に処理します（表示中のオーダーが全部欠品待ちのため）', o.id) });
   return true;
 }
 

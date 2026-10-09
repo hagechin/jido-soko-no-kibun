@@ -18,14 +18,14 @@ import { tr } from '../i18n';
 type Tool = 'select' | 'pan' | BuildKind | 'erase';
 
 const TOOLS: { id: Tool; icon: IconName; label: string }[] = [
-  { id: 'select', icon: 'square', label: tr(tr(tr(tr(tr(tr(tr('選択'))))))) },
-  { id: 'pan', icon: 'hand', label: tr(tr(tr(tr(tr(tr(tr('手のひら'))))))) },
-  { id: 'stack', icon: 'layers', label: tr(tr(tr(tr(tr(tr(tr('スタック'))))))) },
-  { id: 'port', icon: 'box', label: tr(tr(tr(tr(tr(tr(tr('ポート'))))))) },
-  { id: 'pickStation', icon: 'user', label: tr(tr(tr(tr(tr(tr(tr('ピッカー'))))))) },
-  { id: 'inboundStation', icon: 'package', label: tr(tr(tr(tr(tr(tr(tr('入荷ST'))))))) },
-  { id: 'waitSpot', icon: 'circle-parking', label: tr(tr(tr(tr(tr(tr(tr('待機'))))))) },
-  { id: 'erase', icon: 'eraser', label: tr(tr(tr(tr(tr(tr(tr('撤去'))))))) },
+  { id: 'select', icon: 'square', label: tr('選択') },
+  { id: 'pan', icon: 'hand', label: tr('手のひら') },
+  { id: 'stack', icon: 'layers', label: tr('スタック') },
+  { id: 'port', icon: 'box', label: tr('ポート') },
+  { id: 'pickStation', icon: 'user', label: tr('ピッカー') },
+  { id: 'inboundStation', icon: 'package', label: tr('入荷ST') },
+  { id: 'waitSpot', icon: 'circle-parking', label: tr('待機') },
+  { id: 'erase', icon: 'eraser', label: tr('撤去') },
 ];
 
 const COLORS: Record<string, string> = {
@@ -129,7 +129,7 @@ export class LayoutEditor {
     const w = this.world!;
     this.toolbar.replaceChildren();
     TOOLS.forEach((t, i) => {
-      const b = el('button', { class: `btn editor-tool${this.tool === t.id ? ' is-active' : ''}`, type: 'button', title: tr(tr(tr(tr(tr(tr(tr('{0}（{1}）')))))), t.label, i + 1) }, icon(t.icon, 18), el('span', { class: 'lbl' }, el('kbd', { class: 'key', text: String(i + 1) }), document.createTextNode(t.label)));
+      const b = el('button', { class: `btn editor-tool${this.tool === t.id ? ' is-active' : ''}`, type: 'button', title: tr('{0}（{1}）', t.label, i + 1) }, icon(t.icon, 18), el('span', { class: 'lbl' }, el('kbd', { class: 'key', text: String(i + 1) }), document.createTextNode(t.label)));
       b.addEventListener('click', () => {
         this.tool = t.id;
         this.renderChrome();
@@ -138,22 +138,22 @@ export class LayoutEditor {
     });
     const sep = () => el('span', { class: 'editor-sep' });
     this.toolbar.append(sep());
-    const undo = el('button', { class: 'btn editor-tool', type: 'button', title: tr(tr(tr(tr(tr(tr(tr('元に戻す（Ctrl+Z）'))))))) }, icon('refresh-cw', 18), el('span', { class: 'lbl', text: tr(tr(tr(tr(tr(tr(tr('戻す'))))))) }));
+    const undo = el('button', { class: 'btn editor-tool', type: 'button', title: tr('元に戻す（Ctrl+Z）') }, icon('refresh-cw', 18), el('span', { class: 'lbl', text: tr('戻す') }));
     undo.addEventListener('click', () => this.doUndo());
     if (!this.undo.length) undo.setAttribute('disabled', 'true');
-    const redo = el('button', { class: 'btn editor-tool', type: 'button', title: tr(tr(tr(tr(tr(tr(tr('やり直す（Ctrl+Y）'))))))) }, icon('refresh-cw', 18, 'flip'), el('span', { class: 'lbl', text: tr(tr(tr(tr(tr(tr(tr('やり直し'))))))) }));
+    const redo = el('button', { class: 'btn editor-tool', type: 'button', title: tr('やり直す（Ctrl+Y）') }, icon('refresh-cw', 18, 'flip'), el('span', { class: 'lbl', text: tr('やり直し') }));
     redo.addEventListener('click', () => this.doRedo());
     if (!this.redo.length) redo.setAttribute('disabled', 'true');
-    const del = el('button', { class: 'btn editor-tool', type: 'button', title: tr(tr(tr(tr(tr(tr(tr('選択した設備を撤去（Delete）'))))))) }, icon('trash-2', 18), el('span', { class: 'lbl', text: tr(tr(tr(tr(tr(tr(tr('選択を撤去'))))))) }));
+    const del = el('button', { class: 'btn editor-tool', type: 'button', title: tr('選択した設備を撤去（Delete）') }, icon('trash-2', 18), el('span', { class: 'lbl', text: tr('選択を撤去') }));
     del.addEventListener('click', () => this.eraseSelection());
     if (!this.selection.size) del.setAttribute('disabled', 'true');
     this.toolbar.append(undo, redo, del, sep());
     for (const [dir, ico, lbl] of [
-      ['east', 'move-horizontal', tr(tr(tr(tr(tr(tr(tr('東へ +4')))))))],
-      ['south', 'move-vertical', tr(tr(tr(tr(tr(tr(tr('南へ +4')))))))],
+      ['east', 'move-horizontal', tr('東へ +4')],
+      ['south', 'move-vertical', tr('南へ +4')],
     ] as [ExpandDir, IconName, string][]) {
       const cost = expansionCost(w, dir);
-      const b = el('button', { class: 'btn editor-tool', type: 'button', title: cost === null ? tr(tr(tr(tr(tr(tr(tr('これ以上広げられません'))))))) : tr(tr(tr(tr(tr(tr(tr('{0} コイン')))))), cost) }, icon(ico, 18), el('span', { class: 'lbl', text: lbl }));
+      const b = el('button', { class: 'btn editor-tool', type: 'button', title: cost === null ? tr('これ以上広げられません') : tr('{0} コイン', cost) }, icon(ico, 18), el('span', { class: 'lbl', text: lbl }));
       if (cost === null) b.setAttribute('disabled', 'true');
       b.addEventListener('click', () => {
         this.push();
@@ -168,24 +168,24 @@ export class LayoutEditor {
     }
 
     this.actions.replaceChildren();
-    const prev = el('button', { class: 'btn', type: 'button', title: 'P' }, iconText('crosshair', tr(tr(tr(tr(tr(tr(tr('3D プレビュー'))))))), 16), el('kbd', { class: 'key', text: 'P' }));
+    const prev = el('button', { class: 'btn', type: 'button', title: 'P' }, iconText('crosshair', tr('3D プレビュー'), 16), el('kbd', { class: 'key', text: 'P' }));
     prev.addEventListener('click', () => this.setPreview(true));
-    const cancel = el('button', { class: 'btn danger', type: 'button' }, iconText('x', tr(tr(tr(tr(tr(tr(tr('キャンセル（元に戻す）'))))))), 16));
+    const cancel = el('button', { class: 'btn danger', type: 'button' }, iconText('x', tr('キャンセル（元に戻す）'), 16));
     cancel.addEventListener('click', () => {
-      if (!confirm(tr(tr(tr(tr(tr(tr(tr('編集を破棄して元のレイアウトに戻しますか？'))))))))) return;
+      if (!confirm(tr('編集を破棄して元のレイアウトに戻しますか？'))) return;
       restoreLayout(w, this.original!);
       this.host?.onCancel();
     });
     const problems = validateLayout(w);
-    const save = el('button', { class: 'btn primary', type: 'button' }, iconText('save', tr(tr(tr(tr(tr(tr(tr('保存して出荷を再開'))))))), 16));
+    const save = el('button', { class: 'btn primary', type: 'button' }, iconText('save', tr('保存して出荷を再開'), 16));
     if (problems.length) save.setAttribute('disabled', 'true');
     save.addEventListener('click', () => this.host?.onSave());
     this.actions.append(prev, cancel, save);
 
     this.previewBar.replaceChildren();
-    const back = el('button', { class: 'btn primary', type: 'button' }, iconText('layers', tr(tr(tr(tr(tr(tr(tr('エディタに戻る'))))))), 16));
+    const back = el('button', { class: 'btn primary', type: 'button' }, iconText('layers', tr('エディタに戻る'), 16));
     back.addEventListener('click', () => this.setPreview(false));
-    this.previewBar.append(el('span', { class: 'muted small', text: tr(tr(tr(tr(tr(tr(tr('3D プレビュー: ドラッグで回転、ホイール／ピンチでズーム。倉庫は停止中'))))))) }), back);
+    this.previewBar.append(el('span', { class: 'muted small', text: tr('3D プレビュー: ドラッグで回転、ホイール／ピンチでズーム。倉庫は停止中') }), back);
     this.renderStatus(problems);
   }
 
@@ -193,10 +193,10 @@ export class LayoutEditor {
     const w = this.world!;
     this.status.replaceChildren();
     const n = countSelection(w, this.selectedCells());
-    const selText = this.selection.size ? tr(tr(tr(tr(tr(tr(tr('選択 {0} マス（スタック {1} / ポート {2} / ステーション {3} / 待機 {4}）。ドラッグで移動、Delete で撤去')))))), this.selection.size, n.stacks, n.ports, n.stations, n.waitSpots) : this.tool === 'select' ? tr(tr(tr(tr(tr(tr(tr('ドラッグで範囲選択、設備をタップで選択'))))))) : this.tool === 'pan' ? tr(tr(tr(tr(tr(tr(tr('ドラッグで画面を動かす'))))))) : this.tool === 'erase' ? tr(tr(tr(tr(tr(tr(tr('タップ／ドラッグで撤去（ビンの入ったスタックは不可）'))))))) : tr(tr(tr(tr(tr(tr(tr('タップ／ドラッグで配置')))))));
-    this.status.append(el('div', { class: 'editor-line' }, el('span', { text: tr(tr(tr(tr(tr(tr(tr('{0}×{1} マス　')))))), w.width, w.height) }), icon('coins', 12), el('span', { text: ` ${Math.floor(w.coins).toLocaleString('ja-JP')}　${selText}` })));
-    if (problems.length) this.status.append(el('div', { class: 'editor-line is-problem' }, icon('triangle-alert', 14), el('span', { text: ' ' + problems.slice(0, 3).join(' / ') + (problems.length > 3 ? tr(tr(tr(tr(tr(tr(tr(' ほか {0} 件')))))), problems.length - 3) : '') })));
-    else this.status.append(el('div', { class: 'editor-line is-ok' }, icon('check', 14), el('span', { text: tr(tr(tr(tr(tr(tr(tr(' 保存できる配置です'))))))) })));
+    const selText = this.selection.size ? tr('選択 {0} マス（スタック {1} / ポート {2} / ステーション {3} / 待機 {4}）。ドラッグで移動、Delete で撤去', this.selection.size, n.stacks, n.ports, n.stations, n.waitSpots) : this.tool === 'select' ? tr('ドラッグで範囲選択、設備をタップで選択') : this.tool === 'pan' ? tr('ドラッグで画面を動かす') : this.tool === 'erase' ? tr('タップ／ドラッグで撤去（ビンの入ったスタックは不可）') : tr('タップ／ドラッグで配置');
+    this.status.append(el('div', { class: 'editor-line' }, el('span', { text: tr('{0}×{1} マス　', w.width, w.height) }), icon('coins', 12), el('span', { text: ` ${Math.floor(w.coins).toLocaleString('ja-JP')}　${selText}` })));
+    if (problems.length) this.status.append(el('div', { class: 'editor-line is-problem' }, icon('triangle-alert', 14), el('span', { text: ' ' + problems.slice(0, 3).join(' / ') + (problems.length > 3 ? tr(' ほか {0} 件', problems.length - 3) : '') })));
+    else this.status.append(el('div', { class: 'editor-line is-ok' }, icon('check', 14), el('span', { text: tr(' 保存できる配置です') })));
   }
 
   private setPreview(on: boolean): void {
@@ -297,7 +297,7 @@ export class LayoutEditor {
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.font = `${Math.max(10, Math.min(13, s * 0.6))}px system-ui, sans-serif`;
     ctx.textBaseline = 'middle';
-    ctx.fillText(tr(tr(tr(tr(tr(tr(tr('倉庫の外で待機中: 棚ロボ {0} 台 / 搬送ロボ {1} 台（保存すると戻ります）')))))), shelves, amrs), this.ox, this.oy - s);
+    ctx.fillText(tr('倉庫の外で待機中: 棚ロボ {0} 台 / 搬送ロボ {1} 台（保存すると戻ります）', shelves, amrs), this.ox, this.oy - s);
     for (let z = 0; z < w.height; z++) {
       for (let x = 0; x < w.width; x++) {
         const k = cellAt(w, x, z) ?? 'floor';
@@ -402,7 +402,7 @@ export class LayoutEditor {
       ctx.font = `${Math.max(8, s * 0.4)}px system-ui, sans-serif`;
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
-      ctx.fillText(k === 'inboundDock' ? tr(tr(tr(tr(tr(tr(tr('入'))))))) : tr(tr(tr(tr(tr(tr(tr('出'))))))), px + s / 2, py + s / 2);
+      ctx.fillText(k === 'inboundDock' ? tr('入') : tr('出'), px + s / 2, py + s / 2);
       ctx.textAlign = 'left';
     }
   }
@@ -539,7 +539,7 @@ export class LayoutEditor {
     const w = this.world!;
     if (cell.x < 0 || cell.z < 0 || cell.x >= w.width || cell.z >= w.height) return;
     const r = this.tool === 'erase' ? eraseCell(w, cell.x, cell.z) : paintCell(w, this.tool as BuildKind, cell.x, cell.z);
-    if (!r.ok && r.reason !== tr(tr(tr(tr(tr(tr(tr('そこには何かがあります')))))))) showToast(r.reason, 1500);
+    if (!r.ok && r.reason !== tr('そこには何かがあります')) showToast(r.reason, 1500);
   }
 
   private onWheel(e: WheelEvent): void {

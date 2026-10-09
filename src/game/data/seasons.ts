@@ -64,13 +64,13 @@ export interface SeasonEvent {
 }
 
 export const SEASON_EVENTS: readonly SeasonEvent[] = [
-  { id: 'newYear', name: tr(tr(tr(tr(tr(tr(tr('初売り・福袋'))))))), from: [1, 1], to: [1, 1], intervalFactor: 1.0, linesFactor: 1.8, rewardFactor: 1.1, banner: tr(tr(tr(tr(tr(tr(tr('初売り・福袋セール！オーダーが大きい'))))))) },
-  { id: 'newLife', name: tr(tr(tr(tr(tr(tr(tr('新生活'))))))), from: [3, 1], to: [4, 4], intervalFactor: 0.9, linesFactor: 1.1, rewardFactor: 1.0, boostCategories: { appliance: 1.5, goods: 1.3, stationery: 1.3 }, banner: tr(tr(tr(tr(tr(tr(tr('新生活シーズン。家電・日用品が売れる'))))))) },
-  { id: 'rainy', name: tr(tr(tr(tr(tr(tr(tr('梅雨'))))))), from: [6, 1], to: [6, 4], intervalFactor: 0.9, linesFactor: 1.0, rewardFactor: 1.0, boostItems: { umbrella: 4 }, banner: tr(tr(tr(tr(tr(tr(tr('梅雨。傘が爆売れ'))))))) },
-  { id: 'midsummerGift', name: tr(tr(tr(tr(tr(tr(tr('お中元'))))))), from: [7, 1], to: [7, 4], intervalFactor: 1.0, linesFactor: 1.3, rewardFactor: 1.1, boostCategories: { food: 1.8, drink: 1.5 }, banner: tr(tr(tr(tr(tr(tr(tr('お中元。食品の大口オーダー'))))))) },
-  { id: 'halloween', name: tr(tr(tr(tr(tr(tr(tr('ハロウィン'))))))), from: [10, 1], to: [10, 4], intervalFactor: 0.9, linesFactor: 1.1, rewardFactor: 1.0, boostCategories: { toy: 1.6 }, boostItems: { cake: 1.5, plush: 2 }, banner: tr(tr(tr(tr(tr(tr(tr('ハロウィン。ぬいぐるみ・お菓子'))))))) },
-  { id: 'cyberWeek', name: tr(tr(tr(tr(tr(tr(tr('サイバーウィーク'))))))), from: [11, 4], to: [12, 1], intervalFactor: 0.2, linesFactor: 1.6, rewardFactor: 1.5, banner: tr(tr(tr(tr(tr(tr(tr('サイバーウィーク開催中！'))))))) },
-  { id: 'christmas', name: tr(tr(tr(tr(tr(tr(tr('クリスマス・歳末'))))))), from: [12, 3], to: [12, 4], intervalFactor: 0.75, linesFactor: 1.2, rewardFactor: 1.1, boostCategories: { toy: 1.6, food: 1.3 }, boostItems: { cake: 2 }, banner: tr(tr(tr(tr(tr(tr(tr('クリスマス・歳末。需要が高い'))))))) },
+  { id: 'newYear', name: tr('初売り・福袋'), from: [1, 1], to: [1, 1], intervalFactor: 1.0, linesFactor: 1.8, rewardFactor: 1.1, banner: tr('初売り・福袋セール！オーダーが大きい') },
+  { id: 'newLife', name: tr('新生活'), from: [3, 1], to: [4, 4], intervalFactor: 0.9, linesFactor: 1.1, rewardFactor: 1.0, boostCategories: { appliance: 1.5, goods: 1.3, stationery: 1.3 }, banner: tr('新生活シーズン。家電・日用品が売れる') },
+  { id: 'rainy', name: tr('梅雨'), from: [6, 1], to: [6, 4], intervalFactor: 0.9, linesFactor: 1.0, rewardFactor: 1.0, boostItems: { umbrella: 4 }, banner: tr('梅雨。傘が爆売れ') },
+  { id: 'midsummerGift', name: tr('お中元'), from: [7, 1], to: [7, 4], intervalFactor: 1.0, linesFactor: 1.3, rewardFactor: 1.1, boostCategories: { food: 1.8, drink: 1.5 }, banner: tr('お中元。食品の大口オーダー') },
+  { id: 'halloween', name: tr('ハロウィン'), from: [10, 1], to: [10, 4], intervalFactor: 0.9, linesFactor: 1.1, rewardFactor: 1.0, boostCategories: { toy: 1.6 }, boostItems: { cake: 1.5, plush: 2 }, banner: tr('ハロウィン。ぬいぐるみ・お菓子') },
+  { id: 'cyberWeek', name: tr('サイバーウィーク'), from: [11, 4], to: [12, 1], intervalFactor: 0.2, linesFactor: 1.6, rewardFactor: 1.5, banner: tr('サイバーウィーク開催中！') },
+  { id: 'christmas', name: tr('クリスマス・歳末'), from: [12, 3], to: [12, 4], intervalFactor: 0.75, linesFactor: 1.2, rewardFactor: 1.1, boostCategories: { toy: 1.6, food: 1.3 }, boostItems: { cake: 2 }, banner: tr('クリスマス・歳末。需要が高い') },
 ];
 
 /** サイバーウィーク予告の週数（§6.4: 3週間前） */

@@ -40,7 +40,7 @@ export function checkRankUp(w: WorldState): boolean {
   let granted = 0;
   for (let i = 0; i < newItems; i++) if (grantEmptyBin(w)) granted++;
   w.events.push({ type: 'rankUp', rank: w.rank });
-  if (bonus > 0 || granted) w.events.push({ type: 'notice', icon: 'party', text: tr(tr(tr(tr(tr(tr(tr('昇格ボーナス: {0}{1}{2}')))))), bonus > 0 ? tr(tr(tr(tr(tr(tr(tr('+{0} コイン')))))), bonus) : '', bonus > 0 && granted ? '、' : '', granted ? tr(tr(tr(tr(tr(tr(tr('空ビン {0} 個')))))), granted) : '') });
+  if (bonus > 0 || granted) w.events.push({ type: 'notice', icon: 'party', text: tr('昇格ボーナス: {0}{1}{2}', bonus > 0 ? tr('+{0} コイン', bonus) : '', bonus > 0 && granted ? '、' : '', granted ? tr('空ビン {0} 個', granted) : '') });
   return true;
 }
 
@@ -49,13 +49,13 @@ export function unlockSummary(w: WorldState): string[] {
   const r = RANKS[Math.min(w.rank, RANKS.length - 1)];
   const prev = RANKS[Math.max(0, w.rank - 1)];
   const out: string[] = [];
-  if (r.maxLevels > prev.maxLevels) out.push(tr(tr(tr(tr(tr(tr(tr('棚の段数 最大 {0} 段')))))), r.maxLevels));
-  if (r.maxExpansions > prev.maxExpansions) out.push(tr(tr(tr(tr(tr(tr(tr('面積拡張 {0}')))))), r.maxExpansions >= 99 ? tr(tr(tr(tr(tr(tr(tr('無制限'))))))) : tr(tr(tr(tr(tr(tr(tr('{0} 回まで')))))), r.maxExpansions)));
+  if (r.maxLevels > prev.maxLevels) out.push(tr('棚の段数 最大 {0} 段', r.maxLevels));
+  if (r.maxExpansions > prev.maxExpansions) out.push(tr('面積拡張 {0}', r.maxExpansions >= 99 ? tr('無制限') : tr('{0} 回まで', r.maxExpansions)));
   const kinds = availableItemIds(w).length;
-  out.push(tr(tr(tr(tr(tr(tr(tr('商品 {0} 種類（新商品: {1}）')))))), kinds, availableItemIds(w)
+  out.push(tr('商品 {0} 種類（新商品: {1}）', kinds, availableItemIds(w)
     .slice(-Math.max(0, kinds - (w.rank ? availableItemIdsAt(w.rank - 1) : 0)))
     .map((id) => ITEMS.find((i) => i.id === id)?.name)
-    .join(tr(tr(tr(tr(tr(tr(tr('・'))))))))));
+    .join(tr('・'))));
   return out;
 }
 
