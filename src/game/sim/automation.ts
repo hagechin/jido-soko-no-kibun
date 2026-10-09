@@ -559,7 +559,7 @@ export function diagnoseIdle(w: WorldState): string[] {
   const idleShelf = w.robots.filter((r) => r.kind === 'shelf' && idle(r)).length;
   const idleAmr = w.robots.filter((r) => r.kind === 'amr' && idle(r)).length;
   out.push(`暇な棚ロボ ${idleShelf} 台 / 暇な搬送ロボ ${idleAmr} 台 / 配車AI Lv${auto.dispatch} / 補充AI ${auto.restock ? 'オン' : 'オフ'}`);
-  out.push(`入荷作業の配分: 在庫率 ${(stockFill(w) * 100).toFixed(0)}%${restockMode(w) ? '（入荷モード）' : ''} 棚ロボ ${restockShelfCap(w)} 台 / 搬送ロボ ${restockAmrCap(w)} 台（優先: ${auto.amrPriority}）`);
+  out.push(`入荷作業の配分: 在庫率 ${(stockFill(w) * 100).toFixed(0)}%${restockMode(w) ? '（入荷モード）' : ''} 棚ロボ ${restockShelfCap(w)} 台 / 搬送ロボ ${restockAmrCap(w)} 台（優先: ${{ balanced: '均等', pick: 'ピック優先', restock: '補充優先' }[auto.amrPriority] ?? auto.amrPriority}）`);
   // 動けていないロボと、同じマスに重なっているロボ（本来起きない。起きていれば自動で解消される）
   for (const r of w.robots) if (r.stuckTicks >= AUTOMATION.staleRetrieveTicks) out.push(`[!] ${r.name} が ${Math.round(r.stuckTicks / 10)} 秒動けていない: ${describeRobot(w, r)} @(${r.pose.x},${r.pose.z})${r.carrying.length ? `、持っているビン: ${r.carrying.map((id) => `${w.bins[id]?.item ?? '空'} ${w.bins[id]?.qty ?? 0} 個`).join('、')}` : ''}`);
   const at = new Map<string, Robot>();
@@ -588,7 +588,7 @@ export function diagnoseIdle(w: WorldState): string[] {
     const maskedQty = masked.reduce((a, id) => a + w.bins[id].qty, 0);
     const toInbound = all.filter((id) => inFlight.has(id) && w.bins[id].purpose === 'inbound');
     const options = stackedBinsOf(w, (b) => b.item === item && b.qty > 0).filter((o) => !inFlight.has(o.binId));
-    let line = `${item}: 必要 ${qty}`;
+    let line = `${ITEM_BY_ID[item]?.name ?? item}: 必要 ${qty}`;
     if (maskedQty >= qty) line += ` → ピッカーへ向かっている分（${masked.map((id) => `${locate(id)} ${w.bins[id].qty} 個`).join('、')}）でまかなえるので新たに取りに行かない`;
     else if (!options.length) line += toInbound.length ? ` → 棚に残りが無く、在庫のビンは入荷ステーション行き（${toInbound.map((id) => `${locate(id)} ${w.bins[id].qty} 個`).join('、')}）。戻って格納されるまで待ち` : ` → 棚に取り出せるビンが無い（${all.map((id) => `${locate(id)} ${w.bins[id].qty} 個`).join('、')}）`;
     else {
