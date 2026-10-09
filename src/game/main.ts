@@ -51,7 +51,7 @@ import { featureStatusNode, renderStore } from './ui/store';
 import { setLimitsExpanded } from './sim/limits';
 import { applyTheme, effectiveCosmetics, loadCosmetics, saveCosmetics } from './ui/cosmetics';
 import { cloudAvailable, cloudEnabled, cloudLoad, onCloudChanged, setCloudEnabled, shouldOfferCloud } from './platform/cloud';
-import { deserialize } from './sim/save';
+import { deserialize, type LoadResult } from './sim/save';
 import { formatDate } from './sim/calendar';
 import { installDemoSave, isDemoRequested } from './ui/demo';
 import { PhotoMode } from './ui/photoMode';
@@ -63,7 +63,7 @@ import { renderDebug } from './ui/debugPanel';
 import { refreshRobotListStatus, renderRobotList } from './ui/robotList';
 import { isCyberWeek } from './sim/events';
 import { visibleOrders } from './sim/orders';
-import { exportSaveFile, importSaveFile } from './ui/storage';
+import { copySaveToClipboard, exportSaveFile, importSaveFile, importSaveFromClipboard } from './ui/storage';
 import type { QualityLevel } from './render/quality';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
@@ -93,6 +93,8 @@ class Game {
   private lastHintCheck = 0;
   /** 直近の提案（アップグレード画面の見出しに出す） */
   currentHint: Hint | null = null;
+  /** iOS アプリ: 「アプリ 1.0 (12)・同梱 Web commit=abc1234 date=…」（sync-web.sh が書く BUILD_INFO。同梱が古くないかの確認用） */
+  buildInfo = '';
   /** デバッグ: 計測 */
   private debug = { enabled: false, showStats: false, simMs: 0, fps: 0, frames: 0, fpsAt: 0 };
   private statsEl: HTMLElement | null = null;
@@ -163,6 +165,18 @@ class Game {
     };
     // 眺めモードに入る前のカメラを覚えておき、AUTO で出たときは戻す（自動カメラの寄った位置のままにしない）
     let cameraBeforeCalm: { target: Vector3; azimuth: number; polar: number; distance: number } | null = null;
+    if (native.available) {
+      const info = native.info;
+      this.buildInfo = `アプリ ${info?.version ?? '?'} (${info?.build ?? '?'})・同梱 Web: 読み込み中`;
+      fetch('/BUILD_INFO')
+        .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+        .then((t) => {
+          this.buildInfo = `アプリ ${info?.version ?? '?'} (${info?.build ?? '?'})・同梱 Web ${t.trim().split('\n').join(' ')}`;
+        })
+        .catch(() => {
+          this.buildInfo = `アプリ ${info?.version ?? '?'} (${info?.build ?? '?'})・同梱 Web: BUILD_INFO なし（sync-web.sh を通していない？）`;
+        });
+    }
     this.calm.onEnter = () => {
       this.bar.close();
       this.popup.hide();
@@ -342,6 +356,7 @@ class Game {
         },
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
+        buildInfo: this.buildInfo,
         openStore: () => this.bar.show('store'),
         cosmetics: {
           unlocked: hasFeature('cosmetics'),
@@ -379,6 +394,17 @@ class Game {
           });
         },
         importSave: (file) => this.importSave(file),
+        // iOS アプリ: 共有シートが出ないときの逃げ道（クリップボード経由）
+        copySave: native.available
+          ? () => {
+              void copySaveToClipboard(this.world).then((err) => showToast(err ? `コピーできませんでした: ${err}` : 'セーブデータをクリップボードにコピーしました（メモなどに貼り付けて保管できます）', 5000));
+            }
+          : undefined,
+        pasteSave: native.available
+          ? () => {
+              void importSaveFromClipboard().then((res) => this.applyImported(res));
+            }
+          : undefined,
         extra: (body) => {
           body.append(el('h4', { text: 'サウンド' }));
           const b = el('button', { class: `btn${this.sound.enabled ? ' is-active' : ''}`, type: 'button' }, this.sound.enabled ? iconText('volume-2', 'オン', 14) : iconText('volume-x', 'オフ', 14));
@@ -664,7 +690,10 @@ class Game {
   }
 
   private async importSave(file: File): Promise<void> {
-    const res = await importSaveFile(file);
+    this.applyImported(await importSaveFile(file));
+  }
+
+  private applyImported(res: LoadResult): void {
     if (!res.ok) {
       showToast(`読み込めませんでした: ${res.reason}`);
       return;
