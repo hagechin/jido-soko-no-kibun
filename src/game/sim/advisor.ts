@@ -8,6 +8,7 @@ import { isDrone } from './layers';
 import { automationPrice, dispatchPrice, price, rankShippedAt } from './pricing';
 import { queuedCount, visibleOrders } from './orders';
 import { binsToRecommended, freeBinSlots, reservedSlots } from './shop';
+import { inboundSettings } from './inbound';
 import type { WorldState } from './types';
 
 export interface AdvisorStats {
@@ -31,7 +32,7 @@ export interface Hint {
   id: string;
   text: string;
   /** 開くと良いパネル */
-  panel: 'upgrades' | 'build' | 'inventory';
+  panel: 'upgrades' | 'build' | 'inventory' | 'settings';
 }
 
 export function createAdvisorStats(): AdvisorStats {
@@ -97,6 +98,9 @@ export function adviseNext(w: WorldState, st: AdvisorStats, opts: AdvisorOptions
   if (st.pickersBusy >= ADVISOR.pickersBusyRatio) return { id: 'picker', text: 'ピッカーが手一杯です。ピック速度を上げるか、ピッキングステーションを増設してみましょう', panel: 'upgrades' };
   if (st.shelfIdle <= ADVISOR.lowIdleRatio && st.amrIdle >= ADVISOR.highIdleRatio) return { id: 'shelf', text: `棚ロボが足りません（棚ロボは常に忙しく、搬送ロボは暇）。棚ロボを追加してみましょう（現在 ${shelves} 台）`, panel: 'upgrades' };
   if (st.amrIdle <= ADVISOR.lowIdleRatio && st.shelfIdle >= ADVISOR.highIdleRatio) return { id: 'amr', text: `搬送ロボが足りません（搬送ロボは常に忙しく、棚ロボは暇）。搬送ロボを追加してみましょう（現在 ${amrs} 台）`, panel: 'upgrades' };
+  // 空ビンが余っているのに入荷が止まっている → 入荷の積載量を上げると在庫が増える（倉庫を広げた後）
+  const bins = Object.keys(w.bins).length;
+  if (a.restock && dock === 0 && bins >= ADVISOR.emptyBinsMin && empties >= bins * ADVISOR.emptyBinsShare && inboundSettings(w).load === 'standard') return { id: 'inboundLoad', text: `空ビンが余っています（${empties} / ${bins}）。設定の「入荷トラック」で積載量を「倉庫いっぱい」にすると、空いたビンに在庫が入ります`, panel: 'settings' };
   // 4. 残りの自動化
   if (a.dispatch < 3 && unlockedRank(w, AUTOMATION.unlockRank.dispatch3)) return { id: 'dispatch3', text: `自動配車AI Lv3（${dispatchPrice(w, 2)} コイン）で同じ商品のオーダーをまとめて効率が上がります`, panel: 'upgrades' };
   if (!a.relocate && w.levels >= 2 && unlockedRank(w, AUTOMATION.unlockRank.relocate)) return { id: 'relocate', text: `在庫再配置AI（${automationPrice(w, AUTOMATION.relocateCost)} コイン）で人気商品が上段に並び、掘り出しが減ります`, panel: 'upgrades' };

@@ -4,10 +4,10 @@
  *  - サイバーウィークは放置では消化しない（直前で止める）
  *  - 戻ってきたら「お留守番レポート」
  */
-import { CALENDAR, OFFLINE, TICKS_PER_SECOND } from '../data/balance';
+import { CALENDAR, INBOUND_FREQ, OFFLINE, TICKS_PER_SECOND } from '../data/balance';
 import { eventById, weekIndex, activeEvents } from '../data/seasons';
 import { calendarFromTick } from './calendar';
-import { forecastRestock } from './inbound';
+import { forecastRestock, inboundSettings } from './inbound';
 import { changeReputation } from './economy';
 import type { WorldState } from './types';
 
@@ -93,7 +93,10 @@ export function applyOffline(w: WorldState, elapsedMs: number): OfflineReport {
       }
     }
   }
+  // トラックの回数は設定の頻度で（週 1 以外は週数 × 週あたりの回数）
+  report.trucks = Math.floor(report.trucks * INBOUND_FREQ[inboundSettings(w).freq].perWeek);
   w.tick = endTick;
+  w.nextTruckTick = undefined; // 留守中のトラックはここでまとめて足すので、次の定期トラックは次の区切りから
   w.calendar = calendarFromTick(endTick);
   w.season.active = activeEvents(w.calendar.month, w.calendar.week).map((e) => e.id as string);
 

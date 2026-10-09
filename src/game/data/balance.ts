@@ -241,8 +241,12 @@ export const INBOUND_WORKER = {
   /** 1個詰めるのにかかる時間（tick） */
   stuffTicksPerItem: sec(0.3),
   stationCost: 250,
-  /** 定期入荷: 週1回（§6.2） */
+  /** 定期入荷: 週1回（§6.2）。設定の「入荷の頻度」で変えられる（INBOUND_FREQ） */
   trucksPerWeek: 1,
+  /** 入荷量の倍率の上限（1 回のトラックの 1 商品の量に掛かる。「倉庫いっぱい」でも 1 回のトラックはこの倍率まで。入荷口の山を際限なく大きくしない） */
+  maxLoadFactor: 4,
+  /** 「倉庫いっぱい」: 全ビン数のこの割合ぶんを在庫で埋めるのを目標にする（残りは空ビン） */
+  fillShare: 0.7,
   /** 入荷量 = 先週の出荷実績 × 係数 + 来月の需要係数 × forecastBase。在庫が十分ある商品は入荷しない */
   restockFactor: 1.3,
   forecastBase: 4,
@@ -408,6 +412,9 @@ export const ADVISOR = {
   queueHint: 6,
   /** 地上の搬送ロボのうち、ポート／ステーションの横付けの順番待ち（staged）をしている割合がこれ以上なら「ドローンの買い時」 */
   stagedRatio: 0.2,
+  /** 空ビンが全ビンのこの割合以上（かつ全ビンが emptyBinsMin 個以上）で入荷口が空なら「入荷の積載量を上げる」 */
+  emptyBinsShare: 0.4,
+  emptyBinsMin: 60,
   /** 同じヒントを再表示するまでの間隔（ms）／ヒントの確認間隔（ms） */
   repeatMs: 180_000,
   checkMs: 30_000,
@@ -449,6 +456,29 @@ export const ECONOMY_MODES: Record<EconomyId, { name: string; desc: string; coin
   longrun: { name: 'ロングラン', desc: 'コインが貯まりにくく（報酬 ×0.4、単価はランクでほぼ上がらない）、ロボと設備は 3 倍、自動化 AI は 1.5 倍、昇格に要る出荷数は 1.5 倍。しっかり調整すれば自動化まで約 1 時間、メガDC まで約 6 時間', coinFactor: 0.4, coinPerItemByRank: [10, 11, 12, 13, 14], costFactor: 3, automationCostFactor: 1.5, rankShippedFactor: 1.5, rankBonusFactor: 0.5 },
 };
 export const ECONOMY_ORDER: EconomyId[] = ['standard', 'longrun'];
+
+/**
+ * 入荷トラックの設定（設定パネル。いつでも変更できる）★
+ *  - 頻度: トラックが来る間隔。1 回に積む量はその間隔ぶん（週 1 の量 × 週数）なので、週あたりの入荷量と在庫の目標は変わらない。頻度はリズムと音の好み
+ *  - 積載量: 1 回に積む量と、入荷を止める在庫の目標（標準は 1 商品につきビン 2 杯）の倍率。倉庫を広げて空ビンが余っているなら上げる
+ *  - 倉庫いっぱい: 全ビンの fillShare ぶんを在庫で埋めるのを目標にする（倉庫の大きさに合わせて目標が伸びる。1 回のトラックは maxLoadFactor 倍まで）
+ */
+export type InboundFreqId = 'daily' | 'twice' | 'weekly' | 'monthly';
+export const INBOUND_FREQ: Record<InboundFreqId, { name: string; desc: string; perWeek: number }> = {
+  daily: { name: '毎日', desc: '小さなトラックが週 7 回（約 13 秒おき）。入荷口の山が小さく保たれる代わりに、トラックの音が頻繁', perWeek: 7 },
+  twice: { name: '週 2', desc: '週の半ばにもトラックが来る', perWeek: 2 },
+  weekly: { name: '週 1', desc: '週の初めに 1 回（標準）', perWeek: 1 },
+  monthly: { name: '月 1', desc: '月の初めに 4 週ぶんをまとめて 1 回。静かだが入荷口の山が大きく、月末に欠品しやすい', perWeek: 0.25 },
+};
+export const INBOUND_FREQ_ORDER: InboundFreqId[] = ['daily', 'twice', 'weekly', 'monthly'];
+export type InboundLoadId = 'standard' | 'large' | 'huge' | 'fill';
+export const INBOUND_LOAD: Record<InboundLoadId, { name: string; desc: string; factor: number | null }> = {
+  standard: { name: '標準', desc: '在庫の目標は 1 商品につきビン 2 杯。売れたぶんを補充する', factor: 1 },
+  large: { name: '多め', desc: '1 回の量と在庫の目標が 2 倍（ビン 4 杯）', factor: 2 },
+  huge: { name: 'たっぷり', desc: '1 回の量と在庫の目標が 4 倍（ビン 8 杯）', factor: 4 },
+  fill: { name: '倉庫いっぱい', desc: '倉庫のビンの 7 割が在庫で埋まるまで、たっぷり（4 倍）の量で入荷し続ける。倉庫を広げてビンを増やすほど在庫が増える', factor: null },
+};
+export const INBOUND_LOAD_ORDER: InboundLoadId[] = ['standard', 'large', 'huge', 'fill'];
 
 /** 建設コスト（§9.4） */
 export const BUILD = {

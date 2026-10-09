@@ -2,7 +2,8 @@
  * エントリポイント。固定タイムステップのシミュレーションと描画ループを束ねる。
  */
 import { Vector3 } from 'three';
-import { SPEED_OPTIONS, TICKS_PER_SECOND } from './data/balance';
+import { INBOUND_FREQ, SPEED_OPTIONS, TICKS_PER_SECOND } from './data/balance';
+import { inboundSettings, restockStockCap, setInbound } from './sim/inbound';
 import { itemDef } from './data/items';
 import { createWorld } from './sim/world';
 import { createRuntime, stepSim, type Runtime } from './sim/sim';
@@ -294,6 +295,12 @@ class Game {
           this.save();
           this.bar.refresh();
         },
+        inbound: { ...inboundSettings(this.world), stockBins: Math.round(restockStockCap(this.world) / this.world.binCapacity) },
+        setInbound: (next) => {
+          setInbound(this.world, next);
+          this.save();
+          this.bar.refresh();
+        },
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
         openStore: () => this.bar.show('store'),
@@ -548,7 +555,7 @@ class Game {
     this.lastStockoutHint = now;
     const dock = w.pallets.reduce((a, p) => a + p.qty, 0);
     if (dock <= 0) {
-      showToast('表示中のオーダーは全部欠品待ち。次の入荷トラック（週 1 回）を待っています', 6000, 'triangle-alert');
+      showToast(`表示中のオーダーは全部欠品待ち。次の入荷トラック（${INBOUND_FREQ[inboundSettings(w).freq].name}）を待っています`, 6000, 'triangle-alert');
       return;
     }
     // 入荷口に山はあるのに詰められるビンが無い（空ビンも、同じ商品の空きのあるビンも無い）→ 補充AIも動けない
