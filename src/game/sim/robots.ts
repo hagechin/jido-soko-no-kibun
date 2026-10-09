@@ -788,6 +788,12 @@ function nextLoadableBin(w: WorldState, r: Robot, port: WorldState['ports'][numb
     const idx = port.outbound.findIndex((id) => purposeOf(w, id) === only);
     return idx >= 0 ? idx : null;
   }
+  // ★ ピック専任は入荷ビンを積まない（積載 4 のロボが「ピック 1 + 入荷 3」を抱えて 2 か所の入荷ステーションに並び、
+  // ポートが入荷ビンで埋まって出荷が止まった: 第 22 回のメガDC・全ロボ最大強化・倉庫いっぱい）。入荷専任は残りをピックで埋めてよい（先に届ける）
+  if (only === 'pick') {
+    const idx = port.outbound.findIndex((id) => purposeOf(w, id) === 'pick');
+    return idx >= 0 ? idx : null;
+  }
   const pri = w.automation.amrPriority;
   // 積む順: 積んでいるビンと同じ行き先。空なら優先設定（均等でもピックを先に: オーダーが待っている）
   const want = r.carrying.length ? purposeOf(w, r.carrying[0]) : pri === 'restock' ? 'inbound' : 'pick';
