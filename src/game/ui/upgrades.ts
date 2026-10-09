@@ -57,7 +57,7 @@ function row(label: string, cost: number | null, onBuy: (() => ShopResult) | nul
   btn.addEventListener('click', () => {
     if (!onBuy) return;
     const r = onBuy();
-    showToast(r.ok ? tr(tr(tr('{0} を購入しました')), label) : r.reason);
+    showToast(r.ok ? tr(tr(tr(tr('{0} を購入しました'))), label) : r.reason);
     ctx.refresh();
   });
   return el('div', { class: 'shop-row' }, el('div', { class: 'shop-label' }, el('div', { text: label }), extra ? el('div', { class: 'muted small', text: extra }) : null), btn);
@@ -66,81 +66,81 @@ function row(label: string, cost: number | null, onBuy: (() => ShopResult) | nul
 export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const w = ctx.world;
   const rank = RANKS[Math.min(w.rank, RANKS.length - 1)];
-  if (ctx.hint) body.append(el('p', { class: 'hint-box' }, icon('lightbulb', 16), el('span', { text: tr(tr(tr(' おすすめ: {0}')), ctx.hint) })));
+  if (ctx.hint) body.append(el('p', { class: 'hint-box' }, icon('lightbulb', 16), el('span', { text: tr(tr(tr(tr(' おすすめ: {0}'))), ctx.hint) })));
 
-  body.append(el('h4', { text: tr(tr(tr('倉庫'))) }));
+  body.append(el('h4', { text: tr(tr(tr(tr('倉庫')))) }));
   const lvCost = levelUpgradeCost(w);
   const lim = limitsFor(w);
-  const lvLocked = w.levels >= maxLevelsForRank(w) && w.levels < lim.maxLevels ? tr(tr(tr('ランク{0}で解放')), w.rank + 2) : undefined;
-  body.append(row(w.levels >= lim.maxLevels ? tr(tr(tr('棚の段数 {0}（MAX）')), w.levels) : tr(tr(tr('棚の段数 {0} → {1}')), w.levels, w.levels + 1), lvCost, () => upgradeLevels(w), ctx, tr(tr(tr('全スタックに +1 段。保管量が増える代わりに掘り出しが発生する{0}')), limitHint(w.levels >= lim.maxLevels, tr(tr(tr('段数 {0} まで')), LIMITS.expanded.maxLevels))), lvLocked));
-  body.append(row(tr(tr(tr('ビン容量 {0} → {1}')), w.binCapacity, w.binCapacity + 10), binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, tr(tr(tr('1 ビンに入る個数')))));
+  const lvLocked = w.levels >= maxLevelsForRank(w) && w.levels < lim.maxLevels ? tr(tr(tr(tr('ランク{0}で解放'))), w.rank + 2) : undefined;
+  body.append(row(w.levels >= lim.maxLevels ? tr(tr(tr(tr('棚の段数 {0}（MAX）'))), w.levels) : tr(tr(tr(tr('棚の段数 {0} → {1}'))), w.levels, w.levels + 1), lvCost, () => upgradeLevels(w), ctx, tr(tr(tr(tr('全スタックに +1 段。保管量が増える代わりに掘り出しが発生する{0}'))), limitHint(w.levels >= lim.maxLevels, tr(tr(tr(tr('段数 {0} まで'))), LIMITS.expanded.maxLevels))), lvLocked));
+  body.append(row(tr(tr(tr(tr('ビン容量 {0} → {1}'))), w.binCapacity, w.binCapacity + 10), binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, tr(tr(tr(tr('1 ビンに入る個数'))))));
   const binsLeft = Math.max(0, freeBinSlots(w) - reservedSlots(w));
-  body.append(row(tr(tr(tr('空ビン 1 個'))), price(w, BIN.emptyBinCost), binsLeft > 0 ? () => buyEmptyBin(w) : null, ctx, tr(tr(tr('空きのあるスタックの頂上に置く（買えるのはあと {0} 個。掘り出し用に {1} スロットは空けておく）')), binsLeft, reservedSlots(w))));
+  body.append(row(tr(tr(tr(tr('空ビン 1 個')))), price(w, BIN.emptyBinCost), binsLeft > 0 ? () => buyEmptyBin(w) : null, ctx, tr(tr(tr(tr('空きのあるスタックの頂上に置く（買えるのはあと {0} 個。掘り出し用に {1} スロットは空けておく）'))), binsLeft, reservedSlots(w))));
   const areaMax = expansionCost(w, 'east') === null && expansionCost(w, 'south') === null;
-  body.append(row(areaMax ? tr(tr(tr('面積拡張 {0}×{1}（MAX）')), w.width, w.height) : tr(tr(tr('面積拡張（東へ +4 列／南へ +4 行）'))), null, null, ctx, areaMax ? tr(tr(tr('これ以上は広げられません{0}')), limitHint(true, tr(tr(tr('{0}×{1} まで')), LIMITS.expanded.maxWidth, LIMITS.expanded.maxHeight))) : tr(tr(tr('建設モードのツールバーから行います'))), areaMax ? undefined : tr(tr(tr('建設')))));
-  body.append(el('p', { class: 'muted small', text: tr(tr(tr('スタック {0} / ポート {1} / ステーション {2} コイン。「建設」で配置します')), price(w, BUILD.stackCost), price(w, BUILD.portCost), price(w, BUILD.pickStationCost)) }));
+  body.append(row(areaMax ? tr(tr(tr(tr('面積拡張 {0}×{1}（MAX）'))), w.width, w.height) : tr(tr(tr(tr('面積拡張（東へ +4 列／南へ +4 行）')))), null, null, ctx, areaMax ? tr(tr(tr(tr('これ以上は広げられません{0}'))), limitHint(true, tr(tr(tr(tr('{0}×{1} まで'))), LIMITS.expanded.maxWidth, LIMITS.expanded.maxHeight))) : tr(tr(tr(tr('建設モードのツールバーから行います')))), areaMax ? undefined : tr(tr(tr(tr('建設'))))));
+  body.append(el('p', { class: 'muted small', text: tr(tr(tr(tr('スタック {0} / ポート {1} / ステーション {2} コイン。「建設」で配置します'))), price(w, BUILD.stackCost), price(w, BUILD.portCost), price(w, BUILD.pickStationCost)) }));
 
-  body.append(el('h4', { text: tr(tr(tr('ロボット'))) }));
+  body.append(el('h4', { text: tr(tr(tr(tr('ロボット')))) }));
   const shelves = w.robots.filter((r) => r.kind === 'shelf').length;
   const amrs = w.robots.filter((r) => r.kind === 'amr' && !isDrone(r)).length;
-  body.append(row(tr(tr(tr('棚ロボ追加'))), price(w, ROBOT.shelfRobotCost), shelves < lim.maxShelfRobots ? () => buyShelfRobot(w) : null, ctx, tr(tr(tr('現在 {0} 台（上限 {1}）{2}')), shelves, lim.maxShelfRobots, limitHint(shelves >= lim.maxShelfRobots, tr(tr(tr('{0} 台まで')), LIMITS.expanded.maxShelfRobots)))));
-  body.append(row(tr(tr(tr('搬送ロボ追加'))), price(w, ROBOT.amrCost), amrs < lim.maxAmrs ? () => buyAmr(w) : null, ctx, tr(tr(tr('現在 {0} 台（上限 {1}）{2}')), amrs, lim.maxAmrs, limitHint(amrs >= lim.maxAmrs, tr(tr(tr('{0} 台まで')), LIMITS.expanded.maxAmrs)))));
+  body.append(row(tr(tr(tr(tr('棚ロボ追加')))), price(w, ROBOT.shelfRobotCost), shelves < lim.maxShelfRobots ? () => buyShelfRobot(w) : null, ctx, tr(tr(tr(tr('現在 {0} 台（上限 {1}）{2}'))), shelves, lim.maxShelfRobots, limitHint(shelves >= lim.maxShelfRobots, tr(tr(tr(tr('{0} 台まで'))), LIMITS.expanded.maxShelfRobots)))));
+  body.append(row(tr(tr(tr(tr('搬送ロボ追加')))), price(w, ROBOT.amrCost), amrs < lim.maxAmrs ? () => buyAmr(w) : null, ctx, tr(tr(tr(tr('現在 {0} 台（上限 {1}）{2}'))), amrs, lim.maxAmrs, limitHint(amrs >= lim.maxAmrs, tr(tr(tr(tr('{0} 台まで'))), LIMITS.expanded.maxAmrs)))));
   // 特別ロボ（iOS の特別ロボパック）
   const special = hasFeature('specialRobots');
   const drones = w.robots.filter((r) => isDrone(r)).length;
-  body.append(el('h4', { text: tr(tr(tr('特別ロボ'))) }));
+  body.append(el('h4', { text: tr(tr(tr(tr('特別ロボ')))) }));
   // ドローンの買い時: 地上ロボが横付けで順番待ちしている規模になってから。小さいうちは地上ロボで足りる
   const queued = (ctx.amrStaged ?? 0) >= ADVISOR.stagedRatio;
-  const droneTiming = queued ? tr(tr(tr('★ 今が買い時: 搬送ロボが横付けで順番待ちしています'))) : tr(tr(tr('大きな倉庫で特に威力を発揮（搬送ロボがポートで順番待ちするようになったら「おすすめ」でお知らせ。今の規模では地上ロボで足りています）')));
-  body.append(row(tr(tr(tr('ドローン搬送ロボ追加'))), price(w, ROBOT.droneCost), special && drones < ROBOT.maxDrones ? () => buyDrone(w) : null, ctx, tr(tr(tr('棚の上を飛び越えて運ぶ（速度 +1 段階）。地上の渋滞と横付けの枠を受けず、一番溜まっているポートへ真っ先に向かい、暇なときはポートの上で待機。{0}。現在 {1} 台（上限 {2}）{3}')), droneTiming, drones, ROBOT.maxDrones, specialRobotsHint()), special ? undefined : tr(tr(tr('ロック')))));
-  body.append(row(tr(tr(tr('ダブルデッカー棚ロボ追加'))), price(w, ROBOT.doubleDeckerCost), special && shelves < lim.maxShelfRobots ? () => buyDoubleDecker(w) : null, ctx, tr(tr(tr('ビンを 2 段持てる棚ロボ。1 個掘れば届くビンは退避の往復なしで取り出し、深い掘り出しも 2 個ずつ運ぶ。狭い棚でも 1 台で棚ロボ 2 台ぶんの働きをするので序盤から活躍。棚ロボの上限に含む{0}')), specialRobotsHint()), special ? undefined : tr(tr(tr('ロック')))));
+  const droneTiming = queued ? tr(tr(tr(tr('★ 今が買い時: 搬送ロボが横付けで順番待ちしています')))) : tr(tr(tr(tr('大きな倉庫で特に威力を発揮（搬送ロボがポートで順番待ちするようになったら「おすすめ」でお知らせ。今の規模では地上ロボで足りています）'))));
+  body.append(row(tr(tr(tr(tr('ドローン搬送ロボ追加')))), price(w, ROBOT.droneCost), special && drones < ROBOT.maxDrones ? () => buyDrone(w) : null, ctx, tr(tr(tr(tr('棚の上を飛び越えて運ぶ（速度 +1 段階）。地上の渋滞と横付けの枠を受けず、一番溜まっているポートへ真っ先に向かい、暇なときはポートの上で待機。{0}。現在 {1} 台（上限 {2}）{3}'))), droneTiming, drones, ROBOT.maxDrones, specialRobotsHint()), special ? undefined : tr(tr(tr(tr('ロック'))))));
+  body.append(row(tr(tr(tr(tr('ダブルデッカー棚ロボ追加')))), price(w, ROBOT.doubleDeckerCost), special && shelves < lim.maxShelfRobots ? () => buyDoubleDecker(w) : null, ctx, tr(tr(tr(tr('ビンを 2 段持てる棚ロボ。1 個掘れば届くビンは退避の往復なしで取り出し、深い掘り出しも 2 個ずつ運ぶ。狭い棚でも 1 台で棚ロボ 2 台ぶんの働きをするので序盤から活躍。棚ロボの上限に含む{0}'))), specialRobotsHint()), special ? undefined : tr(tr(tr(tr('ロック'))))));
 
   const allCost = upgradeAllRobotsCost(w);
-  body.append(el('h4', { text: tr(tr(tr('ロボの強化（全機）'))) }));
-  body.append(row(allCost === null ? tr(tr(tr('全ロボを最大強化（MAX）'))) : tr(tr(tr('全ロボを最大強化'))), allCost, () => upgradeAllRobots(w), ctx, allCost === null ? tr(tr(tr('全ロボとも速度・リフト・積載が最大です'))) : tr(tr(tr('全ロボの速度・リフト・積載を一気に最大まで（{0} 台ぶんの合計）')), w.robots.length)));
+  body.append(el('h4', { text: tr(tr(tr(tr('ロボの強化（全機）')))) }));
+  body.append(row(allCost === null ? tr(tr(tr(tr('全ロボを最大強化（MAX）')))) : tr(tr(tr(tr('全ロボを最大強化')))), allCost, () => upgradeAllRobots(w), ctx, allCost === null ? tr(tr(tr(tr('全ロボとも速度・リフト・積載が最大です')))) : tr(tr(tr(tr('全ロボの速度・リフト・積載を一気に最大まで（{0} 台ぶんの合計）'))), w.robots.length)));
   const r = w.robots.find((r) => r.id === ctx.selectedRobotId) ?? null;
-  body.append(el('h4', { text: r ? tr(tr(tr('{0} の強化（機体ごと）')), r.name) : tr(tr(tr('ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）'))) }));
+  body.append(el('h4', { text: r ? tr(tr(tr(tr('{0} の強化（機体ごと）'))), r.name) : tr(tr(tr(tr('ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）')))) }));
   if (r) {
-    body.append(row(tr(tr(tr('速度 Lv{0} → {1}')), r.speedLevel, r.speedLevel + 1), speedUpgradeCost(r, w), () => upgradeSpeed(w, r.id), ctx, isDrone(r) ? tr(tr(tr('移動速度 +20%/Lv。ドローンは飛行で +1 段階（いまの実効 Lv{0}）')), speedLevelOf(r)) : tr(tr(tr('移動速度 +20%/Lv')))));
-    if (r.kind === 'shelf') body.append(row(tr(tr(tr('リフト速度 Lv{0} → {1}')), r.liftLevel, r.liftLevel + 1), liftUpgradeCost(r, w), () => upgradeLift(w, r.id), ctx, tr(tr(tr('掘り出し・上げ下ろしの時間短縮')))));
+    body.append(row(tr(tr(tr(tr('速度 Lv{0} → {1}'))), r.speedLevel, r.speedLevel + 1), speedUpgradeCost(r, w), () => upgradeSpeed(w, r.id), ctx, isDrone(r) ? tr(tr(tr(tr('移動速度 +20%/Lv。ドローンは飛行で +1 段階（いまの実効 Lv{0}）'))), speedLevelOf(r)) : tr(tr(tr(tr('移動速度 +20%/Lv'))))));
+    if (r.kind === 'shelf') body.append(row(tr(tr(tr(tr('リフト速度 Lv{0} → {1}'))), r.liftLevel, r.liftLevel + 1), liftUpgradeCost(r, w), () => upgradeLift(w, r.id), ctx, tr(tr(tr(tr('掘り出し・上げ下ろしの時間短縮'))))));
     if (r.kind === 'amr') {
       const c = ROBOT.cargo[r.cargoLevel];
       const n = ROBOT.cargo[Math.min(r.cargoLevel + 1, lim.maxCargoLevel)];
-      body.append(row(r.cargoLevel >= lim.maxCargoLevel ? tr(tr(tr('積載 {0} ビン（MAX）')), c.bins) : tr(tr(tr('積載 {0} → {1} ビン')), c.bins, n.bins), cargoUpgradeCost(r, w), () => upgradeCargo(w, r.id), ctx, tr(tr(tr('ビンを積み重ねて運び、必要なステーションを順に回る{0}')), limitHint(r.cargoLevel >= lim.maxCargoLevel, tr(tr(tr('積載 {0} ビンまで')), ROBOT.cargo[LIMITS.expanded.maxCargoLevel].bins)))));
+      body.append(row(r.cargoLevel >= lim.maxCargoLevel ? tr(tr(tr(tr('積載 {0} ビン（MAX）'))), c.bins) : tr(tr(tr(tr('積載 {0} → {1} ビン'))), c.bins, n.bins), cargoUpgradeCost(r, w), () => upgradeCargo(w, r.id), ctx, tr(tr(tr(tr('ビンを積み重ねて運び、必要なステーションを順に回る{0}'))), limitHint(r.cargoLevel >= lim.maxCargoLevel, tr(tr(tr(tr('積載 {0} ビンまで'))), ROBOT.cargo[LIMITS.expanded.maxCargoLevel].bins)))));
     }
   }
 
-  body.append(el('h4', { text: tr(tr(tr('ピッカー'))) }));
+  body.append(el('h4', { text: tr(tr(tr(tr('ピッカー')))) }));
   for (const s of w.stations.filter((s) => s.kind === 'pick')) {
-    body.append(row(tr(tr(tr('ステーション({0},{1}) ピック速度 Lv{2} → {3}')), s.x, s.z, s.level, s.level + 1), pickerUpgradeCost(s, w), () => upgradePicker(w, s.id), ctx, tr(tr(tr('担当: {0} 品目')), s.assignedItems.length)));
+    body.append(row(tr(tr(tr(tr('ステーション({0},{1}) ピック速度 Lv{2} → {3}'))), s.x, s.z, s.level, s.level + 1), pickerUpgradeCost(s, w), () => upgradePicker(w, s.id), ctx, tr(tr(tr(tr('担当: {0} 品目'))), s.assignedItems.length)));
   }
 
-  body.append(el('h4', { text: tr(tr(tr('自動化 AI'))) }));
+  body.append(el('h4', { text: tr(tr(tr(tr('自動化 AI')))) }));
   const ai: [string, string, number | null, string][] = [
-    ['dispatch', tr(tr(tr('自動配車AI Lv{0}')), w.automation.dispatch + 1), w.automation.dispatch < 3 ? dispatchPrice(w, w.automation.dispatch) : null, [tr(tr(tr('搬送ロボがポートのビンを自動で運ぶ（棚ロボの取り出しはまだ手動）'))), tr(tr(tr('棚ロボがオーダーを見て自動で取り出す。ここから放置できる'))), tr(tr(tr('同じ商品を含むオーダーをまとめて取り出す（バッチ最適化）')))][w.automation.dispatch] ?? ''],
-    ['restock', tr(tr(tr('自動補充AI'))), w.automation.restock ? null : automationPrice(w, AUTOMATION.restockCost), tr(tr(tr('入荷があると該当ビンを自動で入荷ステーションへ')))],
-    ['relocate', tr(tr(tr('在庫再配置AI'))), w.automation.relocate ? null : automationPrice(w, AUTOMATION.relocateCost), tr(tr(tr('暇なときに人気商品を上段へ並べ替える')))],
+    ['dispatch', tr(tr(tr(tr('自動配車AI Lv{0}'))), w.automation.dispatch + 1), w.automation.dispatch < 3 ? dispatchPrice(w, w.automation.dispatch) : null, [tr(tr(tr(tr('搬送ロボがポートのビンを自動で運ぶ（棚ロボの取り出しはまだ手動）')))), tr(tr(tr(tr('棚ロボがオーダーを見て自動で取り出す。ここから放置できる')))), tr(tr(tr(tr('同じ商品を含むオーダーをまとめて取り出す（バッチ最適化）'))))][w.automation.dispatch] ?? ''],
+    ['restock', tr(tr(tr(tr('自動補充AI')))), w.automation.restock ? null : automationPrice(w, AUTOMATION.restockCost), tr(tr(tr(tr('入荷があると該当ビンを自動で入荷ステーションへ'))))],
+    ['relocate', tr(tr(tr(tr('在庫再配置AI')))), w.automation.relocate ? null : automationPrice(w, AUTOMATION.relocateCost), tr(tr(tr(tr('暇なときに人気商品を上段へ並べ替える'))))],
   ];
   for (const [id, label, cost, desc] of ai) {
     const unlockRank = id === 'dispatch' ? [AUTOMATION.unlockRank.dispatch1, AUTOMATION.unlockRank.dispatch2, AUTOMATION.unlockRank.dispatch3][w.automation.dispatch] ?? 0 : id === 'restock' ? AUTOMATION.unlockRank.restock : AUTOMATION.unlockRank.relocate;
-    const locked = cost !== null && w.rank < unlockRank ? tr(tr(tr('ランク{0}で解放')), unlockRank + 1) : ctx.buyAutomation ? undefined : 'M9';
+    const locked = cost !== null && w.rank < unlockRank ? tr(tr(tr(tr('ランク{0}で解放'))), unlockRank + 1) : ctx.buyAutomation ? undefined : 'M9';
     body.append(row(label, cost, ctx.buyAutomation ? () => ctx.buyAutomation!(id) : null, ctx, desc, locked));
   }
-  body.append(el('h4', { text: tr(tr(tr('搬送ロボの優先'))) }));
+  body.append(el('h4', { text: tr(tr(tr(tr('搬送ロボの優先')))) }));
   const priRow = el('div', { class: 'settings-row' });
   for (const [id, label, desc] of [
-    ['balanced', tr(tr(tr('均等'))), tr(tr(tr('近いポートから順に運ぶ')))],
-    ['pick', tr(tr(tr('ピック優先'))), tr(tr(tr('ピッカー行きのビンを先に運ぶ')))],
-    ['restock', tr(tr(tr('補充優先'))), tr(tr(tr('入荷ステーション行きのビンを先に運ぶ')))],
+    ['balanced', tr(tr(tr(tr('均等')))), tr(tr(tr(tr('近いポートから順に運ぶ'))))],
+    ['pick', tr(tr(tr(tr('ピック優先')))), tr(tr(tr(tr('ピッカー行きのビンを先に運ぶ'))))],
+    ['restock', tr(tr(tr(tr('補充優先')))), tr(tr(tr(tr('入荷ステーション行きのビンを先に運ぶ'))))],
   ] as const) {
     const b = el('button', { class: `btn${w.automation.amrPriority === id ? ' is-active' : ''}`, type: 'button', text: label, title: desc });
     b.addEventListener('click', () => {
       w.automation.amrPriority = id;
-      showToast(tr(tr(tr('搬送ロボ: {0}（{1}）')), label, desc));
+      showToast(tr(tr(tr(tr('搬送ロボ: {0}（{1}）'))), label, desc));
       ctx.refresh();
     });
     priRow.append(b);
   }
   body.append(priRow);
-  body.append(el('p', { class: 'muted small', text: tr(tr(tr('現在のランク: {0}')), rank.name) }));
+  body.append(el('p', { class: 'muted small', text: tr(tr(tr(tr('現在のランク: {0}'))), rank.name) }));
 }

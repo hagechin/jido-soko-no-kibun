@@ -22,7 +22,7 @@ export function refreshRobotListStatus(body: HTMLElement, w: WorldState): void {
     }
     const meta = row.querySelector<HTMLElement>('.robot-meta');
     if (meta) {
-      const m = tr(tr(tr('{0} / 運んだ {1}{2}')), meta.dataset.lv ?? '', r.carried ?? 0, r.job?.manual ? tr(tr(tr(' / 手動指示中'))) : '');
+      const m = tr(tr(tr(tr('{0} / 運んだ {1}{2}'))), meta.dataset.lv ?? '', r.carried ?? 0, r.job?.manual ? tr(tr(tr(tr(' / 手動指示中')))) : '');
       if (meta.textContent !== m) meta.textContent = m;
     }
   }
@@ -31,28 +31,28 @@ export function refreshRobotListStatus(body: HTMLElement, w: WorldState): void {
 function cargoIcons(w: WorldState, r: WorldState['robots'][number]): HTMLElement[] {
   return r.carrying.map((id) => {
     const b = w.bins[id];
-    return b?.item ? iconImg(b.item, 18) : el('span', { class: 'slot-empty', title: tr(tr(tr('空ビン'))) });
+    return b?.item ? iconImg(b.item, 18) : el('span', { class: 'slot-empty', title: tr(tr(tr(tr('空ビン')))) });
   });
 }
 
 /** 速度 Lv の表示。ドローンは飛行の上乗せを含めた実効 Lv も */
 export function speedText(r: WorldState['robots'][number]): string {
-  return isDrone(r) ? tr(tr(tr('速度 Lv{0}（飛行 +1 → Lv{1} 相当）')), r.speedLevel, speedLevelOf(r)) : tr(tr(tr('速度 Lv{0}')), r.speedLevel);
+  return isDrone(r) ? tr(tr(tr(tr('速度 Lv{0}（飛行 +1 → Lv{1} 相当）'))), r.speedLevel, speedLevelOf(r)) : tr(tr(tr(tr('速度 Lv{0}'))), r.speedLevel);
 }
 
 export function renderRobotList(body: HTMLElement, w: WorldState, selectedId: number | null, onSelect: (id: number) => void, onUpgrade: (id: number) => void): void {
-  body.append(el('p', { class: 'muted small', text: tr(tr(tr('タップで選択（3D ビューで指示できる）。「強化」で選択してアップグレードを開く'))) }));
+  body.append(el('p', { class: 'muted small', text: tr(tr(tr(tr('タップで選択（3D ビューで指示できる）。「強化」で選択してアップグレードを開く')))) }));
   for (const kind of ['shelf', 'amr'] as const) {
     const list = w.robots.filter((r) => r.kind === kind);
-    body.append(el('h4', { text: tr(tr(tr('{0}（{1} 台）')), kind === 'shelf' ? tr(tr(tr('棚ロボ'))) : tr(tr(tr('搬送ロボ'))), list.length) }));
+    body.append(el('h4', { text: tr(tr(tr(tr('{0}（{1} 台）'))), kind === 'shelf' ? tr(tr(tr(tr('棚ロボ')))) : tr(tr(tr(tr('搬送ロボ')))), list.length) }));
     for (const r of list) {
       const cargo = el('span', { class: 'sel-cargo', 'data-bins': r.carrying.join(',') }, ...cargoIcons(w, r));
-      const lv = kind === 'shelf' ? tr(tr(tr('{0} / リフト Lv{1}')), speedText(r), r.liftLevel) : tr(tr(tr('{0} / 積載 {1}')), speedText(r), ROBOT.cargo[r.cargoLevel].bins);
+      const lv = kind === 'shelf' ? tr(tr(tr(tr('{0} / リフト Lv{1}'))), speedText(r), r.liftLevel) : tr(tr(tr(tr('{0} / 積載 {1}'))), speedText(r), ROBOT.cargo[r.cargoLevel].bins);
       const row = el(
         'div',
         { class: `robot-row${r.id === selectedId ? ' is-active' : ''}`, 'data-robot': String(r.id) },
-        el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + r.name })), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small robot-meta', 'data-lv': lv, text: tr(tr(tr('{0} / 運んだ {1}{2}')), lv, r.carried ?? 0, r.job?.manual ? tr(tr(tr(' / 手動指示中'))) : '') })),
-        el('button', { class: 'btn', type: 'button', text: tr(tr(tr('強化'))) }),
+        el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + r.name })), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small robot-meta', 'data-lv': lv, text: tr(tr(tr(tr('{0} / 運んだ {1}{2}'))), lv, r.carried ?? 0, r.job?.manual ? tr(tr(tr(tr(' / 手動指示中')))) : '') })),
+        el('button', { class: 'btn', type: 'button', text: tr(tr(tr(tr('強化')))) }),
       );
       row.children[0].addEventListener('click', () => onSelect(r.id));
       row.children[1].addEventListener('click', () => onUpgrade(r.id));

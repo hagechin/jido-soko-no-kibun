@@ -25,12 +25,12 @@ export function deserialize(text: string): LoadResult {
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, reason: tr(tr(tr(tr('セーブデータを読めません（JSON ではない）')))) };
+    return { ok: false, reason: tr(tr(tr(tr(tr('セーブデータを読めません（JSON ではない）'))))) };
   }
-  if (!raw || typeof raw !== 'object') return { ok: false, reason: tr(tr(tr(tr('セーブデータの形式が違います')))) };
+  if (!raw || typeof raw !== 'object') return { ok: false, reason: tr(tr(tr(tr(tr('セーブデータの形式が違います'))))) };
   const file = raw as Partial<SaveFile>;
-  if (typeof file.version !== 'number' || !file.world) return { ok: false, reason: tr(tr(tr(tr('セーブデータに version がありません')))) };
-  if (file.version > SAVE.version) return { ok: false, reason: tr(tr(tr(tr('新しいバージョンのセーブデータです')))) };
+  if (typeof file.version !== 'number' || !file.world) return { ok: false, reason: tr(tr(tr(tr(tr('セーブデータに version がありません'))))) };
+  if (file.version > SAVE.version) return { ok: false, reason: tr(tr(tr(tr(tr('新しいバージョンのセーブデータです'))))) };
   let world = file.world;
   let migrated = false;
   if (file.version < SAVE.version) {
@@ -60,8 +60,8 @@ export function migrate(world: WorldState, _from: number): WorldState {
 }
 
 function validate(w: WorldState): string | null {
-  if (!Array.isArray(w.cells) || !Array.isArray(w.robots) || !Array.isArray(w.stacks)) return tr(tr(tr(tr('セーブデータが壊れています'))));
-  if (w.cells.length !== w.width * w.height) return tr(tr(tr(tr('セーブデータの倉庫サイズが不正です'))));
-  if (typeof w.tick !== 'number') return tr(tr(tr(tr('セーブデータの時刻が不正です'))));
+  if (!Array.isArray(w.cells) || !Array.isArray(w.robots) || !Array.isArray(w.stacks)) return tr(tr(tr(tr(tr('セーブデータが壊れています')))));
+  if (w.cells.length !== w.width * w.height) return tr(tr(tr(tr(tr('セーブデータの倉庫サイズが不正です')))));
+  if (typeof w.tick !== 'number') return tr(tr(tr(tr(tr('セーブデータの時刻が不正です')))));
   return null;
 }

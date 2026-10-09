@@ -39,7 +39,13 @@ function placeToasts(host: HTMLElement): void {
   const view = host.parentElement;
   if (!sheet || !view) return;
   if (sheet.hidden) {
-    host.style.bottom = '';
+    // 「眺めモードにする？」のボタンが出ていればその上に
+    const suggest = document.getElementById('calm-suggest');
+    if (suggest && !suggest.hidden) {
+      const vr = view.getBoundingClientRect();
+      const sg = suggest.getBoundingClientRect();
+      host.style.bottom = `${Math.round(vr.bottom - sg.top + 8)}px`;
+    } else host.style.bottom = '';
     host.style.top = '';
     return;
   }

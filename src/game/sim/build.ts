@@ -31,11 +31,11 @@ export function buildCost(w: Pick<WorldState, 'economy'>, kind: BuildKind): numb
 }
 
 export const BUILD_LABEL: Record<BuildKind, string> = {
-  stack: tr(tr(tr('スタック'))),
-  port: tr(tr(tr('ポート'))),
-  pickStation: tr(tr(tr('ピッキングST'))),
-  inboundStation: tr(tr(tr('入荷ST'))),
-  waitSpot: tr(tr(tr('待機スポット'))),
+  stack: tr(tr(tr(tr('スタック')))),
+  port: tr(tr(tr(tr('ポート')))),
+  pickStation: tr(tr(tr(tr('ピッキングST')))),
+  inboundStation: tr(tr(tr(tr('入荷ST')))),
+  waitSpot: tr(tr(tr(tr('待機スポット')))),
 };
 
 function robotOn(w: WorldState, x: number, z: number): boolean {
@@ -77,31 +77,31 @@ export function railConnected(w: WorldState, ignore?: { x: number; z: number }):
 
 /** 配置できるか。null なら OK、文字列は理由 */
 export function canPlace(w: WorldState, kind: BuildKind, x: number, z: number, free = false): string | null {
-  if (!inBounds(w, x, z)) return tr(tr(tr('倉庫の外です')));
+  if (!inBounds(w, x, z)) return tr(tr(tr(tr('倉庫の外です'))));
   const cur = cellAt(w, x, z);
-  if (cur !== 'floor') return tr(tr(tr('そこには何かがあります')));
-  if (robotOn(w, x, z)) return tr(tr(tr('ロボがいます')));
-  if (!free && w.coins < buildCost(w, kind)) return tr(tr(tr('コインが足りません（{0} 必要）')), buildCost(w, kind));
+  if (cur !== 'floor') return tr(tr(tr(tr('そこには何かがあります'))));
+  if (robotOn(w, x, z)) return tr(tr(tr(tr('ロボがいます'))));
+  if (!free && w.coins < buildCost(w, kind)) return tr(tr(tr(tr('コインが足りません（{0} 必要）'))), buildCost(w, kind));
   // 床でなくなるものを置くとき、隣のポート／ステーションが床に面しなくなる（搬送ロボが横付けできなくなる）なら拒否。
   // 床の通路が分断される（袋小路の島ができて、そこにしか面していないポートへ行けなくなる）置き方も拒否
   if (kind !== 'waitSpot') {
-    if (wouldDisconnectFloor(w, x, z)) return tr(tr(tr('床の通路が分断されます（搬送ロボが通れない場所ができる）')));
-    for (const p of w.ports) if (approachCells(w, p.x, p.z).some((c) => c.x === x && c.z === z) && approachCells(w, p.x, p.z).length <= 1) return tr(tr(tr('ポートが床に面しなくなります（搬送ロボが横付けできません）')));
-    for (const s of w.stations) if (approachCells(w, s.x, s.z).some((c) => c.x === x && c.z === z) && approachCells(w, s.x, s.z).length <= 1) return tr(tr(tr('ステーションが床に面しなくなります（搬送ロボが横付けできません）')));
+    if (wouldDisconnectFloor(w, x, z)) return tr(tr(tr(tr('床の通路が分断されます（搬送ロボが通れない場所ができる）'))));
+    for (const p of w.ports) if (approachCells(w, p.x, p.z).some((c) => c.x === x && c.z === z) && approachCells(w, p.x, p.z).length <= 1) return tr(tr(tr(tr('ポートが床に面しなくなります（搬送ロボが横付けできません）'))));
+    for (const s of w.stations) if (approachCells(w, s.x, s.z).some((c) => c.x === x && c.z === z) && approachCells(w, s.x, s.z).length <= 1) return tr(tr(tr(tr('ステーションが床に面しなくなります（搬送ロボが横付けできません）'))));
   }
   switch (kind) {
     case 'port':
-      if (!isAdjacentToStack(w, x, z)) return tr(tr(tr('ポートは棚（スタック）に隣接させてください')));
-      if (!isFacingFloor(w, x, z)) return tr(tr(tr('ポートは床にも面している必要があります')));
+      if (!isAdjacentToStack(w, x, z)) return tr(tr(tr(tr('ポートは棚（スタック）に隣接させてください'))));
+      if (!isFacingFloor(w, x, z)) return tr(tr(tr(tr('ポートは床にも面している必要があります'))));
       break;
     case 'pickStation':
     case 'inboundStation':
-      if (!isFacingFloor(w, x, z)) return tr(tr(tr('ステーションは床に面している必要があります')));
+      if (!isFacingFloor(w, x, z)) return tr(tr(tr(tr('ステーションは床に面している必要があります'))));
       break;
     case 'stack': {
       const hasRail = w.stacks.length + w.ports.length > 0;
       const adj = neighbors4(w, x, z).some((n) => isRailWalkable(cellAt(w, n.x, n.z)));
-      if (hasRail && !adj) return tr(tr(tr('スタックは他のスタックかポートに隣接させてください')));
+      if (hasRail && !adj) return tr(tr(tr(tr('スタックは他のスタックかポートに隣接させてください'))));
       break;
     }
     case 'waitSpot':
@@ -151,34 +151,34 @@ export function place(w: WorldState, kind: BuildKind, x: number, z: number, free
 }
 
 export function canRemove(w: WorldState, x: number, z: number): string | null {
-  if (!inBounds(w, x, z)) return tr(tr(tr('倉庫の外です')));
+  if (!inBounds(w, x, z)) return tr(tr(tr(tr('倉庫の外です'))));
   const cur = cellAt(w, x, z);
-  if (cur === 'floor') return tr(tr(tr('何もありません')));
-  if (cur === 'inboundDock' || cur === 'outboundDock') return tr(tr(tr('入荷口・出荷口は動かせません')));
-  if (robotOn(w, x, z)) return tr(tr(tr('ロボが乗っています')));
+  if (cur === 'floor') return tr(tr(tr(tr('何もありません'))));
+  if (cur === 'inboundDock' || cur === 'outboundDock') return tr(tr(tr(tr('入荷口・出荷口は動かせません'))));
+  if (robotOn(w, x, z)) return tr(tr(tr(tr('ロボが乗っています'))));
   if (cur === 'stack') {
     const s = w.stacks.find((s) => s.x === x && s.z === z);
-    if (s && s.bins.length) return tr(tr(tr('ビンが入っているスタックは撤去できません（先に空にする）')));
-    if (!railConnected(w, { x, z })) return tr(tr(tr('撤去するとレールが分断されます')));
+    if (s && s.bins.length) return tr(tr(tr(tr('ビンが入っているスタックは撤去できません（先に空にする）'))));
+    if (!railConnected(w, { x, z })) return tr(tr(tr(tr('撤去するとレールが分断されます'))));
     // 撤去後も各ポートがどこかのスタックに隣接していること
     const portOrphaned = w.ports.some((p) => !neighbors4(w, p.x, p.z).some((n) => cellAt(w, n.x, n.z) === 'stack' && !(n.x === x && n.z === z)));
-    if (portOrphaned) return tr(tr(tr('ポートが棚から離れてしまいます')));
+    if (portOrphaned) return tr(tr(tr(tr('ポートが棚から離れてしまいます'))));
   }
   if (cur === 'port') {
     const p = w.ports.find((p) => p.x === x && p.z === z);
-    if (p && (p.outbound.length || p.returns.length)) return tr(tr(tr('ビンが置かれているポートは撤去できません')));
-    if (w.ports.length <= 1) return tr(tr(tr('最後のポートは撤去できません')));
-    if (!railConnected(w, { x, z })) return tr(tr(tr('撤去するとレールが分断されます')));
+    if (p && (p.outbound.length || p.returns.length)) return tr(tr(tr(tr('ビンが置かれているポートは撤去できません'))));
+    if (w.ports.length <= 1) return tr(tr(tr(tr('最後のポートは撤去できません'))));
+    if (!railConnected(w, { x, z })) return tr(tr(tr(tr('撤去するとレールが分断されます'))));
   }
   if (cur === 'pickStation') {
     const s = w.stations.find((s) => s.x === x && s.z === z);
-    if (s?.work) return tr(tr(tr('作業中のステーションは撤去できません')));
-    if (w.stations.filter((s) => s.kind === 'pick').length <= 1) return tr(tr(tr('最後のピッキングステーションは撤去できません')));
+    if (s?.work) return tr(tr(tr(tr('作業中のステーションは撤去できません'))));
+    if (w.stations.filter((s) => s.kind === 'pick').length <= 1) return tr(tr(tr(tr('最後のピッキングステーションは撤去できません'))));
   }
   if (cur === 'inboundStation') {
     const s = w.stations.find((s) => s.x === x && s.z === z);
-    if (s?.work) return tr(tr(tr('作業中のステーションは撤去できません')));
-    if (w.stations.filter((s) => s.kind === 'inbound').length <= 1) return tr(tr(tr('最後の入荷ステーションは撤去できません')));
+    if (s?.work) return tr(tr(tr(tr('作業中のステーションは撤去できません'))));
+    if (w.stations.filter((s) => s.kind === 'inbound').length <= 1) return tr(tr(tr(tr('最後の入荷ステーションは撤去できません'))));
   }
   return null;
 }
@@ -190,7 +190,7 @@ export function remove(w: WorldState, x: number, z: number): BuildResult {
   const st = w.stations.find((s) => s.x === x && s.z === z);
   const orphan = st?.kind === 'pick' ? [...st.assignedItems] : [];
   const ok = removeCell(w, x, z);
-  if (!ok) return { ok: false, reason: tr(tr(tr('撤去できませんでした'))) };
+  if (!ok) return { ok: false, reason: tr(tr(tr(tr('撤去できませんでした')))) };
   if (orphan.length) {
     const other = w.stations.find((s) => s.kind === 'pick');
     if (other) other.assignedItems.push(...orphan);
@@ -202,16 +202,16 @@ export function remove(w: WorldState, x: number, z: number): BuildResult {
 /** 移動（無料）: 撤去して置き直す。スタックは中のビンごと動く */
 export function move(w: WorldState, fromX: number, fromZ: number, toX: number, toZ: number): BuildResult {
   const kind = cellAt(w, fromX, fromZ);
-  if (!kind || kind === 'floor' || kind === 'inboundDock' || kind === 'outboundDock') return { ok: false, reason: tr(tr(tr('動かせるものがありません'))) };
+  if (!kind || kind === 'floor' || kind === 'inboundDock' || kind === 'outboundDock') return { ok: false, reason: tr(tr(tr(tr('動かせるものがありません')))) };
   if (fromX === toX && fromZ === toZ) return { ok: true };
-  if (robotOn(w, fromX, fromZ)) return { ok: false, reason: tr(tr(tr('ロボが乗っています'))) };
+  if (robotOn(w, fromX, fromZ)) return { ok: false, reason: tr(tr(tr(tr('ロボが乗っています')))) };
   const bk = kind as BuildKind;
   // 置き直せるか先に確認（元のセルを床にした状態で判定）
   const stack = w.stacks.find((s) => s.x === fromX && s.z === fromZ);
   const port = w.ports.find((p) => p.x === fromX && p.z === fromZ);
   const station = w.stations.find((s) => s.x === fromX && s.z === fromZ);
-  if (port && (port.outbound.length || port.returns.length)) return { ok: false, reason: tr(tr(tr('ビンが置かれているポートは動かせません'))) };
-  if (station?.work) return { ok: false, reason: tr(tr(tr('作業中のステーションは動かせません'))) };
+  if (port && (port.outbound.length || port.returns.length)) return { ok: false, reason: tr(tr(tr(tr('ビンが置かれているポートは動かせません')))) };
+  if (station?.work) return { ok: false, reason: tr(tr(tr(tr('作業中のステーションは動かせません')))) };
   const saved = w.cells[fromZ * w.width + fromX];
   w.cells[fromZ * w.width + fromX] = 'floor';
   const why = canPlace(w, bk, toX, toZ, true);
@@ -222,7 +222,7 @@ export function move(w: WorldState, fromX: number, fromZ: number, toX: number, t
     w.cells[toZ * w.width + toX] = 'floor';
     if (!connected) {
       w.cells[fromZ * w.width + fromX] = saved;
-      return { ok: false, reason: tr(tr(tr('移動するとレールが分断されます'))) };
+      return { ok: false, reason: tr(tr(tr(tr('移動するとレールが分断されます')))) };
     }
   }
   w.cells[fromZ * w.width + fromX] = saved;
@@ -271,9 +271,9 @@ export function maxExpansionsForRank(w: WorldState): number {
 /** 面積拡張: 東へ +4 列（出荷口は新しい東壁へ移す）または南へ +4 行 */
 export function expand(w: WorldState, dir: ExpandDir = 'east'): BuildResult {
   const cost = expansionCost(w, dir);
-  if (cost === null) return { ok: false, reason: dir === 'east' ? tr(tr(tr('これ以上東へは広げられません'))) : tr(tr(tr('これ以上南へは広げられません'))) };
-  if (w.expansions >= maxExpansionsForRank(w)) return { ok: false, reason: tr(tr(tr('面積拡張はランクアップで解放（あと {0} 回）')), maxExpansionsForRank(w) - w.expansions) };
-  if (w.coins < cost) return { ok: false, reason: tr(tr(tr('コインが足りません（{0} 必要）')), cost) };
+  if (cost === null) return { ok: false, reason: dir === 'east' ? tr(tr(tr(tr('これ以上東へは広げられません')))) : tr(tr(tr(tr('これ以上南へは広げられません')))) };
+  if (w.expansions >= maxExpansionsForRank(w)) return { ok: false, reason: tr(tr(tr(tr('面積拡張はランクアップで解放（あと {0} 回）'))), maxExpansionsForRank(w) - w.expansions) };
+  if (w.coins < cost) return { ok: false, reason: tr(tr(tr(tr('コインが足りません（{0} 必要）'))), cost) };
   w.coins -= cost;
   if (dir === 'east') {
     const oldW = w.width;
@@ -305,7 +305,7 @@ export function expand(w: WorldState, dir: ExpandDir = 'east'): BuildResult {
 /** ピッカーの担当を変更（他のピッカーからは外す）§5.1 */
 export function assignItem(w: WorldState, stationId: number, item: string, on: boolean): BuildResult {
   const st = w.stations.find((s) => s.id === stationId && s.kind === 'pick');
-  if (!st) return { ok: false, reason: tr(tr(tr('ピッキングステーションがありません'))) };
+  if (!st) return { ok: false, reason: tr(tr(tr(tr('ピッキングステーションがありません')))) };
   for (const s of w.stations) if (s.kind === 'pick') s.assignedItems = s.assignedItems.filter((i) => i !== item);
   if (on) st.assignedItems.push(item);
   return { ok: true };
