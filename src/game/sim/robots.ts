@@ -66,6 +66,26 @@ export function nearestPort(w: WorldState, x: number, z: number, filter?: (p: Wo
   return best;
 }
 
+/** 一番空いている入荷ステーション（向かっている・並んでいる・作業中の台数が少ないもの。同じなら近い方）★ 全員が一番近い 1 つに並ぶのを防ぐ */
+export function leastLoadedInboundStation(w: WorldState, from: { x: number; z: number }): WorldState['stations'][number] | null {
+  const load = new Map<number, number>();
+  for (const o of w.robots) {
+    const j = o.job;
+    if (o.kind === 'amr' && j?.type === 'deliver') load.set(j.stationId, (load.get(j.stationId) ?? 0) + 1);
+  }
+  let best = null as WorldState['stations'][number] | null;
+  let bs = Infinity;
+  for (const s of w.stations) {
+    if (s.kind !== 'inbound') continue;
+    const score = (load.get(s.id) ?? 0) * 1000 + manhattan(from, s);
+    if (score < bs) {
+      bs = score;
+      best = s;
+    }
+  }
+  return best;
+}
+
 export function nearestStation(w: WorldState, x: number, z: number, kind: 'pick' | 'inbound') {
   let best = null as WorldState['stations'][number] | null;
   let bd = Infinity;
@@ -148,7 +168,15 @@ export function leastLoadedPort(w: WorldState, near: { x: number; z: number }, f
 export function destinationOf(w: WorldState, r: Robot, binId: number): number | null {
   const b = w.bins[binId];
   if (!b) return null;
-  if (b.purpose === 'inbound') return nearestStation(w, r.pose.x, r.pose.z, 'inbound')?.id ?? null;
+  if (b.purpose === 'inbound') {
+    // 入荷ビンはどの入荷ステーションでもよい。向かっている先が入荷ステーションならそこ、まだなら一番空いているところ
+    const j = r.job;
+    if (j?.type === 'deliver') {
+      const cur = w.stations.find((s) => s.id === j.stationId);
+      if (cur?.kind === 'inbound') return cur.id;
+    }
+    return leastLoadedInboundStation(w, r.pose)?.id ?? null;
+  }
   if (b.item) {
     const s = w.stations.find((s) => s.kind === 'pick' && s.assignedItems.includes(b.item!));
     if (s) return s.id;
@@ -214,10 +242,11 @@ export function nextStationFor(w: WorldState, r: Robot): number | null {
   let best: number | null = null;
   let bd = Infinity;
   for (const id of left) {
-    const sid = destinationOf(w, r, id);
-    const st = w.stations.find((s) => s.id === sid);
+    const b = w.bins[id];
+    const st = b?.purpose === 'inbound' ? leastLoadedInboundStation(w, r.pose) : w.stations.find((s) => s.id === destinationOf(w, r, id));
     if (!st) continue;
-    const d = manhattan(r.pose, st);
+    // ★ ピックのビンを先に届ける（入荷ステーションは列ができやすく、ピックのビンを抱えたまま並ぶと出荷が止まる）
+    const d = manhattan(r.pose, st) + (st.kind === 'inbound' ? 100000 : 0);
     if (d < bd) {
       bd = d;
       best = st.id;
@@ -230,6 +259,8 @@ export function nextStationFor(w: WorldState, r: Robot): number | null {
 export function cargoForStation(w: WorldState, r: Robot, stationId: number): number[] {
   const left = unprocessedCargo(w, r);
   if (r.job?.type === 'deliver' && r.job.manual) return left;
+  const st = w.stations.find((s) => s.id === stationId);
+  if (st?.kind === 'inbound') return left.filter((id) => w.bins[id]?.purpose === 'inbound'); // 入荷ビンはどの入荷ステーションでも処理できる
   return left.filter((id) => destinationOf(w, r, id) === stationId);
 }
 
@@ -588,7 +619,7 @@ function shelfMerge(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob,
         mine.qty = 0;
         mine.item = null;
         mine.purpose = null;
-        w.events.push({ type: 'notice', icon: 'info', text: tr('{0} がビンをまとめて空ビンを作りました', r.name) });
+        w.events.push({ type: 'notice', icon: 'info', text: tr(tr('{0} がビンをまとめて空ビンを作りました'), r.name) });
       }
       r.phase = 'idle';
       r.step = 4;
@@ -755,7 +786,8 @@ function nextLoadableBin(w: WorldState, r: Robot, port: WorldState['ports'][numb
     return idx >= 0 ? idx : null;
   }
   const pri = w.automation.amrPriority;
-  const want = r.carrying.length ? purposeOf(w, r.carrying[0]) : pri === 'pick' ? 'pick' : pri === 'restock' ? 'inbound' : null;
+  // 積む順: 積んでいるビンと同じ行き先。空なら優先設定（均等でもピックを先に: オーダーが待っている）
+  const want = r.carrying.length ? purposeOf(w, r.carrying[0]) : pri === 'restock' ? 'inbound' : 'pick';
   if (want) {
     const idx = port.outbound.findIndex((id) => purposeOf(w, id) === want);
     if (idx >= 0) return idx;
@@ -792,6 +824,16 @@ function amrDeliver(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, {
     if (!isDrone(r) && (!atGoal(w, r) || job.staged)) {
       const busy = headingTo(w, 'station', st.id, r);
       if (busy >= approachCapacity(w, st.x, st.z)) {
+        // ★ 入荷ステーションの順番待ちなら、空いている別の入荷ステーションがあればそちらへ
+        if (st.kind === 'inbound') {
+          const alt = w.stations.find((s) => s.kind === 'inbound' && s.id !== st!.id && headingTo(w, 'station', s.id, r) < approachCapacity(w, s.x, s.z));
+          if (alt) {
+            job.stationId = alt.id;
+            job.staged = false;
+            setGoal(rt, r, null);
+            return;
+          }
+        }
         job.staged = true;
         const g = stagingGoal(w, r);
         if (g && !w.waitSpots.some((s) => s.x === r.pose.x && s.z === r.pose.z)) setGoal(rt, r, g);
@@ -852,36 +894,36 @@ function amrReturn(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, { 
 export function describeRobot(w: WorldState, r: Robot): string {
   const job = r.job as RobotJob | null;
   const overPort = isDrone(r) && w.ports.some((p) => p.x === r.pose.x && p.z === r.pose.z);
-  if (!job) return r.phase === 'moving' ? tr('移動中') : overPort ? tr('ポートの上で待機中') : tr('待機中');
+  if (!job) return r.phase === 'moving' ? tr(tr('移動中')) : overPort ? tr(tr('ポートの上で待機中')) : tr(tr('待機中'));
   switch (job.type) {
     case 'retrieve': {
       const b = w.bins[job.binId];
-      const what = b?.item ? itemDef(b.item).name : tr('空ビン');
-      if (r.step === 11 || r.step === 12 || r.step === 13) return tr('掘り出し中（{0}）', what);
-      if (r.step >= 14 && r.step <= 16) return tr('2 段持ちで取り出し中（{0}）', what);
-      if (r.step >= 20) return tr('ポートへ運搬中（{0}）', what);
-      return tr('取り出しへ（{0}）', what);
+      const what = b?.item ? itemDef(b.item).name : tr(tr('空ビン'));
+      if (r.step === 11 || r.step === 12 || r.step === 13) return tr(tr('掘り出し中（{0}）'), what);
+      if (r.step >= 14 && r.step <= 16) return tr(tr('2 段持ちで取り出し中（{0}）'), what);
+      if (r.step >= 20) return tr(tr('ポートへ運搬中（{0}）'), what);
+      return tr(tr('取り出しへ（{0}）'), what);
     }
     case 'store':
-      return r.carrying.length ? tr('棚へ格納中') : tr('ポートで返却ビンを回収');
+      return r.carrying.length ? tr(tr('棚へ格納中')) : tr(tr('ポートで返却ビンを回収'));
     case 'relocate':
-      return tr('在庫を並べ替え中');
+      return tr(tr('在庫を並べ替え中'));
     case 'merge': {
       const b = w.bins[job.targetBinId];
-      return tr('ビンをまとめて空ビンを作る（{0}）', b?.item ? itemDef(b.item).name : '');
+      return tr(tr('ビンをまとめて空ビンを作る（{0}）'), b?.item ? itemDef(b.item).name : '');
     }
     case 'fetch':
-      return r.phase === 'loading' ? tr('積み込み中') : job.staged ? tr('ポートの順番待ち') : job.only === 'inbound' ? tr('ポートへ（入荷専任）') : tr('ポートへ');
+      return r.phase === 'loading' ? tr(tr('積み込み中')) : job.staged ? tr(tr('ポートの順番待ち')) : job.only === 'inbound' ? tr(tr('ポートへ（入荷専任）')) : tr(tr('ポートへ'));
     case 'deliver': {
       const left = unprocessedCargo(w, r).length;
-      if (job.staged) return tr('ステーションの順番待ち（{0} ビン）', left);
-      return r.phase === 'working' ? tr('作業待ち') : tr('ステーションへ配送中（残り {0} ビン）', left);
+      if (job.staged) return tr(tr('ステーションの順番待ち（{0} ビン）'), left);
+      return r.phase === 'working' ? tr(tr('作業待ち')) : tr(tr('ステーションへ配送中（残り {0} ビン）'), left);
     }
     case 'return':
-      return tr('ポートへ返却中');
+      return tr(tr('ポートへ返却中'));
     case 'park':
-      if (isDrone(r)) return overPort && job.x === r.pose.x && job.z === r.pose.z ? tr('ポートの上で待機中') : tr('ポートの上へ');
-      return tr('待機スポットへ');
+      if (isDrone(r)) return overPort && job.x === r.pose.x && job.z === r.pose.z ? tr(tr('ポートの上で待機中')) : tr(tr('ポートの上へ'));
+      return tr(tr('待機スポットへ'));
   }
 }
 

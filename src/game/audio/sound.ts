@@ -22,6 +22,9 @@ export class Sound {
   private bgmLastAt = 0;
   private bgmInterval = 420;
   private lastCheck = 0;
+  /** 前回の見張り時点の currentTime（running なのに進まない＝音が出ていない WebKit の状態を見つける） */
+  private lastCurrentTime = -1;
+  private frozenChecks = 0;
   /** 見張りが直した回数（設定画面の表示用） */
   recovered = 0;
   private tempo: 'normal' | 'cyber' | 'calm' = 'normal';
@@ -235,16 +238,16 @@ export class Sound {
   status(): string {
     switch (this.state()) {
       case 'off':
-        return tr(tr('オフ'));
+        return tr(tr(tr('オフ')));
       case 'not-started':
-        return tr(tr('未開始（画面をタップすると始まります）'));
+        return tr(tr(tr('未開始（画面をタップすると始まります）')));
       case 'running':
-        return tr(tr('再生中{0}'), this.recovered ? tr(tr('（止まったのを {0} 回立て直し）'), this.recovered) : '');
+        return tr(tr(tr('再生中{0}')), this.recovered ? tr(tr(tr('（止まったのを {0} 回立て直し）')), this.recovered) : '');
       case 'suspended':
       case 'interrupted':
-        return tr(tr('一時停止中（タップで再開します）'));
+        return tr(tr(tr('一時停止中（タップで再開します）')));
       case 'closed':
-        return tr(tr('停止（作り直します）'));
+        return tr(tr(tr('停止（作り直します）')));
     }
   }
 
@@ -264,6 +267,17 @@ export class Sound {
     if (state !== 'running') {
       // iOS の interrupted / suspended。resume はユーザー操作が要ることがあるので、pointerdown からも force で呼ばれる
       void this.ctx.resume().catch(() => {});
+      this.frozenChecks = 0;
+    } else if (!force) {
+      // ★ 実機の WKWebView は背面から戻ると state が running のまま出力だけ止まることがある。currentTime が進んでいなければ死んでいる
+      const t = this.ctx.currentTime;
+      this.frozenChecks = t === this.lastCurrentTime ? this.frozenChecks + 1 : 0;
+      this.lastCurrentTime = t;
+      if (this.frozenChecks >= 2) {
+        this.frozenChecks = 0;
+        this.rebuild();
+        return;
+      }
     }
     // BGM のタイマーが止まっている（背面で止められた、例外で途切れた）→ 組み直す
     if (this.bgmGain && now - this.bgmLastAt > this.bgmInterval * 3 + 1000) {
@@ -273,7 +287,13 @@ export class Sound {
     }
   }
 
-  /** AudioContext を作り直す（閉じられたとき） */
+  /** 前面に戻ったとき（iOS）: state が running でも出力が死んでいることがあるので、作り直す */
+  onForeground(): void {
+    if (!this.unlocked) return;
+    this.rebuild();
+  }
+
+  /** AudioContext を作り直す（閉じられたとき・前面復帰） */
   private rebuild(): void {
     clearTimeout(this.bgmTimer);
     try {
@@ -286,6 +306,8 @@ export class Sound {
     this.hum = null;
     this.bgmGain = null;
     this.unlocked = false;
+    this.lastCurrentTime = -1;
+    this.frozenChecks = 0;
     this.recovered++;
     this.unlock();
   }

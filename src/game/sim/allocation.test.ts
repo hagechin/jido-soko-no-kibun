@@ -41,7 +41,8 @@ describe('restock allocation (priority setting + low-stock mode)', () => {
     console.log('inbound share by priority', JSON.stringify(results));
     expect(results.restock.shelf).toBeGreaterThan(results.pick.shelf);
     expect(results.restock.amr).toBeGreaterThan(results.pick.amr);
-    expect(results.restock.shelf).toBeGreaterThan(results.pick.shelf * 1.5); // 設定で 1.5 倍以上の差
+    // 設定で差が付く。搬送ロボは 1.5 倍以上。棚ロボ側はポートの枠と入荷専任の上限（入荷ステーションの能力）で頭打ちになるので 1.3 倍以上
+    expect(results.restock.shelf).toBeGreaterThan(results.pick.shelf * 1.3);
     expect(results.restock.amr).toBeGreaterThan(results.pick.amr * 1.5);
     expect(results.pick.shelf).toBeLessThan(0.25);
   });
@@ -58,7 +59,9 @@ describe('restock allocation (priority setting + low-stock mode)', () => {
     const amrs = w.robots.length - shelves;
     // オーダーがまだ無い（ピック待ちなし）ので棚ロボは全員、搬送ロボは配分ぶん
     expect(restockShelfCap(w)).toBeGreaterThanOrEqual(Math.round(shelves * AUTOMATION.lowStockRestockShare));
-    expect(restockAmrCap(w)).toBe(Math.round(amrs * AUTOMATION.lowStockRestockShare));
+    // ★ 入荷ステーションの能力（1 つにつき amrsPerInboundStation 台）で頭打ち
+    const inboundStations = w.stations.filter((s) => s.kind === 'inbound').length;
+    expect(restockAmrCap(w)).toBe(Math.min(inboundStations * AUTOMATION.amrsPerInboundStation, Math.round(amrs * AUTOMATION.lowStockRestockShare)));
     const r = measure(w, 2400);
     console.log('restock mode share', JSON.stringify(r));
     expect(r.shelf).toBeGreaterThan(0.45);

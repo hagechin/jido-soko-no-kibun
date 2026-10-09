@@ -336,11 +336,11 @@ export const ECONOMY = {
  * 以前は 40 / 150 / 400 / 1000 件で、完全自動化まで 2 時間以上かかって苦行だった → 1 年（72 分）以内を目安に短縮
  */
 export const RANKS = [
-  { name: tr(tr(tr(tr(tr(tr('町の小さな倉庫')))))), shipped: 0, area: 0, maxLevels: 2, maxExpansions: 0, bonusCoins: 0 },
-  { name: tr(tr(tr(tr(tr(tr('地域の倉庫')))))), shipped: 20, area: 0, maxLevels: 3, maxExpansions: 1, bonusCoins: 300 },
-  { name: tr(tr(tr(tr(tr(tr('配送センター')))))), shipped: 80, area: 16 * 12 + 4 * 12, maxLevels: 5, maxExpansions: 3, bonusCoins: 800 },
-  { name: tr(tr(tr(tr(tr(tr('物流センター')))))), shipped: 250, area: 16 * 12 + 8 * 12, maxLevels: 7, maxExpansions: 5, bonusCoins: 2000 },
-  { name: tr(tr(tr(tr(tr(tr('メガDC')))))), shipped: 700, area: 16 * 12 + 12 * 12, maxLevels: 8, maxExpansions: 99, bonusCoins: 5000 },
+  { name: tr(tr(tr(tr(tr(tr(tr('町の小さな倉庫'))))))), shipped: 0, area: 0, maxLevels: 2, maxExpansions: 0, bonusCoins: 0 },
+  { name: tr(tr(tr(tr(tr(tr(tr('地域の倉庫'))))))), shipped: 20, area: 0, maxLevels: 3, maxExpansions: 1, bonusCoins: 300 },
+  { name: tr(tr(tr(tr(tr(tr(tr('配送センター'))))))), shipped: 80, area: 16 * 12 + 4 * 12, maxLevels: 5, maxExpansions: 3, bonusCoins: 800 },
+  { name: tr(tr(tr(tr(tr(tr(tr('物流センター'))))))), shipped: 250, area: 16 * 12 + 8 * 12, maxLevels: 7, maxExpansions: 5, bonusCoins: 2000 },
+  { name: tr(tr(tr(tr(tr(tr(tr('メガDC'))))))), shipped: 700, area: 16 * 12 + 12 * 12, maxLevels: 8, maxExpansions: 99, bonusCoins: 5000 },
 ] as const;
 
 /** 自動化AI（§7.3 / §9.4） */
@@ -379,6 +379,11 @@ export const AUTOMATION = {
   restockPortHeadroom: 2,
   /** 入荷専任の搬送ロボを最低 1 台置くのは、搬送ロボがこの台数以上あるときだけ */
   dedicatedAmrMinFleet: 2,
+  /**
+   * ★ 入荷専任の搬送ロボは入荷ステーションの処理能力で頭打ちにする（サイバーウィークの事前入荷で全搬送ロボが入荷ステーションの列に並び、
+   * ピックが何週間も止まった対策）。ステーション 1 つにつきこの台数まで。残りの搬送ロボはピックのビンを先に運ぶ
+   */
+  amrsPerInboundStation: 2,
   /** 緊急の補充（入荷口の商品が欠品）のとき、入荷ビンがポートの出庫枠をいくつ残して使うか（ピックと同じ 1） */
   urgentPortHeadroom: 1,
   /** 入荷口にある商品の棚の在庫がビン何杯分を下回ったら「欠品しそう」として緊急の補充に含める（0 = 欠品してからだけ） */
@@ -416,10 +421,10 @@ export const ADVISOR = {
  */
 export type DifficultyId = 'easy' | 'normal' | 'hard' | 'superhard';
 export const DIFFICULTY: Record<DifficultyId, { name: string; desc: string; intervalFactor: number; backpressure: { startAt: number; perOrder: number; maxFactor: number }; lateGraceFactor: number; latePenaltyRep: number; queuePenaltyThreshold: number; coinFactor: number }> = {
-  easy: { name: tr(tr(tr(tr(tr(tr('イージー')))))), desc: tr(tr(tr(tr(tr(tr('客は少なめ。溜まるとすぐ受注を絞る。遅延にも寛容。報酬 ×0.9。小さな倉庫で自動化を眺める向け')))))), intervalFactor: 1.25, backpressure: { startAt: 3, perOrder: 0.25, maxFactor: 4 }, lateGraceFactor: 1.5, latePenaltyRep: 0.5, queuePenaltyThreshold: 15, coinFactor: 0.9 },
-  normal: { name: tr(tr(tr(tr(tr(tr('ノーマル')))))), desc: tr(tr(tr(tr(tr(tr('標準。キューが 5 件を超えると受注を絞る')))))), intervalFactor: 1.0, backpressure: { startAt: 5, perOrder: 0.15, maxFactor: 3 }, lateGraceFactor: 1.0, latePenaltyRep: 1, queuePenaltyThreshold: 10, coinFactor: 1.0 },
-  hard: { name: tr(tr(tr(tr(tr(tr('ハード')))))), desc: tr(tr(tr(tr(tr(tr('客が多く、受注抑制は弱い（最大 1.6 倍まで）。遅延の猶予短め。報酬 ×1.15。レイアウトとロボ配分の見直しが要る')))))), intervalFactor: 0.85, backpressure: { startAt: 8, perOrder: 0.08, maxFactor: 1.6 }, lateGraceFactor: 0.8, latePenaltyRep: 1.5, queuePenaltyThreshold: 8, coinFactor: 1.15 },
-  superhard: { name: tr(tr(tr(tr(tr(tr('スーパーハード')))))), desc: tr(tr(tr(tr(tr(tr('受注抑制なし。客は 1.4 倍、遅延の猶予は 2/3、遅延 1 件で評判 −2。報酬 ×1.3。シミュレーターに慣れた人向け')))))), intervalFactor: 0.7, backpressure: { startAt: 0, perOrder: 0, maxFactor: 1 }, lateGraceFactor: 0.65, latePenaltyRep: 2, queuePenaltyThreshold: 5, coinFactor: 1.3 },
+  easy: { name: tr(tr(tr(tr(tr(tr(tr('イージー'))))))), desc: tr(tr(tr(tr(tr(tr(tr('客は少なめ。溜まるとすぐ受注を絞る。遅延にも寛容。報酬 ×0.9。小さな倉庫で自動化を眺める向け'))))))), intervalFactor: 1.25, backpressure: { startAt: 3, perOrder: 0.25, maxFactor: 4 }, lateGraceFactor: 1.5, latePenaltyRep: 0.5, queuePenaltyThreshold: 15, coinFactor: 0.9 },
+  normal: { name: tr(tr(tr(tr(tr(tr(tr('ノーマル'))))))), desc: tr(tr(tr(tr(tr(tr(tr('標準。キューが 5 件を超えると受注を絞る'))))))), intervalFactor: 1.0, backpressure: { startAt: 5, perOrder: 0.15, maxFactor: 3 }, lateGraceFactor: 1.0, latePenaltyRep: 1, queuePenaltyThreshold: 10, coinFactor: 1.0 },
+  hard: { name: tr(tr(tr(tr(tr(tr(tr('ハード'))))))), desc: tr(tr(tr(tr(tr(tr(tr('客が多く、受注抑制は弱い（最大 1.6 倍まで）。遅延の猶予短め。報酬 ×1.15。レイアウトとロボ配分の見直しが要る'))))))), intervalFactor: 0.85, backpressure: { startAt: 8, perOrder: 0.08, maxFactor: 1.6 }, lateGraceFactor: 0.8, latePenaltyRep: 1.5, queuePenaltyThreshold: 8, coinFactor: 1.15 },
+  superhard: { name: tr(tr(tr(tr(tr(tr(tr('スーパーハード'))))))), desc: tr(tr(tr(tr(tr(tr(tr('受注抑制なし。客は 1.4 倍、遅延の猶予は 2/3、遅延 1 件で評判 −2。報酬 ×1.3。シミュレーターに慣れた人向け'))))))), intervalFactor: 0.7, backpressure: { startAt: 0, perOrder: 0, maxFactor: 1 }, lateGraceFactor: 0.65, latePenaltyRep: 2, queuePenaltyThreshold: 5, coinFactor: 1.3 },
 };
 export const DIFFICULTY_ORDER: DifficultyId[] = ['easy', 'normal', 'hard', 'superhard'];
 
@@ -436,8 +441,8 @@ export const DIFFICULTY_ORDER: DifficultyId[] = ['easy', 'normal', 'hard', 'supe
  */
 export type EconomyId = 'standard' | 'longrun';
 export const ECONOMY_MODES: Record<EconomyId, { name: string; desc: string; coinFactor: number; coinPerItemByRank: readonly number[] | null; costFactor: number; automationCostFactor: number; rankShippedFactor: number; rankBonusFactor: number }> = {
-  standard: { name: tr(tr(tr(tr(tr('標準'))))), desc: tr(tr(tr(tr(tr('コインはどんどん貯まり、ランクが上がると単価も上がる。自動化を眺めるまでが早い'))))), coinFactor: 1, coinPerItemByRank: null, costFactor: 1, automationCostFactor: 1, rankShippedFactor: 1, rankBonusFactor: 1 },
-  longrun: { name: tr(tr(tr(tr(tr('ロングラン'))))), desc: tr(tr(tr(tr(tr('コインが貯まりにくく（報酬 ×0.4、単価はランクでほぼ上がらない）、ロボと設備は 3 倍、自動化 AI は 1.5 倍、昇格に要る出荷数は 1.5 倍。しっかり調整すれば自動化まで約 1 時間、メガDC まで約 6 時間'))))), coinFactor: 0.4, coinPerItemByRank: [10, 11, 12, 13, 14], costFactor: 3, automationCostFactor: 1.5, rankShippedFactor: 1.5, rankBonusFactor: 0.5 },
+  standard: { name: tr(tr(tr(tr(tr(tr('標準')))))), desc: tr(tr(tr(tr(tr(tr('コインはどんどん貯まり、ランクが上がると単価も上がる。自動化を眺めるまでが早い')))))), coinFactor: 1, coinPerItemByRank: null, costFactor: 1, automationCostFactor: 1, rankShippedFactor: 1, rankBonusFactor: 1 },
+  longrun: { name: tr(tr(tr(tr(tr(tr('ロングラン')))))), desc: tr(tr(tr(tr(tr(tr('コインが貯まりにくく（報酬 ×0.4、単価はランクでほぼ上がらない）、ロボと設備は 3 倍、自動化 AI は 1.5 倍、昇格に要る出荷数は 1.5 倍。しっかり調整すれば自動化まで約 1 時間、メガDC まで約 6 時間')))))), coinFactor: 0.4, coinPerItemByRank: [10, 11, 12, 13, 14], costFactor: 3, automationCostFactor: 1.5, rankShippedFactor: 1.5, rankBonusFactor: 0.5 },
 };
 export const ECONOMY_ORDER: EconomyId[] = ['standard', 'longrun'];
 

@@ -53,19 +53,19 @@ export function renderBuild(body: HTMLElement, ctx: BuildContext): void {
   tools.addEventListener('scroll', () => (toolsScroll = tools.scrollLeft), { passive: true });
   const list: BuildTool[] = BUILD_TOOL_ORDER;
   list.forEach((t, i) => {
-    const label = t === 'erase' ? tr(tr(tr(tr(tr('撤去'))))) : t === 'move' ? tr(tr(tr(tr(tr('移動'))))) : BUILD_LABEL[t];
-    const cost = t === 'erase' || t === 'move' ? el('span', { class: 'cost', text: tr(tr(tr(tr(tr('無料'))))) }) : coinCost(buildCost(w, t));
-    const b = el('button', { class: `btn build-tool${ctx.state.tool === t ? ' is-active' : ''}`, type: 'button', title: tr(tr(tr(tr(tr('{0}（{1}）')))), label, i + 1) }, el('span', { class: 'ico' }, icon(ICON[t], 20)), el('span', { class: 'lbl' }, el('kbd', { class: 'key', text: String(i + 1) }), document.createTextNode(label)), cost);
+    const label = t === 'erase' ? tr(tr(tr(tr(tr(tr('撤去')))))) : t === 'move' ? tr(tr(tr(tr(tr(tr('移動')))))) : BUILD_LABEL[t];
+    const cost = t === 'erase' || t === 'move' ? el('span', { class: 'cost', text: tr(tr(tr(tr(tr(tr('無料')))))) }) : coinCost(buildCost(w, t));
+    const b = el('button', { class: `btn build-tool${ctx.state.tool === t ? ' is-active' : ''}`, type: 'button', title: tr(tr(tr(tr(tr(tr('{0}（{1}）'))))), label, i + 1) }, el('span', { class: 'ico' }, icon(ICON[t], 20)), el('span', { class: 'lbl' }, el('kbd', { class: 'key', text: String(i + 1) }), document.createTextNode(label)), cost);
     b.addEventListener('click', () => ctx.onToolChange(t));
     tools.append(b);
   });
   const left = maxExpansionsForRank(w) - w.expansions;
   for (const [dir, ico, lbl] of [
-    ['east', 'move-horizontal', tr(tr(tr(tr(tr('東へ +4列')))))],
-    ['south', 'move-vertical', tr(tr(tr(tr(tr('南へ +4行')))))],
+    ['east', 'move-horizontal', tr(tr(tr(tr(tr(tr('東へ +4列'))))))],
+    ['south', 'move-vertical', tr(tr(tr(tr(tr(tr('南へ +4行'))))))],
   ] as [ExpandDir, IconName, string][]) {
     const exCost = expansionCost(w, dir);
-    const ex = el('button', { class: 'btn build-tool', type: 'button', title: exCost === null ? '' : tr(tr(tr(tr(tr('{0} マス増える')))), expansionCells(w, dir)) }, el('span', { class: 'ico' }, icon(ico, 20)), el('span', { class: 'lbl', text: lbl }), exCost === null ? el('span', { class: 'cost', text: 'MAX' }) : left <= 0 ? el('span', { class: 'cost', text: tr(tr(tr(tr(tr('ランク'))))) }) : coinCost(exCost));
+    const ex = el('button', { class: 'btn build-tool', type: 'button', title: exCost === null ? '' : tr(tr(tr(tr(tr(tr('{0} マス増える'))))), expansionCells(w, dir)) }, el('span', { class: 'ico' }, icon(ico, 20)), el('span', { class: 'lbl', text: lbl }), exCost === null ? el('span', { class: 'cost', text: 'MAX' }) : left <= 0 ? el('span', { class: 'cost', text: tr(tr(tr(tr(tr(tr('ランク')))))) }) : coinCost(exCost));
     if (exCost === null || left <= 0 || w.coins < exCost) ex.setAttribute('disabled', 'true');
     ex.addEventListener('click', () => ctx.onExpand(dir));
     tools.append(ex);
@@ -73,13 +73,13 @@ export function renderBuild(body: HTMLElement, ctx: BuildContext): void {
   body.append(tools);
   tools.scrollLeft = toolsScroll;
   if (ctx.onOpenEditor) {
-    const open = el('button', { class: 'btn primary', type: 'button', title: 'L' }, iconText('layers', tr(tr(tr(tr(tr('レイアウトエディタ（倉庫を停止して俯瞰で配置換え）'))))), 16), el('kbd', { class: 'key', text: 'L' }));
+    const open = el('button', { class: 'btn primary', type: 'button', title: 'L' }, iconText('layers', tr(tr(tr(tr(tr(tr('レイアウトエディタ（倉庫を停止して俯瞰で配置換え）')))))), 16), el('kbd', { class: 'key', text: 'L' }));
     open.addEventListener('click', () => ctx.onOpenEditor!());
     body.append(el('div', { class: 'settings-row' }, open));
   }
-  const hint = ctx.state.tool === 'erase' ? tr(tr(tr(tr(tr('撤去する設備をタップ（無料）'))))) : ctx.state.tool === 'move' ? (ctx.state.held ? tr(tr(tr(tr(tr('移動先のセルをタップ'))))) : tr(tr(tr(tr(tr('動かす設備をタップ')))))) : tr(tr(tr(tr(tr('{0} を置くセルをタップ')))), BUILD_LABEL[ctx.state.tool]);
+  const hint = ctx.state.tool === 'erase' ? tr(tr(tr(tr(tr(tr('撤去する設備をタップ（無料）')))))) : ctx.state.tool === 'move' ? (ctx.state.held ? tr(tr(tr(tr(tr(tr('移動先のセルをタップ')))))) : tr(tr(tr(tr(tr(tr('動かす設備をタップ'))))))) : tr(tr(tr(tr(tr(tr('{0} を置くセルをタップ'))))), BUILD_LABEL[ctx.state.tool]);
   const lim = limitsFor(w);
   const atMax = expansionCost(w, 'east') === null && expansionCost(w, 'south') === null;
-  const capHint = limitHint(atMax, tr(tr(tr(tr(tr('{0}×{1} まで')))), LIMITS.expanded.maxWidth, LIMITS.expanded.maxHeight));
-  body.append(el('div', { class: 'build-hint' }, el('span', { text: hint }), el('span', { class: 'muted small', text: tr(tr(tr(tr(tr('　{0}×{1} マス（上限 {2}×{3}{4}） / 建設中はシミュレーション停止')))), w.width, w.height, lim.maxWidth, lim.maxHeight, capHint) })));
+  const capHint = limitHint(atMax, tr(tr(tr(tr(tr(tr('{0}×{1} まで'))))), LIMITS.expanded.maxWidth, LIMITS.expanded.maxHeight));
+  body.append(el('div', { class: 'build-hint' }, el('span', { text: hint }), el('span', { class: 'muted small', text: tr(tr(tr(tr(tr(tr('　{0}×{1} マス（上限 {2}×{3}{4}） / 建設中はシミュレーション停止'))))), w.width, w.height, lim.maxWidth, lim.maxHeight, capHint) })));
 }
