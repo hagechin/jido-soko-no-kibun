@@ -940,4 +940,8 @@ export const EN: Record<string, string> = {
   '暦: 1 か月 = 6 分。入荷トラックは設定の頻度で、季節イベントは月ごとに変わります': 'Calendar: 1 month = 6 minutes. Inbound trucks follow the frequency in Settings; seasonal events change monthly',
   '季節: いま売れやすい商品が変わります（上の帯の文を参照）': 'Season: changes which items sell well (see the banner above)',
   'ほか {0} 行（タップで全部見る）': '{0} more lines (tap to see all)',
+  'オーダーが溜まっています。ロボは最大強化済みなので、ロボの追加、ピック速度の強化、ピッキングステーションやポートの増設が効きます': 'Orders are piling up. Every robot is already maxed, so add robots, upgrade pick speed, or build more pick stations and ports',
+  '暦: 1 か月 = 6 分。入荷トラックは設定の頻度で、季節イベントは月ごとに変わります。いま: {0}、{1}': 'Calendar: 1 month = 6 minutes. Inbound trucks follow the frequency in Settings; seasonal events change monthly. Now: {0}, {1}',
+  'イベントなし': 'no event',
+  'ポート ({0}, {1})　出庫待ち {2}（ピック {3} / 入荷 {4}） / 返却待ち {5}': 'Port ({0}, {1})  outbound {2} (pick {3} / inbound {4}) / returns {5}',
 };

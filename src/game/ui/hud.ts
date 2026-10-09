@@ -1,5 +1,6 @@
 import { DIFFICULTY, RANKS, ECONOMY_MODES } from '../data/balance';
 import { formatDate, formatDateShort, SEASON_ICON } from '../sim/calendar';
+import { activeEvents } from '../data/seasons';
 import { icon } from './icon';
 import { dockBacklog } from '../sim/inbound';
 import { restockMode } from '../sim/automation';
@@ -30,6 +31,8 @@ export class Hud {
   private last = { coins: NaN, rank: -1, rep: NaN, date: '', speed: NaN, dock: NaN, difficulty: '', economy: '', restockMode: false, sandbox: false };
 
   private cycleBtn = $('speed-cycle');
+  /** 説明トースト用に最後に描いた倉庫 */
+  private lastWorld: WorldState | null = null;
   private lastNonZeroSpeed = 1;
 
   constructor(onSpeed: (speed: number) => void) {
@@ -40,7 +43,8 @@ export class Hud {
       [$('hud-rep'), () => tr('評判: 速い出荷で上がり、遅延や溜まりすぎで下がります。高いほど客が増えます')],
       [this.sandbox, () => tr('SB: サンドボックスを使ったセーブの印（正規の進行ではありません。新しく始めると消えます）')],
       [this.dock, () => tr('入荷口の滞留: トラックが運んできて、まだ棚に入っていない商品の数（{0} 個）。空ビンがあればロボが取り込みます', this.last.dock)],
-      [$('hud-date'), () => tr('暦: 1 か月 = 6 分。入荷トラックは設定の頻度で、季節イベントは月ごとに変わります')],
+      // スマホ幅ではランクと季節のアイコンが出ないので、日付の説明にランクと今の季節イベントも添える
+      [$('hud-date'), () => tr('暦: 1 か月 = 6 分。入荷トラックは設定の頻度で、季節イベントは月ごとに変わります。いま: {0}、{1}', this.rank.textContent, activeEvents(this.lastWorld?.calendar.month ?? 1, this.lastWorld?.calendar.week ?? 1).map((e) => e.name).join(tr('・')) || tr('イベントなし'))],
       [this.season, () => tr('季節: いま売れやすい商品が変わります（上の帯の文を参照）')],
     ];
     for (const [elm, text] of explain) {
@@ -66,6 +70,7 @@ export class Hud {
   }
 
   update(w: WorldState): void {
+    this.lastWorld = w;
     if (this.last.coins !== w.coins) {
       this.last.coins = w.coins;
       this.coins.textContent = Math.floor(w.coins).toLocaleString('ja-JP');

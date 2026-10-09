@@ -1040,7 +1040,7 @@ class Game {
     for (const e of events) {
       switch (e.type) {
         case 'shipped':
-          this.renderer.effects.ship(this.world, e.stationId, e.coins, e.bonus);
+          if (!this.catchingUp) this.renderer.effects.ship(this.world, e.stationId, e.coins, e.bonus); // 追いつき中は演出も出さない（音と同じ扱い）
           this.sound.ship(e.bonus);
           if (!this.calm.active) showToast(tr('出荷！ +{0} コイン{1}', e.coins, e.bonus > 1 ? tr('（×{0} ボーナス）', e.bonus) : ''), 2200, 'package-check');
           if (!this.catchingUp) nativeTry('haptic', { kind: 'light' });
