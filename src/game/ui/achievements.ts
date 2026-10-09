@@ -12,10 +12,12 @@ export function medalIcon(tier: number, size = 16): SVGSVGElement {
 }
 
 function row(s: AchievementStatus): HTMLElement {
-  const { def, tier, next, progress, value } = s;
-  const head = el('div', { class: 'ach-head' }, medalIcon(tier), el('span', { class: 'ach-name', text: def.name }), el('span', { class: 'muted small ach-medal', text: tier > 0 ? `${MEDALS[Math.min(tier, MEDALS.length) - 1]}（${def.tiers[tier - 1].label}）` : 'まだ' }));
+  const { def, tier, worldTier, next, progress, value } = s;
+  // 右上はプレイヤーの記録（メダル）。バーと「次」は今の倉庫の進み。記録の方が上なら「記録」と添える
+  const medalText = tier > 0 ? `${tier > worldTier ? '記録 ' : ''}${MEDALS[Math.min(tier, MEDALS.length) - 1]}（${def.tiers[tier - 1].label}）` : 'まだ';
+  const head = el('div', { class: 'ach-head' }, medalIcon(tier), el('span', { class: 'ach-name', text: def.name }), el('span', { class: 'muted small ach-medal', text: medalText }));
   const bar = el('div', { class: 'ach-bar' }, el('div', { class: 'ach-fill', style: `width:${Math.round(progress * 100)}%` }));
-  const foot = el('div', { class: 'muted small' }, el('span', { text: `${formatAchievementValue(def, value)}` }), el('span', { text: next ? ` → 次: ${next.label}` : '　コンプリート' }));
+  const foot = el('div', { class: 'muted small' }, el('span', { text: `この倉庫: ${formatAchievementValue(def, value)}` }), el('span', { text: next ? ` → 次: ${next.label}` : '　この倉庫でコンプリート' }));
   return el('div', { class: `ach-row${tier > 0 ? ' is-earned' : ''}` }, head, bar, foot, el('div', { class: 'muted small ach-desc', text: def.desc }));
 }
 
