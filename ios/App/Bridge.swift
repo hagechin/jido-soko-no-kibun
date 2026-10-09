@@ -70,9 +70,9 @@ final class Bridge {
             return true
         case "shareFile":
             // セーブの書き出し: WKWebView は blob: の <a download> を扱えない（遷移をキャンセルしている）ので、
-            // 一時ファイルに書いて共有シート（「ファイルに保存」「AirDrop」など）を出す
+            // 一時ファイルに書いて共有シート（「ファイルに保存」「AirDrop」など）を出す。出した時点で true
             guard let name = p["name"] as? String, let text = p["text"] as? String else { throw BridgeError.badParams }
-            try await shareFile(name: name, text: text)
+            try shareFile(name: name, text: text)
             return true
         case "cloudStatus":
             return ["available": cloud.available]
@@ -106,7 +106,7 @@ final class Bridge {
     }
 
     @MainActor
-    private func shareFile(name: String, text: String) async throws {
+    private func shareFile(name: String, text: String) throws {
         let safe = name.replacingOccurrences(of: "/", with: "_")
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("share", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -120,10 +120,8 @@ final class Bridge {
             pop.sourceView = webView
             pop.sourceRect = CGRect(x: webView.bounds.midX, y: webView.bounds.maxY - 80, width: 1, height: 1)
         }
-        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            sheet.completionWithItemsHandler = { _, _, _, _ in cont.resume() }
-            vc.present(sheet, animated: true)
-        }
+        // シートを出した時点で返事する（閉じるまで待たない。JS 側は 10 秒返事が無ければ「出せなかった」と判断する）
+        vc.present(sheet, animated: true)
     }
 
     private func reply(_ id: Int, _ payload: [String: Any]) {

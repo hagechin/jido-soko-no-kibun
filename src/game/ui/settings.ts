@@ -19,6 +19,9 @@ export interface SettingsContext {
   setQuality: (q: QualityLevel) => void;
   exportSave?: () => void;
   importSave?: (file: File) => void;
+  /** iOS アプリ: クリップボード経由の書き出し／読み込み（共有シートが出ないときの逃げ道） */
+  copySave?: () => void;
+  pasteSave?: () => void;
   lastSavedAt: number | null;
   /** 難易度（受注まわりだけに効く。途中で変更できる） */
   difficulty?: DifficultyId;
@@ -29,6 +32,8 @@ export interface SettingsContext {
   /** 入荷トラック（頻度と積載量。途中で変更できる） */
   inbound?: { freq: InboundFreqId; load: InboundLoadId; stockBins: number };
   setInbound?: (next: Partial<{ freq: InboundFreqId; load: InboundLoadId }>) => void;
+  /** iOS アプリ: アプリのバージョンと同梱 Web のビルド情報（同梱が古くないかの確認用） */
+  buildInfo?: string;
   /** 操作方法を開く */
   openHelp?: () => void;
   /** バックグラウンド動作（他のタブを見ている間も進める） */
@@ -174,6 +179,7 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
   const saveBtn = el('button', { class: 'btn', type: 'button' }, iconText('save', '今すぐセーブ'));
   saveBtn.addEventListener('click', () => showToast(ctx.saveNow() ? 'セーブしました' : 'セーブできませんでした'));
   body.append(el('div', { class: 'settings-row' }, saveBtn, el('span', { class: 'muted small', id: 'last-saved', text: lastSavedText(ctx.lastSavedAt) })));
+  if (ctx.buildInfo) body.append(el('p', { class: 'muted small', text: ctx.buildInfo }));
   if (ctx.exportSave) {
     const ex = el('button', { class: 'btn', type: 'button' }, iconText('upload', 'ファイルに書き出し'));
     ex.addEventListener('click', () => ctx.exportSave!());
@@ -186,6 +192,14 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     });
     im.append(input);
     body.append(el('div', { class: 'settings-row' }, ex, im));
+    if (ctx.copySave && ctx.pasteSave) {
+      const cp = el('button', { class: 'btn', type: 'button' }, iconText('copy', 'クリップボードにコピー'));
+      cp.addEventListener('click', () => ctx.copySave!());
+      const ps = el('button', { class: 'btn', type: 'button' }, iconText('clipboard', 'クリップボードから読み込み'));
+      ps.addEventListener('click', () => ctx.pasteSave!());
+      body.append(el('div', { class: 'settings-row' }, cp, ps));
+      body.append(el('p', { class: 'muted small', text: '「ファイルに書き出し」は共有シート（ファイルに保存・AirDrop）。シートが出ないときはクリップボード経由で、メモなどに貼り付けて保管できます' }));
+    }
   }
   if (ctx.cloud) {
     const c = ctx.cloud;

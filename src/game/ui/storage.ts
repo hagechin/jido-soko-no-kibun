@@ -87,7 +87,8 @@ export async function exportSaveFile(w: WorldState): Promise<string | null> {
   const name = exportFileName();
   if (native.available) {
     try {
-      await native.call('shareFile', { name, text }, 120_000);
+      // 共有シートを出した時点で返事が来る。10 秒来なければ Swift 側が古い（shareFile 未対応）か、シートを出せなかった
+      await native.call('shareFile', { name, text }, 10_000);
       return null;
     } catch (e) {
       return e instanceof Error ? e.message : String(e);
@@ -103,6 +104,28 @@ export async function exportSaveFile(w: WorldState): Promise<string | null> {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   return null;
+}
+
+/** セーブをクリップボードへ（iOS で共有シートが使えないときの逃げ道。メモや「ファイル」に貼り付けて保管できる）。失敗したら理由 */
+export async function copySaveToClipboard(w: WorldState): Promise<string | null> {
+  try {
+    await navigator.clipboard.writeText(serialize(w));
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+}
+
+/** クリップボードのセーブを読み込む（iOS は貼り付けの許可ダイアログが出る） */
+export async function importSaveFromClipboard(): Promise<LoadResult> {
+  let text: string;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch (e) {
+    return { ok: false, reason: `クリップボードを読めませんでした（${e instanceof Error ? e.message : String(e)}）` };
+  }
+  if (!text.trim()) return { ok: false, reason: 'クリップボードが空です' };
+  return deserialize(text);
 }
 
 /** ファイルからセーブを読み込む */

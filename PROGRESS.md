@@ -1006,3 +1006,14 @@ npm run preview   # http://localhost:4321 で確認
 
 - **原因**: 画面のどこかを触ったら提案ボタンを隠す `pointerdown` の監視（`calmMode.ts`）が、ボタン自身のタップにも反応していた。pointerdown でボタンが `display:none` になり、pointerup はその下のキャンバスに落ちるので、`click` はボタンに届かない（タッチでは必ず、マウスでも起きる）。iPhone エミュレーションの Playwright で再現（タップ後も `is-calm` にならない）
 - ★ ボタン内の pointerdown は無視するように修正。同じ検証でタップ後に眺めモードに入る。下部バーの「眺める」とキーボードの N は元から別経路で動いていた
+
+---
+
+## セーブの書き出し（続き）: 実機・シミュレータとも無反応
+
+- JS 側は偽装ブリッジの Playwright で「ファイルに書き出し」→ `shareFile { name, text }` が飛ぶのを確認。無反応でトーストも出ないのは「同梱 Web が古い」（`ios/Web` は git 管理外。`./ios/sync-web.sh` を通さないと JS が更新されない）か「Swift 側がシートを出せていない」のどちらか
+- ★ 切り分けと逃げ道:
+  - 設定の「セーブ」の下に「アプリ 1.0 (n)・同梱 Web commit=… date=…」を表示（`BUILD_INFO` を fetch。無ければ「sync-web.sh を通していない？」）
+  - Swift はシートを出した時点で返事（閉じるまで待たない）。JS は 10 秒返事が無ければ「書き出せませんでした: native timeout」のトースト（Swift が古い＝`shareFile` 未対応なら「未知のメソッド」）
+  - iOS 版の設定に「クリップボードにコピー」「クリップボードから読み込み」を追加（`navigator.clipboard`。読み込みは iOS の貼り付け許可ダイアログ）。共有シートが出なくてもメモなどに貼り付けて保管できる。偽装ブリッジでコピー → 読み込みの往復を確認
+- TESTPLAN D9 を更新
