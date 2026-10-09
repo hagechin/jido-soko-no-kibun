@@ -68,6 +68,12 @@ final class Bridge {
         case "haptic":
             Haptics.play(kind: p["kind"] as? String ?? "light")
             return true
+        case "shareFile":
+            // セーブの書き出し: WKWebView は blob: の <a download> を扱えない（遷移をキャンセルしている）ので、
+            // 一時ファイルに書いて共有シート（「ファイルに保存」「AirDrop」など）を出す
+            guard let name = p["name"] as? String, let text = p["text"] as? String else { throw BridgeError.badParams }
+            try await shareFile(name: name, text: text)
+            return true
         case "cloudStatus":
             return ["available": cloud.available]
         case "cloudLoad":
@@ -99,6 +105,27 @@ final class Bridge {
         }
     }
 
+    @MainActor
+    private func shareFile(name: String, text: String) async throws {
+        let safe = name.replacingOccurrences(of: "/", with: "_")
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("share", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(safe)
+        try text.write(to: url, atomically: true, encoding: .utf8)
+        guard let webView, var vc = webView.window?.rootViewController else { throw BridgeError.noWindow }
+        while let presented = vc.presentedViewController { vc = presented }
+        let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        // iPad はポップオーバーの起点が要る
+        if let pop = sheet.popoverPresentationController {
+            pop.sourceView = webView
+            pop.sourceRect = CGRect(x: webView.bounds.midX, y: webView.bounds.maxY - 80, width: 1, height: 1)
+        }
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            sheet.completionWithItemsHandler = { _, _, _, _ in cont.resume() }
+            vc.present(sheet, animated: true)
+        }
+    }
+
     private func reply(_ id: Int, _ payload: [String: Any]) {
         guard let webView, let json = Bridge.json(payload) else { return }
         webView.evaluateJavaScript("window.__native && window.__native.reply(\(id), \(json))", completionHandler: nil)
@@ -117,9 +144,11 @@ final class Bridge {
 enum BridgeError: LocalizedError {
     case badParams
     case unknownMethod(String)
+    case noWindow
     var errorDescription: String? {
         switch self {
         case .badParams: return "パラメータが不正です"
+        case .noWindow: return "画面を出せませんでした"
         case .unknownMethod(let m): return "未知のメソッド: \(m)"
         }
     }

@@ -991,3 +991,11 @@ npm run preview   # http://localhost:4321 で確認
   - お留守番はトラック回数を頻度で換算（月 1 は週数 / 4）。欠品待ちのトーストは頻度の名前を出す
 - アドバイザー: 自動補充 AI があり入荷口が空で、空ビンが全ビンの 4 割以上（60 個以上）なら「積載量を倉庫いっぱいに」を提案。ヘルプに追記
 - テスト: `inbound.test.ts` +2（頻度で間隔と 1 回の量が変わり週あたりは同じ／積載量と倉庫いっぱいの目標と頭打ち）。全 161 件 OK。TESTPLAN M43
+
+---
+
+## iOS でセーブの書き出しが無反応
+
+- **原因**: 書き出しは Blob URL を `<a download>` でクリックする実装。iOS の WebView（`WebView.swift`）は `hakoniwa://` 以外への遷移をすべてキャンセルするので `blob:` が握りつぶされ、何も起きなかった（WKWebView はそもそも `download` 属性でのダウンロードを扱えない）
+- ★ ブリッジに `shareFile { name, text }` を追加（`Bridge.swift`）: 一時ファイルに書いて `UIActivityViewController`（共有シート。「ファイルに保存」「AirDrop」など）を出す。iPad はボタン付近のポップオーバー。シートを閉じたら解決。`exportSaveFile` は iOS ではこれを呼び、Web はこれまでどおりブラウザのダウンロード。失敗はトースト「書き出せませんでした: …」（`storage.ts`、`main.ts`）
+- 読み込み（`<input type=file>`）は WKWebView で動くのでそのまま。SPEC-iOS §2 に `shareFile`、TESTPLAN D9

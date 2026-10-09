@@ -70,6 +70,7 @@ Swift → JS: `window.__native.reply(id, { ok, result | error })` / `window.__na
 | `delete` | `{ key }` | `true` | 新しく始める |
 | `wakeLock` | `{ on }` | `true` | 眺めモードの画面点けっぱなし（`isIdleTimerDisabled`） |
 | `haptic` | `{ kind: 'light' \| 'success' \| 'warning' }` | `true` | 出荷・昇格・警告の触覚 |
+| `shareFile` | `{ name, text }` | `true`（シートを閉じたら） | セーブの書き出し。一時ファイルに書いて共有シート（「ファイルに保存」「AirDrop」など）を出す。WKWebView は `blob:` の `<a download>` を扱えない（外部遷移をキャンセルしている）ため |
 | `products` | – | `[{ id, title, description, price, purchased }]` | ストア画面 |
 | `purchase` | `{ id }` | `{ state: 'purchased' \| 'pending' \| 'cancelled' }` | 購入 |
 | `restore` | – | `{ ids }` | 購入の復元 |
@@ -80,7 +81,7 @@ Swift → JS: `window.__native.reply(id, { ok, result | error })` / `window.__na
 ## 3. セーブ
 
 - 本体: `Documents/saves/<key>.json`（アトミック書き込み）。localStorage は従来どおり書くが、起動時はネイティブの保存を優先して localStorage に流し込む
-- 書き出し／読み込み（ファイル）は Web 版と同じ JSON
+- 書き出し／読み込み（ファイル）は Web 版と同じ JSON。書き出しは共有シート（`shareFile`）、読み込みは `<input type=file>`（ファイル App から選ぶ）
 - iCloud 同期（I6）: `NSUbiquitousKeyValueStore`（キー値ストア）にセーブを 1 本、zlib 圧縮して置く（`CloudStore.swift`。1 キー 1MB の制限。900KB を超えたら送らない）。entitlement `com.apple.developer.ubiquity-kvstore-identifier`（有料の Developer Program が要る。無料の Personal Team なら `project.yml` の entitlements を外す）
   - ★ 方針: 端末のセーブが本体。クラウドは「他の端末から持ってくる」ためで、勝手に上書きしない
   - 保存のたびに送る（60 秒に 1 回まで。背面に回るときは即）。ブリッジ: `cloudStatus` / `cloudLoad` / `cloudSave` / `cloudClear`、イベント `cloudChanged`（他の端末から届いた）
