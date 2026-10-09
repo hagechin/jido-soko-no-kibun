@@ -41,13 +41,14 @@ export class BottomBar {
   }
 
   show(id: PanelId): void {
-    if (this.current !== id) this.sheetBody.scrollTop = 0; // 別のパネルに切り替えたら先頭から
+    const switched = this.current !== id;
     this.current = id;
     const titles: Record<PanelId, string> = { build: '建設モード', upgrades: 'アップグレード', inventory: '在庫', settings: '設定', station: 'ステーション', debug: 'サンドボックス', robots: 'ロボ一覧', port: 'ポート', store: '追加機能ストア' };
     this.sheetTitle.textContent = titles[id];
     this.sheet.classList.toggle('is-compact', id === 'build');
     this.refresh();
     this.sheet.hidden = false;
+    if (switched) this.sheetBody.scrollTop = 0; // 別のパネルに切り替えたら先頭から（描いたあとに戻す）
     for (const b of document.querySelectorAll<HTMLButtonElement>('.bar-btn[data-panel]')) {
       b.classList.toggle('is-active', b.dataset.panel === id);
     }

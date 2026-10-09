@@ -198,7 +198,7 @@ export class CalmMode {
       cam.append(b);
     }
     box.append(cam);
-    box.append(el('p', { class: 'muted small', text: 'MANUAL: W/A/S/D・矢印キーで移動、Q/E で回転、R/F で見下ろし角、Z/X でズーム。ドラッグ・ホイールも使えます。眺めモード中は M キーで AUTO/MANUAL 切替、Esc で終了' }));
+    if (this.settings.camera === 'manual') box.append(el('p', { class: 'muted small', text: 'MANUAL: W/A/S/D・矢印キーで移動、Q/E で回転、R/F で見下ろし角、Z/X でズーム。ドラッグ・ホイールも使えます。眺めモード中は M キーで AUTO/MANUAL 切替、Esc で終了' }));
     box.append(el('p', { class: 'muted small', text: '眺めモード中は描画を落として省電力にします。90 秒操作が無いと提案が出ます。' }));
 
     box.append(el('h4', { text: '画面' }));

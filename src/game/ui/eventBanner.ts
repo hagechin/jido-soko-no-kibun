@@ -49,10 +49,12 @@ export class Modal {
     this.title.textContent = title;
     this.body.replaceChildren(...content);
     this.root.hidden = false;
+    document.body.classList.add('has-modal');
   }
 
   hide(): void {
     this.root.hidden = true;
+    document.body.classList.remove('has-modal');
     this.onClose?.();
     const next = this.queue.shift();
     if (next) this.show(next.title, ...next.content);

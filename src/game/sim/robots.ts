@@ -65,6 +65,26 @@ export function nearestPort(w: WorldState, x: number, z: number, filter?: (p: Wo
   return best;
 }
 
+/** 一番空いている入荷ステーション（向かっている・並んでいる・作業中の台数が少ないもの。同じなら近い方）★ 全員が一番近い 1 つに並ぶのを防ぐ */
+export function leastLoadedInboundStation(w: WorldState, from: { x: number; z: number }): WorldState['stations'][number] | null {
+  const load = new Map<number, number>();
+  for (const o of w.robots) {
+    const j = o.job;
+    if (o.kind === 'amr' && j?.type === 'deliver') load.set(j.stationId, (load.get(j.stationId) ?? 0) + 1);
+  }
+  let best = null as WorldState['stations'][number] | null;
+  let bs = Infinity;
+  for (const s of w.stations) {
+    if (s.kind !== 'inbound') continue;
+    const score = (load.get(s.id) ?? 0) * 1000 + manhattan(from, s);
+    if (score < bs) {
+      bs = score;
+      best = s;
+    }
+  }
+  return best;
+}
+
 export function nearestStation(w: WorldState, x: number, z: number, kind: 'pick' | 'inbound') {
   let best = null as WorldState['stations'][number] | null;
   let bd = Infinity;
@@ -147,7 +167,15 @@ export function leastLoadedPort(w: WorldState, near: { x: number; z: number }, f
 export function destinationOf(w: WorldState, r: Robot, binId: number): number | null {
   const b = w.bins[binId];
   if (!b) return null;
-  if (b.purpose === 'inbound') return nearestStation(w, r.pose.x, r.pose.z, 'inbound')?.id ?? null;
+  if (b.purpose === 'inbound') {
+    // 入荷ビンはどの入荷ステーションでもよい。向かっている先が入荷ステーションならそこ、まだなら一番空いているところ
+    const j = r.job;
+    if (j?.type === 'deliver') {
+      const cur = w.stations.find((s) => s.id === j.stationId);
+      if (cur?.kind === 'inbound') return cur.id;
+    }
+    return leastLoadedInboundStation(w, r.pose)?.id ?? null;
+  }
   if (b.item) {
     const s = w.stations.find((s) => s.kind === 'pick' && s.assignedItems.includes(b.item!));
     if (s) return s.id;
@@ -213,10 +241,11 @@ export function nextStationFor(w: WorldState, r: Robot): number | null {
   let best: number | null = null;
   let bd = Infinity;
   for (const id of left) {
-    const sid = destinationOf(w, r, id);
-    const st = w.stations.find((s) => s.id === sid);
+    const b = w.bins[id];
+    const st = b?.purpose === 'inbound' ? leastLoadedInboundStation(w, r.pose) : w.stations.find((s) => s.id === destinationOf(w, r, id));
     if (!st) continue;
-    const d = manhattan(r.pose, st);
+    // ★ ピックのビンを先に届ける（入荷ステーションは列ができやすく、ピックのビンを抱えたまま並ぶと出荷が止まる）
+    const d = manhattan(r.pose, st) + (st.kind === 'inbound' ? 100000 : 0);
     if (d < bd) {
       bd = d;
       best = st.id;
@@ -229,6 +258,8 @@ export function nextStationFor(w: WorldState, r: Robot): number | null {
 export function cargoForStation(w: WorldState, r: Robot, stationId: number): number[] {
   const left = unprocessedCargo(w, r);
   if (r.job?.type === 'deliver' && r.job.manual) return left;
+  const st = w.stations.find((s) => s.id === stationId);
+  if (st?.kind === 'inbound') return left.filter((id) => w.bins[id]?.purpose === 'inbound'); // 入荷ビンはどの入荷ステーションでも処理できる
   return left.filter((id) => destinationOf(w, r, id) === stationId);
 }
 
@@ -754,7 +785,8 @@ function nextLoadableBin(w: WorldState, r: Robot, port: WorldState['ports'][numb
     return idx >= 0 ? idx : null;
   }
   const pri = w.automation.amrPriority;
-  const want = r.carrying.length ? purposeOf(w, r.carrying[0]) : pri === 'pick' ? 'pick' : pri === 'restock' ? 'inbound' : null;
+  // 積む順: 積んでいるビンと同じ行き先。空なら優先設定（均等でもピックを先に: オーダーが待っている）
+  const want = r.carrying.length ? purposeOf(w, r.carrying[0]) : pri === 'restock' ? 'inbound' : 'pick';
   if (want) {
     const idx = port.outbound.findIndex((id) => purposeOf(w, id) === want);
     if (idx >= 0) return idx;
@@ -791,6 +823,16 @@ function amrDeliver(w: WorldState, rt: Runtime, r: Robot, job: Extract<AmrJob, {
     if (!isDrone(r) && (!atGoal(w, r) || job.staged)) {
       const busy = headingTo(w, 'station', st.id, r);
       if (busy >= approachCapacity(w, st.x, st.z)) {
+        // ★ 入荷ステーションの順番待ちなら、空いている別の入荷ステーションがあればそちらへ
+        if (st.kind === 'inbound') {
+          const alt = w.stations.find((s) => s.kind === 'inbound' && s.id !== st!.id && headingTo(w, 'station', s.id, r) < approachCapacity(w, s.x, s.z));
+          if (alt) {
+            job.stationId = alt.id;
+            job.staged = false;
+            setGoal(rt, r, null);
+            return;
+          }
+        }
         job.staged = true;
         const g = stagingGoal(w, r);
         if (g && !w.waitSpots.some((s) => s.x === r.pose.x && s.z === r.pose.z)) setGoal(rt, r, g);

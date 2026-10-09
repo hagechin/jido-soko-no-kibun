@@ -174,7 +174,9 @@ export function restockAmrCap(w: WorldState): number {
   if (!w.pallets.length) return 0;
   // ★ 搬送ロボが 1 台しかない倉庫では専任にしない（唯一の 1 台が入荷ビンだけを運ぶとピックが止まり、遅延で評判が落ちる）。入荷ビンは手が空いたときに運ぶ
   const floor = amrs >= AUTOMATION.dedicatedAmrMinFleet ? 1 : 0;
-  return Math.min(amrs, Math.max(floor, Math.round(amrs * restockShare(w))));
+  // ★ 入荷ステーションの処理能力以上に専任を増やしても列に並ぶだけ（ピックが止まる）
+  const inboundStations = w.stations.filter((s) => s.kind === 'inbound').length;
+  return Math.min(amrs, inboundStations * AUTOMATION.amrsPerInboundStation, Math.max(floor, Math.round(amrs * restockShare(w))));
 }
 
 // ------------------------------------------------------------------ 棚ロボ
@@ -494,10 +496,10 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
     }
     return best;
   };
-  // 専任は入荷モード／欠品が入荷口にあるときだけ。普段は優先設定でポートを選ぶだけ（積む順も優先設定）
-  const dedicated = restockMode(w) || urgentRestock(w);
-  const cap = dedicated ? restockAmrCap(w) : 0;
-  if (dedicated && inboundAmrs < cap) {
+  // ★ 入荷口に山があれば、配分（restockAmrCap。入荷ステーションの能力で頭打ち）のぶんは入荷ビンだけを運ぶ専任にする。
+  //   残りはピックのビン（オーダーが待っている）を先に運び、ピックのビンが無いときだけ入荷ビンも運ぶ（専任が 0 台なら誰でも運ぶ）
+  const cap = w.pallets.length ? restockAmrCap(w) : 0;
+  if (cap > 0 && inboundAmrs < cap) {
     const port = pickPort((p) => avail(p) && hasPurpose(p, 'inbound'));
     if (port) {
       r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false, only: 'inbound' };
@@ -507,23 +509,21 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
   }
   const pri = w.automation.amrPriority;
   let port = null as WorldState['ports'][number] | null;
-  if (dedicated) {
-    // ピック側: ピックのビンがあるポートを先に。入荷ビンは専任に任せる（専任が 0 台なら誰でも運ぶ）
-    port = pickPort((p) => avail(p) && hasPurpose(p, 'pick'));
-    if (port) {
-      r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false, only: cap > 0 ? 'pick' : undefined };
-      r.step = 0;
-      return true;
-    }
-    if (cap > 0) return false;
-  } else if (pri !== 'balanced') {
-    port = pickPort((p) => avail(p) && hasPurpose(p, pri === 'pick' ? 'pick' : 'inbound'));
+  if (pri === 'restock') {
+    port = pickPort((p) => avail(p) && hasPurpose(p, 'inbound'));
     if (port) {
       r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false };
       r.step = 0;
       return true;
     }
   }
+  port = pickPort((p) => avail(p) && hasPurpose(p, 'pick'));
+  if (port) {
+    r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false, only: cap > 0 ? 'pick' : undefined };
+    r.step = 0;
+    return true;
+  }
+  if (cap > 0) return false; // 入荷ビンは専任に任せる
   port = pickPort(avail); // 停止中のポートの出庫ビンも運ぶ
   if (!port) return false;
   r.job = { type: 'fetch', portId: port.id, stationId: null, manual: false };

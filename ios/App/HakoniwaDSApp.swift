@@ -35,7 +35,8 @@ struct HakoniwaDSApp: App {
                     switch phase {
                     case .background: BridgeEvents.shared.emit("background", payload: [:])
                     case .active:
-                        // 背面から戻ったらオーディオセッションを戻す（JS 側は foreground で BGM を立て直す）
+                        // 背面から戻ったらオーディオセッションを切ってつなぎ直す（JS 側は foreground で AudioContext を作り直す）
+                        try? AVAudioSession.sharedInstance().setActive(false)
                         try? AVAudioSession.sharedInstance().setActive(true)
                         BridgeEvents.shared.emit("foreground", payload: [:])
                     default: break
