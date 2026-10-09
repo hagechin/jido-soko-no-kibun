@@ -97,6 +97,7 @@ export function applyOffline(w: WorldState, elapsedMs: number): OfflineReport {
   // トラックの回数は設定の頻度で（週 1 以外は週数 × 週あたりの回数）
   report.trucks = Math.floor(report.trucks * INBOUND_FREQ[inboundSettings(w).freq].perWeek);
   w.tick = endTick;
+  w.stats.offlineMsTotal = (w.stats.offlineMsTotal ?? 0) + report.elapsedMs;
   w.nextTruckTick = undefined; // 留守中のトラックはここでまとめて足すので、次の定期トラックは次の区切りから
   w.calendar = calendarFromTick(endTick);
   w.season.active = activeEvents(w.calendar.month, w.calendar.week).map((e) => e.id as string);

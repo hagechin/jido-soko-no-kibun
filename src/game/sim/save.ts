@@ -4,6 +4,7 @@
  */
 import { SAVE } from '../data/balance';
 import { createWorld } from './world';
+import { initAchievementsSilently } from './achievements';
 import type { WorldState } from './types';
 import { tr } from '../i18n';
 
@@ -56,6 +57,8 @@ export function migrate(world: WorldState, _from: number): WorldState {
   out.nextIds = { ...fresh.nextIds, ...(world.nextIds ?? {}) };
   out.trucks = world.trucks ?? [];
   out.pallets = world.pallets ?? [];
+  // 古いセーブ: すでに達している実績はトーストを出さずに記録する
+  if (!world.achievements) initAchievementsSilently(out);
   return out;
 }
 

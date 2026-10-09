@@ -279,7 +279,10 @@ export function executeMovement(w: WorldState, rt: Runtime, r: Robot): void {
     r.actRemaining--;
     if (r.actRemaining > 0) return;
     if (r.phase === 'moving' || r.phase === 'turning') {
-      if (r.moveTo) r.pose = { ...r.moveTo };
+      if (r.moveTo) {
+        w.stats.travelCells += Math.abs(r.moveTo.x - r.pose.x) + Math.abs(r.moveTo.z - r.pose.z);
+        r.pose = { ...r.moveTo };
+      }
       r.moveTo = null;
       r.phase = 'idle';
     } else if (r.phase === 'waiting') {

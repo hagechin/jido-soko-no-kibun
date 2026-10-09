@@ -200,6 +200,26 @@ export interface Stats {
   shippedLastWeek: Record<string, number>;
   /** 入荷トラックの到着回数 */
   trucks: number;
+  // ---- アチーブメント用の計測（★ 古いセーブには無いので migrate で 0 を補う）
+  /** 全ロボの移動マス数の累計（1 マス = 1 m） */
+  travelCells: number;
+  /** 完全自動化（配車 Lv3・補充・再配置）が揃った tick。未達は null */
+  fullAutomationTick: number | null;
+  /** 同時に溜まったオーダーの最大件数 */
+  queueMax: number;
+  /** 遅延ペナルティを受けたオーダーの累計 */
+  latePenalties: number;
+  /** 評判が 0 になった回数 */
+  reputationZeroCount: number;
+  /** 評判 100 が続き始めた tick（100 未満なら null）と、続いた最長の tick 数 */
+  rep100SinceTick: number | null;
+  rep100BestTicks: number;
+  /** 地上の搬送ロボの半分以上が横付け待ちだった tick 数の累計 */
+  jamTicks: number;
+  /** お留守番レポートになった実時間の合計（ms） */
+  offlineMsTotal: number;
+  /** 1 週の出荷件数の最高 */
+  weeklyShippedBest: number;
 }
 
 export interface CyberWeekRecord {
@@ -257,6 +277,8 @@ export interface WorldState {
   inbound?: { freq: InboundFreqId; load: InboundLoadId };
   /** 次の定期トラックを手配する tick（省略なら次の区切りから） */
   nextTruckTick?: number;
+  /** 解放したアチーブメント: id → 達した段（1 = 銅 …）と tick。古いセーブは migrate で静かに初期化 */
+  achievements?: Record<string, { tier: number; at: number }>;
   width: number;
   height: number;
   cells: CellKind[];
@@ -305,4 +327,5 @@ export type SimEvent =
   | { type: 'eventStart'; id: string; banner: string }
   | { type: 'eventEnd'; id: string }
   | { type: 'cyberWeekReport'; record: CyberWeekRecord }
-  | { type: 'pick'; stationId: number; item: string; count: number };
+  | { type: 'pick'; stationId: number; item: string; count: number }
+  | { type: 'achievement'; id: string; tier: number };

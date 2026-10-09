@@ -116,6 +116,7 @@ export function updateOrders(w: WorldState): void {
     if (o.shownTick === null) o.shownTick = w.tick;
     if (!o.penalized && w.tick - lateClockStart(o) > lateLimitTicks(o, w)) {
       o.penalized = true;
+      w.stats.latePenalties++;
       changeReputation(w, -difficultyOf(w).latePenaltyRep, tr('出荷が遅れた'));
     }
   }

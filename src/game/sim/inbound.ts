@@ -93,6 +93,8 @@ export function scheduleTruck(w: WorldState, pallets: { item: string; qty: numbe
 
 /** 週替わり処理: 先週の実績を確定する（トラックの手配は updateInbound が間隔ごとに行う） */
 export function onNewWeek(w: WorldState): void {
+  const thisWeek = Object.values(w.stats.shippedThisWeek).reduce((a, b) => a + b, 0);
+  w.stats.weeklyShippedBest = Math.max(w.stats.weeklyShippedBest ?? 0, thisWeek);
   w.stats.shippedLastWeek = { ...w.stats.shippedThisWeek };
   w.stats.shippedThisWeek = {};
 }

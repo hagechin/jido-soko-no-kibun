@@ -570,3 +570,51 @@ export const UI = {
   /** 眺めモードを提案するまでの無操作時間（ms） */
   idleSuggestMs: 90_000,
 };
+
+// ---- アチーブメント（★ SPEC-ACHIEVEMENTS.md） ----------------------------------
+/**
+ * 金銀銅（＋距離だけプラチナ・月）。計測はすべて sim 時間ベース（倍速で早くはならない）。
+ * value の単位は unit で決まる。tiers は昇順で、達した最後の段がメダル。label は一覧に出す説明（距離の「東京〜山梨」など）
+ */
+export type AchievementUnit = 'count' | 'km' | 'coins' | 'simMin' | 'calMonths' | 'realDays' | 'rank' | 'step';
+export interface AchievementTier {
+  value: number;
+  label: string;
+}
+export interface AchievementDef {
+  id: string;
+  name: string;
+  desc: string;
+  unit: AchievementUnit;
+  /** ネガティブ称号（一覧では別の見出し） */
+  negative?: boolean;
+  tiers: AchievementTier[];
+}
+/** メダルの名前（tiers の添字順） */
+export const MEDALS = [tr('銅'), tr('銀'), tr('金'), tr('プラチナ'), tr('月')] as const;
+export const ACHIEVEMENTS: AchievementDef[] = [
+  { id: 'automation', name: tr('完全自動化'), desc: tr('自動配車AI Lv3・自動補充AI・在庫再配置AI が揃うまでの時間（開始からの sim 時間）'), unit: 'step', tiers: [{ value: 1, label: tr('達成') }, { value: 2, label: tr('90 分以内') }, { value: 3, label: tr('45 分以内') }] },
+  { id: 'weekly', name: tr('週間出荷'), desc: tr('1 週（90 秒）に出荷した件数の最高'), unit: 'count', tiers: [{ value: 20, label: tr('20 件') }, { value: 50, label: tr('50 件') }, { value: 120, label: tr('120 件') }] },
+  { id: 'shipped', name: tr('累計出荷'), desc: tr('出荷したオーダーの累計'), unit: 'count', tiers: [{ value: 1_000, label: tr('1,000 件') }, { value: 10_000, label: tr('1 万件') }, { value: 100_000, label: tr('10 万件') }] },
+  { id: 'distance', name: tr('総移動距離'), desc: tr('全ロボが走った距離の累計（1 マス = 1 m）'), unit: 'km', tiers: [{ value: 100, label: tr('100 km（東京〜山梨）') }, { value: 2_000, label: tr('2,000 km（日本を端から端まで）') }, { value: 20_000, label: tr('20,000 km（地球半周）') }, { value: 40_000, label: tr('40,000 km（地球一周）') }, { value: 384_400, label: tr('384,400 km（月まで）') }] },
+  { id: 'carried', name: tr('運んだビン'), desc: tr('全ロボが目的地に下ろしたビンの合計'), unit: 'count', tiers: [{ value: 10_000, label: tr('1 万個') }, { value: 100_000, label: tr('10 万個') }, { value: 1_000_000, label: tr('100 万個') }] },
+  { id: 'coins', name: tr('累計コイン'), desc: tr('稼いだコインの累計'), unit: 'coins', tiers: [{ value: 100_000, label: tr('10 万') }, { value: 1_000_000, label: tr('100 万') }, { value: 10_000_000, label: tr('1,000 万') }] },
+  { id: 'rank', name: tr('昇格'), desc: tr('倉庫のランク'), unit: 'rank', tiers: [{ value: 2, label: tr('ランク 3') }, { value: 3, label: tr('ランク 4') }, { value: 4, label: tr('メガDC') }] },
+  { id: 'reputation', name: tr('評判 100 の維持'), desc: tr('評判 100 のまま続いた最長の期間（暦）'), unit: 'calMonths', tiers: [{ value: 1, label: tr('1 か月') }, { value: 6, label: tr('6 か月') }, { value: 36, label: tr('3 年') }] },
+  { id: 'cyber', name: tr('サイバーウィーク'), desc: tr('本番の週に出荷した件数の最高'), unit: 'count', tiers: [{ value: 100, label: tr('100 件') }, { value: 300, label: tr('300 件') }, { value: 600, label: tr('600 件') }] },
+  { id: 'stacks', name: tr('倉庫の規模'), desc: tr('スタックの数'), unit: 'count', tiers: [{ value: 50, label: '50' }, { value: 200, label: '200' }, { value: 500, label: '500' }] },
+  { id: 'fleet', name: tr('ロボの台数'), desc: tr('棚ロボと搬送ロボの合計'), unit: 'count', tiers: [{ value: 10, label: tr('10 台') }, { value: 30, label: tr('30 台') }, { value: 80, label: tr('80 台') }] },
+  { id: 'trucks', name: tr('入荷トラック'), desc: tr('到着したトラックの回数'), unit: 'count', tiers: [{ value: 50, label: tr('50 回') }, { value: 500, label: tr('500 回') }, { value: 5_000, label: tr('5,000 回') }] },
+  { id: 'special', name: tr('特別ロボ'), desc: tr('ドローンとダブルデッカー（iOS 版の特別ロボパック）'), unit: 'step', tiers: [{ value: 1, label: tr('ドローン 1 台') }, { value: 2, label: tr('両方 1 台ずつ') }, { value: 3, label: tr('ドローン 4・ダブルデッカー 4') }] },
+  // ネガティブ称号
+  { id: 'hoarder', name: tr('ため込みすぎ'), desc: tr('同時に溜まったオーダーの最大件数'), unit: 'count', negative: true, tiers: [{ value: 50, label: tr('50 件') }, { value: 500, label: tr('500 件') }, { value: 10_000, label: tr('1 万件') }] },
+  { id: 'stockout', name: tr('欠品王'), desc: tr('欠品でピックが止まった回数の累計'), unit: 'count', negative: true, tiers: [{ value: 100, label: tr('100 回') }, { value: 1_000, label: tr('1,000 回') }, { value: 10_000, label: tr('1 万回') }] },
+  { id: 'late', name: tr('遅延の常連'), desc: tr('遅延ペナルティを受けたオーダーの累計'), unit: 'count', negative: true, tiers: [{ value: 100, label: tr('100 件') }, { value: 1_000, label: tr('1,000 件') }, { value: 10_000, label: tr('1 万件') }] },
+  { id: 'rockbottom', name: tr('評判どん底'), desc: tr('評判が 0 になった回数'), unit: 'count', negative: true, tiers: [{ value: 1, label: tr('1 回') }, { value: 5, label: tr('5 回') }, { value: 20, label: tr('20 回') }] },
+  { id: 'jam', name: tr('大渋滞'), desc: tr('地上の搬送ロボの半分以上が横付け待ちだった時間の累計'), unit: 'simMin', negative: true, tiers: [{ value: 10, label: tr('10 分') }, { value: 60, label: tr('1 時間') }, { value: 600, label: tr('10 時間') }] },
+  { id: 'absent', name: tr('放置王'), desc: tr('お留守番レポートになった実時間の合計'), unit: 'realDays', negative: true, tiers: [{ value: 1, label: tr('1 日') }, { value: 7, label: tr('1 週間') }, { value: 30, label: tr('1 か月') }] },
+];
+/** 完全自動化の段: 90 分以内で銀、45 分以内で金（sim 分） */
+export const AUTOMATION_TIERS_MIN = { silver: 90, gold: 45 };
+/** 大渋滞: 地上の搬送ロボのうち横付け待ちがこの割合以上（台数 2 以上）なら渋滞として数える */
+export const JAM_STAGED_RATIO = 0.5;

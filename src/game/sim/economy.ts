@@ -51,6 +51,7 @@ export function rewardFor(w: WorldState, o: Order, eventMult = 1): RewardBreakdo
 export function changeReputation(w: WorldState, delta: number, reason: string): void {
   const before = w.reputation;
   w.reputation = Math.min(REPUTATION.max, Math.max(REPUTATION.min, w.reputation + delta));
+  if (before > REPUTATION.min && w.reputation <= REPUTATION.min) w.stats.reputationZeroCount++;
   if (Math.round(before) !== Math.round(w.reputation)) {
     w.events.push({ type: 'repChange', delta: w.reputation - before, reason });
   }
