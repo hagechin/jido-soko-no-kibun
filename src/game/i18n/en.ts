@@ -911,4 +911,13 @@ export const EN: Record<string, string> = {
   '称号（ネガティブ）': 'Titles (negative)',
   '実績（{0} / {1} 達成）': 'Achievements ({0} / {1} earned)',
   '下部バーの「実績」に金銀銅のアチーブメントと、ため込みすぎ・欠品王などのネガティブ称号。計測はゲーム内の時間（倍速で早くはならない）。総移動距離は 100 km（東京〜山梨）から月までの 384,400 km まで': '"Achievements" in the bottom bar has bronze/silver/gold achievements plus negative titles such as Hoarder and Stockout King. Everything is measured in game time (fast-forward does not help). Total distance runs from 100 km (Tokyo to Yamanashi) up to 384,400 km (to the Moon)',
+  '計測はゲーム内の時間（倍速で早くはなりません）。距離は 1 マス = 1 m。金の先にプラチナと「月まで」がある実績もあります。メダルはプレイヤーの記録として、新しく始めたりセーブを読み込んだりしても残ります': 'Measured in game time (fast-forward does not help). Distance: 1 cell = 1 m. Some achievements go beyond gold to platinum and "to the Moon". Medals are kept as your player record, even after a new game or loading a save',
+  'サンドボックスのプリセット倉庫では、この倉庫での進みだけを表示し、プレイヤーの記録には入りません': 'In a sandbox preset warehouse only this warehouse\'s progress is shown; it does not count toward your player record',
+  '{0}（{1} 台{2}）': '{0} ({1} robots{2})',
+  '＋{0} {1}': ' + {0} {1}',
+  'ダブルデッカー': 'double-decker',
+  'ドローン': 'drone',
+  'いま {0} ビン → おすすめ {1} ビン（{2}）。空ビン 1 個 {3} コイン × {4}': 'Now {0} bins → recommended {1} bins ({2}). {3} coins per empty bin × {4}',
+  'いま {0} ビンでおすすめ（{1} ビン）に達しています。段数を上げるかスタックを増やすと増えます': 'You have {0} bins, which meets the recommendation ({1}). Add levels or stacks to raise it',
+  '全ロボの速度・リフト・積載を一気に最大まで（強化が要る {0} 台ぶんの合計）{1}': 'Max out speed, lift and cargo on every robot at once (total for the {0} robots that still need it){1}',
 };

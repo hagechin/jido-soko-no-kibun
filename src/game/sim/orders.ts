@@ -114,6 +114,11 @@ export function updateOrders(w: WorldState): void {
   }
   for (const o of visibleOrders(w)) {
     if (o.shownTick === null) o.shownTick = w.tick;
+    // 欠品で止まった（在庫ゼロの行がある）オーダーを 1 回だけ数える（サイバーウィークの成績表・実績「欠品王」）
+    if (!o.stockout && w.tick % ORDERS.unblockCheckTicks === 0 && o.lines.some((l) => l.picked < l.qty && !itemInStock(w, l.item))) {
+      o.stockout = true;
+      w.stats.stockouts++;
+    }
     if (!o.penalized && w.tick - lateClockStart(o) > lateLimitTicks(o, w)) {
       o.penalized = true;
       w.stats.latePenalties++;

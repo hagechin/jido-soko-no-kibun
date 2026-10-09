@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
 import { createRuntime, stepMany } from './sim';
-import { achievementStatuses, achievementValue, formatAchievementValue, initAchievementsSilently, tierOf, updateAchievements, ACHIEVEMENT_BY_ID } from './achievements';
+import { achievementStatuses, achievementValue, formatAchievementValue, initAchievementsSilently, mergeProfile, tierOf, updateAchievements, ACHIEVEMENT_BY_ID, type AchievementProfile } from './achievements';
 import { ACHIEVEMENTS, CALENDAR, MEDALS } from '../data/balance';
 import { migrate } from './save';
 import { buildPreset } from './presets';
@@ -99,5 +99,27 @@ describe('achievements', () => {
     initAchievementsSilently(m);
     expect(m.achievements?.stacks?.tier).toBe(2);
     expect(m.achievements?.rank?.tier).toBe(3);
+  });
+
+  it('player profile keeps the highest tier across worlds; sandbox worlds are excluded and silent', () => {
+    const profile: AchievementProfile = {};
+    const a = createWorld({ seed: 1 });
+    a.stats.totalShipped = 1500;
+    updateAchievements(a);
+    expect(mergeProfile(profile, a)).toBe(true);
+    expect(profile.shipped?.tier).toBe(1);
+    // 別の倉庫（記録なし）でも一覧はプレイヤーの記録を見る
+    const b = createWorld({ seed: 2 });
+    expect(achievementStatuses(b, profile).find((s) => s.def.id === 'shipped')?.tier).toBe(1);
+    // サンドボックスのプリセットはイベントも記録も出さない
+    const m = buildPreset('mega');
+    expect(m.sandbox).toBe(true);
+    m.events.length = 0;
+    updateAchievements(m);
+    expect(m.events.some((e) => e.type === 'achievement')).toBe(false);
+    expect(m.achievements?.rank?.tier).toBe(3);
+    expect(mergeProfile(profile, m)).toBe(false);
+    expect(profile.rank).toBeUndefined();
+    expect(achievementStatuses(m, profile).find((s) => s.def.id === 'shipped')?.tier).toBe(0);
   });
 });

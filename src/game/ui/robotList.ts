@@ -45,7 +45,9 @@ export function renderRobotList(body: HTMLElement, w: WorldState, selectedId: nu
   body.append(el('p', { class: 'muted small', text: tr('タップで選択（3D ビューで指示できる）。「強化」で選択してアップグレードを開く') }));
   for (const kind of ['shelf', 'amr'] as const) {
     const list = w.robots.filter((r) => r.kind === kind);
-    body.append(el('h4', { text: tr('{0}（{1} 台）', kind === 'shelf' ? tr('棚ロボ') : tr('搬送ロボ'), list.length) }));
+    const special = list.filter((r) => r.variant && r.variant !== 'standard').length;
+    const ground = list.length - special;
+    body.append(el('h4', { text: tr('{0}（{1} 台{2}）', kind === 'shelf' ? tr('棚ロボ') : tr('搬送ロボ'), ground, special ? tr('＋{0} {1}', kind === 'shelf' ? tr('ダブルデッカー') : tr('ドローン'), special) : '') }));
     for (const r of list) {
       const cargo = el('span', { class: 'sel-cargo', 'data-bins': r.carrying.join(',') }, ...cargoIcons(w, r));
       const lv = kind === 'shelf' ? tr('{0} / リフト Lv{1}', speedText(r), r.liftLevel) : tr('{0} / 積載 {1}', speedText(r), ROBOT.cargo[r.cargoLevel].bins);

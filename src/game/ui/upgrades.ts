@@ -26,6 +26,7 @@ import {
   upgradeLevels,
   upgradeAllRobots,
   upgradeAllRobotsCost,
+  robotMaxed,
   upgradeLift,
   upgradePicker,
   upgradeSpeed,
@@ -85,7 +86,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const recBins = recommendedBins(w);
   const recNeed = binsToRecommended(w);
   const totalBins = Object.keys(w.bins).length;
-  body.append(row(recNeed > 0 ? tr('おすすめのビン数まで追加（空ビン {0} 個）', recNeed) : tr('おすすめのビン数まで追加（達成）'), buyBinsToRecommendedCost(w), recNeed > 0 ? () => buyBinsToRecommended(w) : null, ctx, recNeed > 0 ? tr('いま {0} 個 → おすすめ {1} 個（{2}）。空ビン 1 個 {3} コイン × {4}', totalBins, recBins, w.levels <= 1 ? tr('1 段は掘り出しが無いので予約ぶん以外すべて') : tr('棚のスロットの {0}% まで。残りは掘り出しの退避先', Math.round(BIN.recommendedFillRatio * 100)), price(w, BIN.emptyBinCost), recNeed) : tr('いま {0} 個でおすすめ（{1} 個）に達しています。段数を上げるかスタックを増やすと増えます', totalBins, recBins)));
+  body.append(row(recNeed > 0 ? tr('おすすめのビン数まで追加（空ビン {0} 個）', recNeed) : tr('おすすめのビン数まで追加（達成）'), buyBinsToRecommendedCost(w), recNeed > 0 ? () => buyBinsToRecommended(w) : null, ctx, recNeed > 0 ? tr('いま {0} ビン → おすすめ {1} ビン（{2}）。空ビン 1 個 {3} コイン × {4}', totalBins, recBins, w.levels <= 1 ? tr('1 段は掘り出しが無いので予約ぶん以外すべて') : tr('棚のスロットの {0}% まで。残りは掘り出しの退避先', Math.round(BIN.recommendedFillRatio * 100)), price(w, BIN.emptyBinCost), recNeed) : tr('いま {0} ビンでおすすめ（{1} ビン）に達しています。段数を上げるかスタックを増やすと増えます', totalBins, recBins)));
   const areaMax = expansionCost(w, 'east') === null && expansionCost(w, 'south') === null;
   body.append(row(areaMax ? tr('面積拡張 {0}×{1}（MAX）', w.width, w.height) : tr('面積拡張（東へ +4 列／南へ +4 行）'), null, null, ctx, areaMax ? tr('これ以上は広げられません{0}', limitHint(true, tr('{0}×{1} まで', LIMITS.expanded.maxWidth, LIMITS.expanded.maxHeight))) : tr('建設モードのツールバーから行います'), areaMax ? undefined : tr('建設')));
   body.append(el('p', { class: 'muted small', text: tr('スタック {0} / ポート {1} / ステーション {2} コイン。「建設」で配置します', price(w, BUILD.stackCost), price(w, BUILD.portCost), price(w, BUILD.pickStationCost)) }));
@@ -108,7 +109,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const allCost = upgradeAllRobotsCost(w);
   body.append(el('h4', { text: tr('ロボの強化（全機）') }));
   const allShort = allCost !== null && w.coins < allCost;
-  body.append(row(allCost === null ? tr('全ロボを最大強化（MAX）') : allShort ? tr('全ロボを最大強化（足りるぶんまで）') : tr('全ロボを最大強化'), allCost, () => upgradeAllRobots(w), ctx, allCost === null ? tr('全ロボとも速度・リフト・積載が最大です。ロボを追加するとまた押せます') : tr('全ロボの速度・リフト・積載を一気に最大まで（{0} 台ぶんの合計）{1}', w.robots.length, allShort ? tr('。コインが {0} 足りないので、押すと安い段階から足りるぶんだけ強化します', (allCost - w.coins).toLocaleString('ja-JP')) : ''), undefined, { allowShort: true }));
+  body.append(row(allCost === null ? tr('全ロボを最大強化（MAX）') : allShort ? tr('全ロボを最大強化（足りるぶんまで）') : tr('全ロボを最大強化'), allCost, () => upgradeAllRobots(w), ctx, allCost === null ? tr('全ロボとも速度・リフト・積載が最大です。ロボを追加するとまた押せます') : tr('全ロボの速度・リフト・積載を一気に最大まで（強化が要る {0} 台ぶんの合計）{1}', w.robots.filter((r) => !robotMaxed(w, r)).length, allShort ? tr('。コインが {0} 足りないので、押すと安い段階から足りるぶんだけ強化します', (allCost - w.coins).toLocaleString('ja-JP')) : ''), undefined, { allowShort: true }));
   const r = w.robots.find((r) => r.id === ctx.selectedRobotId) ?? null;
   body.append(el('h4', { text: r ? tr('{0} の強化（機体ごと）', r.name) : tr('ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）') }));
   if (r) {

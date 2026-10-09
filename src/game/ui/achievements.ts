@@ -1,6 +1,6 @@
 /** 実績の一覧（下部バーの「実績」パネル）: メダル・いまの値・次の段・進捗バー */
 import { MEDALS } from '../data/balance';
-import { achievementStatuses, formatAchievementValue, type AchievementStatus } from '../sim/achievements';
+import { achievementStatuses, formatAchievementValue, type AchievementProfile, type AchievementStatus } from '../sim/achievements';
 import type { WorldState } from '../sim/types';
 import { icon, type IconName } from './icon';
 import { el } from './layout';
@@ -20,11 +20,12 @@ function row(s: AchievementStatus): HTMLElement {
   return el('div', { class: `ach-row${tier > 0 ? ' is-earned' : ''}` }, head, bar, foot, el('div', { class: 'muted small ach-desc', text: def.desc }));
 }
 
-export function renderAchievements(body: HTMLElement, w: WorldState): void {
-  const all = achievementStatuses(w);
+export function renderAchievements(body: HTMLElement, w: WorldState, profile: AchievementProfile = {}): void {
+  const all = achievementStatuses(w, profile);
   const earned = all.filter((s) => s.tier > 0).length;
   body.append(el('h4', { text: tr('実績（{0} / {1} 達成）', earned, all.length) }));
-  body.append(el('p', { class: 'muted small', text: tr('計測はゲーム内の時間（倍速で早くはなりません）。距離は 1 マス = 1 m。金の先にプラチナと「月まで」がある実績もあります') }));
+  body.append(el('p', { class: 'muted small', text: tr('計測はゲーム内の時間（倍速で早くはなりません）。距離は 1 マス = 1 m。金の先にプラチナと「月まで」がある実績もあります。メダルはプレイヤーの記録として、新しく始めたりセーブを読み込んだりしても残ります') }));
+  if (w.sandbox) body.append(el('p', { class: 'muted small', text: tr('サンドボックスのプリセット倉庫では、この倉庫での進みだけを表示し、プレイヤーの記録には入りません') }));
   for (const s of all.filter((s) => !s.def.negative)) body.append(row(s));
   body.append(el('h4', { text: tr('称号（ネガティブ）') }));
   for (const s of all.filter((s) => s.def.negative)) body.append(row(s));
