@@ -24,7 +24,7 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 - **カテゴリ**: ゲーム（シミュレーション / ストラテジー）
 - **年齢**: 4+（暴力・ギャンブル・医療・成人向け要素なし。「無制限のウェブアクセス」なし）
 - **プライバシーポリシー URL**: `https://www.hatte.co.jp/privacy-policy-for-ds`
-- **サポート URL**: `https://www.hatte.co.jp/apps`
+- **サポート URL**: `https://www.hatte.co.jp/app/hakoniwa`（LP 兼サポートページ。遊び方・進行が止まったときの対処・不具合の報告先）
 - **著作権**: `© 2026  hatte Inc.`
 
 ### 説明（4000 文字以内）
