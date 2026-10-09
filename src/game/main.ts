@@ -987,6 +987,13 @@ class Game {
       }
       // ロボ一覧を開いたままでも状態が追いかける（1 秒ごと、文字だけ）
       if (ticks && this.bar.open === 'robots' && this.world.tick % TICKS_PER_SECOND === 0) refreshRobotListStatus($('sheet-body'), this.world);
+      // 在庫パネルは開いたままでも 2 秒ごとに描き直す（スクロール位置は保つ）
+      if (ticks && this.bar.open === 'inventory' && this.world.tick % (2 * TICKS_PER_SECOND) === 0) {
+        const sb = $('sheet-body');
+        const st = sb.scrollTop;
+        this.bar.refresh();
+        sb.scrollTop = st;
+      }
       if (this.debug.enabled) {
         if (ticks) this.debug.simMs = this.debug.simMs * 0.9 + ((performance.now() - simStart) / ticks) * 0.1;
         this.debug.frames++;

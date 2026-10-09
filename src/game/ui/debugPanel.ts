@@ -3,7 +3,8 @@ import { CALENDAR, RANKS } from '../data/balance';
 import { rankShippedAt } from '../sim/pricing';
 import { calendarFromTick } from '../sim/calendar';
 import { updateEvents } from '../sim/events';
-import { forecastRestock, scheduleTruck } from '../sim/inbound';
+import { addPallet, forecastRestock, scheduleTruck } from '../sim/inbound';
+import { itemDef } from '../data/items';
 import { buildPreset, PRESETS } from '../sim/presets';
 import { generateOrder } from '../sim/orders';
 import { maxOutRobots } from '../sim/shop';
@@ -36,6 +37,7 @@ function btn(label: string, onClick: () => void, cls = ''): HTMLButtonElement {
 /** 暦を指定 tick へ進める（戻すことはしない） */
 function jumpTo(w: WorldState, tick: number): void {
   if (tick <= w.tick) return;
+  const wasCyber = w.season.active.includes('cyberWeek');
   w.tick = tick;
   w.calendar = calendarFromTick(tick);
   w.nextOrderTick = tick + 1;
@@ -44,6 +46,8 @@ function jumpTo(w: WorldState, tick: number): void {
     o.shownTick = null;
   }
   updateEvents(w);
+  // ジャンプで飛ばした期間はシミュレーションしていないので、サイバーウィークの成績表は飛ばした分が 0 になる
+  if (wasCyber && !w.season.active.includes('cyberWeek')) showToast('ジャンプでサイバーウィークを抜けました。飛ばした期間は成績表に数えられません（0 になります）', 5000);
 }
 
 function tickOf(w: WorldState, month: number, week: number): number {
@@ -107,6 +111,19 @@ export function renderDebug(body: HTMLElement, ctx: DebugContext): void {
     el('div', { class: 'settings-row' },
       btn('入荷トラックを呼ぶ', () => { scheduleTruck(w, forecastRestock(w, true), 'weekly', 1); showToast('トラックを手配しました'); }),
       btn('オーダーを 5 件追加', () => { for (let i = 0; i < 5; i++) w.orders.push(generateOrder(w)); ctx.refresh(); }),
+      btn('欠品を作る', () => {
+        // 在庫が一番多い商品を選び、棚のビンを全部空ビンにして、その商品の山を入荷口に積む（補充 AI の確認用: M35）
+        const stock = new Map<string, number>();
+        for (const b of Object.values(w.bins)) if (b.item) stock.set(b.item, (stock.get(b.item) ?? 0) + b.qty);
+        const item = [...stock.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+        if (!item) return showToast('在庫のある商品がありません');
+        let bins = 0;
+        for (const b of Object.values(w.bins)) if (b.item === item) { b.item = null; b.qty = 0; b.purpose = null; bins++; }
+        addPallet(w, item, w.binCapacity * 2);
+        w.orders.unshift({ id: w.nextIds.order++, lines: [{ item, qty: 2, picked: 0 }], arrivedTick: w.tick, shownTick: null, penalized: false });
+        showToast(`${itemDef(item).name} を欠品にしました（ビン ${bins} 個を空に、入荷口に ${w.binCapacity * 2} 個、オーダー 1 件）`);
+        ctx.refresh();
+      }),
       btn('オーダーを全部消す', () => { w.orders = []; ctx.refresh(); }),
     ),
   );
