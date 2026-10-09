@@ -27,7 +27,8 @@ import { iconImg } from './ui/icons';
 import { $, el, showToast } from './ui/layout';
 import { renderUpgrades } from './ui/upgrades';
 import { renderAchievements } from './ui/achievements';
-import { ACHIEVEMENT_BY_ID } from './sim/achievements';
+import { ACHIEVEMENT_BY_ID, mergeProfile, type AchievementProfile } from './sim/achievements';
+import { loadProfile, saveProfile, syncNativeProfile } from './ui/profile';
 import { MEDALS } from './data/balance';
 import { renderInventory } from './ui/inventory';
 import { lastSavedText, renderSettings } from './ui/settings';
@@ -95,6 +96,8 @@ class Game {
   private lastHintCheck = 0;
   /** 直近の提案（アップグレード画面の見出しに出す） */
   currentHint: Hint | null = null;
+  /** プレイヤー全体の実績の記録（倉庫が替わっても残る） */
+  profile: AchievementProfile = loadProfile();
   /** iOS アプリ: 「アプリ 1.0 (12)・同梱 Web commit=abc1234 date=…」（sync-web.sh が書く BUILD_INFO。同梱が古くないかの確認用） */
   buildInfo = '';
   /** デバッグ: 計測 */
@@ -286,7 +289,12 @@ class Game {
     if (this.debug.enabled) this.bar.addButton('debug', 'bug', 'デバッグ');
     // ストア（iOS 版の買い切り）。購入状態が変わったら開いているパネルを描き直す
     this.bar.registerPanel('store', (body) => renderStore(body, { refresh: () => this.bar.refresh() }));
-    this.bar.registerPanel('achievements', (body) => renderAchievements(body, this.world));
+    this.bar.registerPanel('achievements', (body) => renderAchievements(body, this.world, this.profile));
+    // 起動時: 今の倉庫の記録を取り込み、ネイティブ側の記録ともそろえる
+    if (mergeProfile(this.profile, this.world)) saveProfile(this.profile);
+    void syncNativeProfile(this.profile).then((changed) => {
+      if (changed) saveProfile(this.profile);
+    });
     onEntitlementsChange(() => {
       setLimitsExpanded(hasFeature('limits'));
       this.applyCosmetics();
@@ -990,7 +998,10 @@ class Game {
           break;
         case 'achievement': {
           const def = ACHIEVEMENT_BY_ID[e.id];
-          if (def) {
+          // プレイヤーの記録にすでにある段なら（セーブの読み込み直しなど）トーストは出さない
+          const known = (this.profile[e.id]?.tier ?? 0) >= e.tier;
+          if (mergeProfile(this.profile, this.world)) saveProfile(this.profile);
+          if (def && !known) {
             const medal = MEDALS[Math.min(e.tier, MEDALS.length) - 1];
             showToast(`${def.negative ? '称号' : '実績'}「${def.name}」${medal}: ${def.tiers[e.tier - 1]?.label ?? ''}`, 5000, e.tier >= 5 ? 'moon' : e.tier >= 4 ? 'gem' : 'medal');
             this.sound.notice();

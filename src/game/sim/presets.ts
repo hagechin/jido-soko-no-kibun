@@ -85,12 +85,17 @@ export interface PresetOptions {
 /** プリセットの倉庫を作る。コインは十分に持たせる */
 export function buildPreset(id: PresetId, opts: PresetOptions = {}): WorldState {
   const seed = opts.seed ?? 777;
-  if (id === 'initial') return createWorld({ seed });
+  if (id === 'initial') {
+    const w0 = createWorld({ seed });
+    w0.sandbox = true;
+    return w0;
+  }
   const rng = createRng(seed + 1);
   const mega = id === 'mega';
   const rank = mega ? RANKS.length - 1 : 2;
   const kinds = ORDERS.itemKindsByRank[rank];
   const w = createWorld({ seed, layout: mega ? megaLayout() : mediumLayout(), itemKinds: kinds });
+  w.sandbox = true; // プリセット倉庫の実績はプレイヤー全体の記録に入れない
   w.rank = rank;
   w.levels = mega ? 6 : 3;
   w.levels = Math.min(w.levels, limitsFor(w).maxLevels, RANKS[rank].maxLevels);
