@@ -85,6 +85,10 @@ export function lockedStacks(w: WorldState): Set<number> {
   for (const r of w.robots) {
     for (const j of [r.job, ...r.queue]) {
       if (j?.type === 'retrieve' || j?.type === 'relocate') locked.add(j.stackId);
+      if (j?.type === 'merge') {
+        locked.add(j.stackId);
+        locked.add(j.toStackId);
+      }
     }
   }
   return locked;
@@ -324,6 +328,8 @@ export function updateJob(w: WorldState, rt: Runtime, r: Robot): void {
       return shelfStore(w, rt, r, job);
     case 'relocate':
       return shelfRelocate(w, rt, r, job);
+    case 'merge':
+      return shelfMerge(w, rt, r, job);
     case 'fetch':
       return amrFetch(w, rt, r, job);
     case 'deliver':
@@ -523,6 +529,97 @@ function shelfRelocate(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
       temp.bins.push(r.carrying.pop()!);
       r.phase = 'idle';
       r.step = 0;
+      return;
+    }
+    default:
+      finishJob(w, rt, r);
+  }
+}
+
+/**
+ * 棚ロボ: ビンの統合（★ 空ビンが無く欠品商品を詰められないときのデッドロック解消）
+ *  0: 元のスタックへ → 頂上の binId を持ち上げ(→1)
+ *  1: 持った → 相手のスタックへ(→2)
+ *  2: 着いた → 相手が頂上にあり、足して容量以内なら注ぐ(→3)。だめなら戻す(→4)
+ *  3: 注いだ（相手に合算、持っているビンは空に）→ 元のスタックへ(→4)
+ *  4: 元のスタック（空きが無ければ近くの空きスタック）に着いた → 降ろす(→5)
+ *  5: 置いた → 完了。空ビンが頂上にできたので補充 AI が使う
+ */
+function shelfMerge(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob, { type: 'merge' }>): void {
+  const from = w.stacks.find((s) => s.id === job.stackId);
+  const to = w.stacks.find((s) => s.id === job.toStackId);
+  const lt = liftTicks(r);
+  switch (r.step) {
+    case 0: {
+      if (!from || from.bins[from.bins.length - 1] !== job.binId) return finishJob(w, rt, r);
+      setGoal(rt, r, { type: 'cell', x: from.x, z: from.z });
+      if (!atGoal(w, r)) return;
+      beginAction(r, 'lifting', lt, 1);
+      return;
+    }
+    case 1: {
+      if (!from || from.bins[from.bins.length - 1] !== job.binId) return finishJob(w, rt, r);
+      r.carrying = [from.bins.pop()!];
+      r.phase = 'idle';
+      r.step = 2;
+      setGoal(rt, r, null);
+      return;
+    }
+    case 2: {
+      const target = to ? w.bins[job.targetBinId] : undefined;
+      const mine = w.bins[job.binId];
+      const ok = to && target && mine && to.bins[to.bins.length - 1] === job.targetBinId && target.item === mine.item && target.item !== null && target.qty + mine.qty <= w.binCapacity;
+      if (!ok) {
+        r.step = 4; // 相手が変わってしまった → 戻すだけ
+        setGoal(rt, r, null);
+        return;
+      }
+      setGoal(rt, r, { type: 'cell', x: to.x, z: to.z });
+      if (!atGoal(w, r)) return;
+      beginAction(r, 'lifting', lt, 3);
+      return;
+    }
+    case 3: {
+      const target = w.bins[job.targetBinId];
+      const mine = w.bins[job.binId];
+      if (target && mine && target.item === mine.item && target.qty + mine.qty <= w.binCapacity) {
+        target.qty += mine.qty;
+        mine.qty = 0;
+        mine.item = null;
+        mine.purpose = null;
+        w.events.push({ type: 'notice', icon: 'info', text: `${r.name} がビンをまとめて空ビンを作りました` });
+      }
+      r.phase = 'idle';
+      r.step = 4;
+      setGoal(rt, r, null);
+      return;
+    }
+    case 4: {
+      let dest = from && from.bins.length < w.levels ? from : null;
+      if (!dest) dest = pickStackWithRoom(w, r.pose, undefined, ROBOT.storeLevelWeight, r.carrying[0]);
+      if (!dest) return; // どこにも置けない → 空くまで待つ
+      setGoal(rt, r, { type: 'cell', x: dest.x, z: dest.z });
+      if (!atGoal(w, r)) return;
+      if (dest.bins.length >= w.levels) {
+        setGoal(rt, r, null);
+        return;
+      }
+      r.digging = null;
+      beginAction(r, 'lifting', lt, 5);
+      (r as Robot & { mergeDest?: number }).mergeDest = dest.id;
+      return;
+    }
+    case 5: {
+      const destId = (r as Robot & { mergeDest?: number }).mergeDest;
+      const dest = w.stacks.find((s) => s.id === destId) ?? pickStackWithRoom(w, r.pose, undefined, ROBOT.storeLevelWeight, r.carrying[0]);
+      if (!dest || dest.bins.length >= w.levels) {
+        r.step = 4;
+        r.phase = 'idle';
+        return;
+      }
+      dest.bins.push(r.carrying.pop()!);
+      r.phase = 'idle';
+      finishJob(w, rt, r);
       return;
     }
     default:
@@ -768,6 +865,10 @@ export function describeRobot(w: WorldState, r: Robot): string {
       return r.carrying.length ? '棚へ格納中' : 'ポートで返却ビンを回収';
     case 'relocate':
       return '在庫を並べ替え中';
+    case 'merge': {
+      const b = w.bins[job.targetBinId];
+      return `ビンをまとめて空ビンを作る（${b?.item ? itemDef(b.item).name : ''}）`;
+    }
     case 'fetch':
       return r.phase === 'loading' ? '積み込み中' : job.staged ? 'ポートの順番待ち' : job.only === 'inbound' ? 'ポートへ（入荷専任）' : 'ポートへ';
     case 'deliver': {

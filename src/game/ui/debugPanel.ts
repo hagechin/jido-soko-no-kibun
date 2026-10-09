@@ -111,6 +111,17 @@ export function renderDebug(body: HTMLElement, ctx: DebugContext): void {
     el('div', { class: 'settings-row' },
       btn('入荷トラックを呼ぶ', () => { scheduleTruck(w, forecastRestock(w, true), 'weekly', 1); showToast('トラックを手配しました'); }),
       btn('オーダーを 5 件追加', () => { for (let i = 0; i < 5; i++) w.orders.push(generateOrder(w)); ctx.refresh(); }),
+      btn('空ビンを使い切る', () => {
+        // 空ビンを全部「他の商品が半分入ったビン」にする（ビンの統合の確認用: M40。「欠品を作る」のあとに押す）
+        const counts = new Map<string, number>();
+        for (const b of Object.values(w.bins)) if (b.item) counts.set(b.item, (counts.get(b.item) ?? 0) + 1);
+        const item = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+        if (!item) return showToast('商品の入ったビンがありません');
+        let n = 0;
+        for (const b of Object.values(w.bins)) if (b.item === null) { b.item = item; b.qty = Math.floor(w.binCapacity / 2) - 1; n++; }
+        showToast(n ? `空ビン ${n} 個を ${itemDef(item).name} が半分入ったビンにしました` : '空ビンはありません');
+        ctx.refresh();
+      }),
       btn('欠品を作る', () => {
         // 在庫が一番多い商品を選び、棚のビンを全部空ビンにして、その商品の山を入荷口に積む（補充 AI の確認用: M35）
         const stock = new Map<string, number>();

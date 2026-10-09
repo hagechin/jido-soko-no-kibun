@@ -81,7 +81,9 @@ export type ShelfJob =
   | { type: 'retrieve'; stackId: number; binId: number; portId: number; manual: boolean }
   | { type: 'store'; portId: number; binId: number | null; stackId: number | null; manual: boolean }
   /** 在庫再配置: 上のビンを退避して目的のビンを頂上にする（§7.3） */
-  | { type: 'relocate'; stackId: number; binId: number; manual: boolean };
+  | { type: 'relocate'; stackId: number; binId: number; manual: boolean }
+  /** ビンの統合（★）: 同じ商品の 2 つのビン（どちらも頂上）を 1 つにまとめて空ビンを作る。binId を stackId から持ち上げ、toStackId の頂上の targetBinId に注ぎ、空になった binId を stackId に戻す */
+  | { type: 'merge'; stackId: number; binId: number; toStackId: number; targetBinId: number; manual: boolean };
 
 /** 搬送ロボの仕事 */
 export type AmrJob =

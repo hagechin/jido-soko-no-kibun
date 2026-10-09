@@ -3,7 +3,7 @@
  * クッキークリッカー的に「少し頑張れば効率が上がる」を迷わず進めるためのヒント。判断材料は毎秒のサンプル（直近 1 分の移動平均）。
  */
 import { ADVISOR, AUTOMATION, PORT, ROBOT } from '../data/balance';
-import { outboundLoad } from './automation';
+import { findMergePair, needsEmptyBin, outboundLoad } from './automation';
 import { isDrone } from './layers';
 import { automationPrice, dispatchPrice, price, rankShippedAt } from './pricing';
 import { queuedCount, visibleOrders } from './orders';
@@ -81,8 +81,12 @@ export function adviseNext(w: WorldState, st: AdvisorStats, opts: AdvisorOptions
   if (!a.restock && dock > 0 && unlockedRank(w, AUTOMATION.unlockRank.restock)) return { id: 'restock', text: `自動補充AI（${automationPrice(w, AUTOMATION.restockCost)} コイン）で入荷口の山をロボが自動で棚に取り込みます`, panel: 'upgrades' };
   // 2. 空ビンが無いと入荷を取り込めない
   if (dock > 0 && empties === 0) {
-    if (freeBinSlots(w) > reservedSlots(w)) return { id: 'bins', text: '空ビンがありません。空ビンを買うと入荷口の山（欠品の商品）を棚に取り込めます', panel: 'upgrades' };
-    return { id: 'slots', text: '空ビンも棚の空きもありません。段数を上げるかスタックを増やしてから空ビンを買いましょう', panel: 'upgrades' };
+    // 同じ商品のビンをまとめて空ビンを作れるなら棚ロボが自分でやる（ビンの統合）。作れないときだけ買い物を勧める
+    const stuck = needsEmptyBin(w);
+    if (stuck.length && findMergePair(w, new Set())) return null;
+    const why = stuck.length ? 'まとめて空にできるビンも無いので、' : '';
+    if (freeBinSlots(w) > reservedSlots(w)) return { id: 'bins', text: `空ビンがありません。${why}空ビンを買うと入荷口の山（欠品の商品）を棚に取り込めます`, panel: 'upgrades' };
+    return { id: 'slots', text: `空ビンも棚の空きもありません。${why}段数を上げるかスタックを増やしてから空ビンを買いましょう`, panel: 'upgrades' };
   }
   if (!warmedUp) return null;
   // 3. ボトルネック
