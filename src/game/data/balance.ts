@@ -264,6 +264,8 @@ export const INBOUND_WORKER = {
 export const ORDERS = {
   /** 同時表示件数 */
   visibleMax: 5,
+  /** 注文票の縮小表示（スマホ）で見える行の枠数。超えるぶんは最後の枠に「+N」で示す（CSS の nth-child と合わせる） */
+  cardCompactCells: 12,
   /** シートの大きさ 横4×縦6 */
   sheetCols: 4,
   sheetRows: 6,
@@ -539,6 +541,8 @@ export const AUDIO = {
   masterVolume: 0.5,
   fadeOutSec: 0.6,
   fadeInSec: 0.9,
+  /** 追いつき計算のあと効果音を戻すフェードイン（秒） */
+  sfxFadeInSec: 1.5,
 };
 
 export const RENDER = {
