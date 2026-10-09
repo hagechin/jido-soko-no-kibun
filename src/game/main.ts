@@ -1120,7 +1120,7 @@ class Game {
       // ロボ一覧を開いたままでも状態が追いかける（1 秒ごと、文字だけ）
       if (ticks && this.bar.open === 'robots' && this.world.tick % TICKS_PER_SECOND === 0) refreshRobotListStatus($('sheet-body'), this.world);
       // 在庫パネルは開いたままでも 2 秒ごとに描き直す（スクロール位置は保つ）
-      if (ticks && this.bar.open === 'inventory' && this.world.tick % (2 * TICKS_PER_SECOND) === 0) {
+      if (ticks && (this.bar.open === 'inventory' || this.bar.open === 'achievements') && this.world.tick % (2 * TICKS_PER_SECOND) === 0) {
         const sb = $('sheet-body');
         const st = sb.scrollTop;
         this.bar.refresh();

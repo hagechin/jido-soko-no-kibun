@@ -1281,6 +1281,10 @@ body.has-modal .calm-suggest {
 .robot-pick .sel-status {
   display: inline;
 }
+/* 速度などの行は常に 2 行目に（「待機中」の短い行だけ 1 行に詰まって高さが揃わないのを防ぐ） */
+.robot-pick .robot-meta {
+  flex-basis: 100%;
+}
 
 /* アドバイザーの提案（アップグレード画面の見出し） */
 .hint-box {
