@@ -560,7 +560,7 @@ export function diagnoseIdle(w: WorldState): string[] {
   const idleShelf = w.robots.filter((r) => r.kind === 'shelf' && idle(r)).length;
   const idleAmr = w.robots.filter((r) => r.kind === 'amr' && idle(r)).length;
   out.push(tr('暇な棚ロボ {0} 台 / 暇な搬送ロボ {1} 台 / 配車AI Lv{2} / 補充AI {3}', idleShelf, idleAmr, auto.dispatch, auto.restock ? tr('オン') : tr('オフ')));
-  out.push(tr('入荷作業の配分: 在庫率 {0}%{1} 棚ロボ {2} 台 / 搬送ロボ {3} 台（優先: {4}）', (stockFill(w) * 100).toFixed(0), restockMode(w) ? tr('（入荷モード）') : '', restockShelfCap(w), restockAmrCap(w), auto.amrPriority));
+  out.push(tr('入荷作業の配分: 在庫率 {0}%{1} 棚ロボ {2} 台 / 搬送ロボ {3} 台（優先: {4}）', (stockFill(w) * 100).toFixed(0), restockMode(w) ? tr('（入荷モード）') : '', restockShelfCap(w), restockAmrCap(w), { balanced: tr('均等'), pick: tr('ピック優先'), restock: tr('補充優先') }[auto.amrPriority] ?? auto.amrPriority));
   // 動けていないロボと、同じマスに重なっているロボ（本来起きない。起きていれば自動で解消される）
   for (const r of w.robots) if (r.stuckTicks >= AUTOMATION.staleRetrieveTicks) out.push(tr('[!] {0} が {1} 秒動けていない: {2} @({3},{4}){5}', r.name, Math.round(r.stuckTicks / 10), describeRobot(w, r), r.pose.x, r.pose.z, r.carrying.length ? tr('、持っているビン: {0}', r.carrying.map((id) => tr('{0} {1} 個', w.bins[id]?.item ?? tr('空'), w.bins[id]?.qty ?? 0)).join('、')) : ''));
   const at = new Map<string, Robot>();
@@ -589,7 +589,7 @@ export function diagnoseIdle(w: WorldState): string[] {
     const maskedQty = masked.reduce((a, id) => a + w.bins[id].qty, 0);
     const toInbound = all.filter((id) => inFlight.has(id) && w.bins[id].purpose === 'inbound');
     const options = stackedBinsOf(w, (b) => b.item === item && b.qty > 0).filter((o) => !inFlight.has(o.binId));
-    let line = tr('{0}: 必要 {1}', item, qty);
+    let line = tr('{0}: 必要 {1}', ITEM_BY_ID[item]?.name ?? item, qty);
     if (maskedQty >= qty) line += tr(' → ピッカーへ向かっている分（{0}）でまかなえるので新たに取りに行かない', masked.map((id) => tr('{0} {1} 個', locate(id), w.bins[id].qty)).join('、'));
     else if (!options.length) line += toInbound.length ? tr(' → 棚に残りが無く、在庫のビンは入荷ステーション行き（{0}）。戻って格納されるまで待ち', toInbound.map((id) => tr('{0} {1} 個', locate(id), w.bins[id].qty)).join('、')) : tr(' → 棚に取り出せるビンが無い（{0}）', all.map((id) => tr('{0} {1} 個', locate(id), w.bins[id].qty)).join('、'));
     else {

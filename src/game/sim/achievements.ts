@@ -99,7 +99,10 @@ export function mergeProfile(profile: AchievementProfile, w: WorldState): boolea
 export interface AchievementStatus {
   def: AchievementDef;
   value: number;
+  /** メダル（プレイヤーの記録と今の倉庫の高い方） */
   tier: number;
+  /** 今の倉庫で達した段（次の段と進捗はこちら基準） */
+  worldTier: number;
   /** 次の段（全部達していれば null） */
   next: { value: number; label: string } | null;
   /** 次の段までの進み（0〜1。全部達していれば 1） */
@@ -111,12 +114,13 @@ export interface AchievementStatus {
 export function achievementStatuses(w: WorldState, profile: AchievementProfile = {}): AchievementStatus[] {
   return ACHIEVEMENTS.map((def) => {
     const value = achievementValue(w, def.id);
-    // 段はプレイヤー全体の記録も見る（サンドボックスの倉庫はその倉庫の記録だけ）
-    const tier = Math.max(tierOf(def, value), w.achievements?.[def.id]?.tier ?? 0, w.sandbox ? 0 : (profile[def.id]?.tier ?? 0));
-    const next = def.tiers[tier] ?? null;
-    const prev = tier > 0 ? def.tiers[tier - 1].value : 0;
+    const worldTier = Math.max(tierOf(def, value), w.achievements?.[def.id]?.tier ?? 0);
+    // メダルはプレイヤー全体の記録も見る（サンドボックスの倉庫はその倉庫の記録だけ）。次の段と進捗は今の倉庫の値で
+    const tier = Math.max(worldTier, w.sandbox ? 0 : (profile[def.id]?.tier ?? 0));
+    const next = def.tiers[worldTier] ?? null;
+    const prev = worldTier > 0 ? def.tiers[worldTier - 1].value : 0;
     const progress = next ? Math.min(1, Math.max(0, (value - prev) / (next.value - prev))) : 1;
-    return { def, value, tier, next, progress, medal: tier > 0 ? MEDALS[Math.min(tier, MEDALS.length) - 1] : null };
+    return { def, value, tier, worldTier, next, progress, medal: tier > 0 ? MEDALS[Math.min(tier, MEDALS.length) - 1] : null };
   });
 }
 

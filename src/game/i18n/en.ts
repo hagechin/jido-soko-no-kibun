@@ -926,4 +926,8 @@ export const EN: Record<string, string> = {
   '担当商品をタップで切り替え。ほかのピッカーの担当商品は 1/3 の速さでしか処理できません。担当の無いピッカーには仕事が来ません': 'Tap an item to toggle it. Items assigned to another picker are handled at 1/3 speed. A picker with no items gets no work',
   '担当を自動で割り振る（全ピッカー）': 'Auto-assign items (all pickers)',
   '{0} か所のピッカーに {1} 品目を人気度で均等に割り振りました': 'Spread {1} items evenly by popularity across {0} pickers',
+  '{0}{1}（{2}）': '{0}{1} ({2})',
+  '記録 ': 'Record ',
+  'この倉庫: {0}': 'This warehouse: {0}',
+  '　この倉庫でコンプリート': '  Complete in this warehouse',
 };
