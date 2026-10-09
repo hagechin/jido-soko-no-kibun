@@ -58,8 +58,10 @@ export class CalmMode {
 
   constructor() {
     this.suggest.addEventListener('click', () => this.enter());
-    const touch = () => {
+    const touch = (e: Event) => {
       this.lastInteraction = performance.now();
+      // 提案ボタン自身のタップで先に隠すと、pointerdown で display:none になって後の click がボタンに届かない（iOS で「眺めモードにする？」が効かなかった）
+      if (e.target instanceof Node && this.suggest.contains(e.target)) return;
       this.suggested = false;
       this.suggest.hidden = true;
     };
