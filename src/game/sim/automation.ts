@@ -86,6 +86,14 @@ export function outboundLoad(w: WorldState, portId: number): number {
   return n;
 }
 
+/** ポートに置かれている（向かっている取り出し込み）入荷ビンの数 */
+export function inboundLoad(w: WorldState, portId: number): number {
+  const p = w.ports.find((p) => p.id === portId)!;
+  let n = p.outbound.filter((id) => w.bins[id]?.purpose === 'inbound').length;
+  for (const r of w.robots) for (const j of [r.job, ...r.queue]) if (j?.type === 'retrieve' && j.portId === portId && w.bins[j.binId]?.purpose === 'inbound') n++;
+  return n;
+}
+
 // ------------------------------------------------------------------ 入荷作業の配分
 /** 倉庫の容量に対する在庫の割合（0〜1） */
 export function stockFill(w: WorldState): number {
@@ -279,7 +287,8 @@ function assignRestock(w: WorldState, r: Robot, inFlight: Set<number>): boolean 
         const inboundSt = w.stations.find((s) => s.kind === 'inbound') ?? null;
         // ★ 緊急の補充はピックと同じ条件でポートを使う（ピック用に 2 枠空けておく条件だと、忙しい倉庫ではいつまでも補充が始まらない）
         const need = urgent ? Math.min(headroom, AUTOMATION.urgentPortHeadroom) : headroom;
-        const port = bestPort(w, pick.stack, inboundSt, (p) => outboundLoad(w, p.id) <= PORT.outboundCapacity - need);
+        // 1 つのポートに置く入荷ビンは上限まで（緊急でも）。入荷ビンだけでポートが埋まるとピックのビンを置けず出荷が止まる
+        const port = bestPort(w, pick.stack, inboundSt, (p) => outboundLoad(w, p.id) <= PORT.outboundCapacity - need && inboundLoad(w, p.id) < AUTOMATION.inboundBinsPerPortMax);
         if (port) {
           w.bins[pick.binId].purpose = 'inbound';
           r.job = { type: 'retrieve', stackId: pick.stack.id, binId: pick.binId, portId: port.id, manual: false };
