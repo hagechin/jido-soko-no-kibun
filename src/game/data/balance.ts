@@ -552,6 +552,12 @@ export const RENDER = {
   floorThickness: 0.1,
   railBaseHeight: 0.35,
   wallHeight: 1.0,
+  /** 棚ロボの背丈（レールの上面から本体の天面まで。描画の寸法に合わせる） */
+  shelfRobotHeight: 0.55,
+  /** ドローンの飛行高度の余裕（棚ロボの天面〜ぶら下げた荷物の底） */
+  droneClearance: 0.35,
+  /** ドローンの本体から荷物の 1 個目までの吊り下げ長 */
+  droneHangerLength: 0.2,
   /** 1秒あたりの描画上限（通常 / 眺めモード）*/
   normalFps: 60,
   calmFps: 30,
