@@ -15,7 +15,7 @@ import { demandFor } from '../data/seasons';
 import { cellAt, isFloorWalkable, isRailWalkable, manhattan, neighbors4 } from './grid';
 import { rand } from './rng';
 import { visibleOrders } from './orders';
-import { describeRobot, finishJob, nearestPort, portReachable, setGoal } from './robots';
+import { describeRobot, finishJob, lockedStacks, nearestPort, portReachable, setGoal } from './robots';
 import { goalTargetCells } from './goals';
 import type { Runtime } from './runtime';
 import type { Robot, Stack, WorldState } from './types';
@@ -29,7 +29,13 @@ function binsInFlight(w: WorldState): Set<number> {
   const s = new Set<number>();
   for (const r of w.robots) {
     for (const id of r.carrying) s.add(id);
-    for (const j of [r.job, ...r.queue]) if (j?.type === 'retrieve') s.add(j.binId);
+    for (const j of [r.job, ...r.queue]) {
+      if (j?.type === 'retrieve') s.add(j.binId);
+      if (j?.type === 'merge') {
+        s.add(j.binId);
+        s.add(j.targetBinId);
+      }
+    }
   }
   for (const p of w.ports) {
     for (const id of p.outbound) s.add(id);
@@ -175,6 +181,8 @@ export function restockAmrCap(w: WorldState): number {
 function assignShelfJob(w: WorldState, r: Robot): boolean {
   const auto = w.automation;
   const inFlight = binsInFlight(w);
+  // ★ デッドロック解消: 欠品商品の山が入荷口にあるのに詰められるビンが無い → 同じ商品のビンをまとめて空ビンを作る（1 台ずつ、ピックより先）
+  if (auto.restock && assignMerge(w, r, inFlight)) return true;
   // 配分: 入荷モード（在庫が薄い）か欠品が入荷口にあるときは、枠（入荷行きのビンを取り出し中の棚ロボの数）が埋まるまで補充を先に。
   // それ以外はピックを先に、空いた手で枠まで補充する
   const restockFirst = auto.restock && w.pallets.length > 0 && (restockMode(w) || urgentRestock(w)) && shelvesOnRestock(w) < restockShelfCap(w);
@@ -281,6 +289,62 @@ function assignRestock(w: WorldState, r: Robot, inFlight: Set<number>): boolean 
   return false;
 }
 
+/**
+ * 空ビンが要るのに作れない商品（入荷口にあり、在庫 0 で、空ビンもその商品の空きのあるビンも棚に無い）があるか
+ */
+export function needsEmptyBin(w: WorldState): string[] {
+  if (!w.pallets.length) return [];
+  const stock = new Map<string, number>();
+  const partial = new Set<string>();
+  let empty = false;
+  for (const s of w.stacks) for (const id of s.bins) {
+    const b = w.bins[id];
+    if (!b) continue;
+    if (b.item === null) empty = true;
+    else {
+      stock.set(b.item, (stock.get(b.item) ?? 0) + b.qty);
+      if (b.qty < w.binCapacity) partial.add(b.item);
+    }
+  }
+  if (empty) return [];
+  // 持ち運び中・ポート上のビンも在庫に数える（空ビンが運搬中なら作らなくてよい）
+  for (const b of Object.values(w.bins)) if (b.item === null) return [];
+  const out: string[] = [];
+  for (const item of new Set(w.pallets.map((p) => p.item))) if ((stock.get(item) ?? 0) <= 0 && !partial.has(item)) out.push(item);
+  return out;
+}
+
+/** まとめられる 2 つのビン（同じ商品、どちらも頂上、足して容量以内）。注ぐ側（from）は少ない方 */
+export function findMergePair(w: WorldState, inFlight: Set<number>): { from: Stack; fromBin: number; to: Stack; toBin: number } | null {
+  const locked = lockedStacks(w);
+  const tops: { stack: Stack; binId: number; item: string; qty: number }[] = [];
+  for (const s of w.stacks) {
+    if (locked.has(s.id) || !s.bins.length) continue;
+    const id = s.bins[s.bins.length - 1];
+    const b = w.bins[id];
+    if (!b || b.item === null || inFlight.has(id)) continue;
+    tops.push({ stack: s, binId: id, item: b.item, qty: b.qty });
+  }
+  let best: { from: Stack; fromBin: number; to: Stack; toBin: number; score: number } | null = null;
+  for (const a of tops) for (const b of tops) {
+    if (a === b || a.item !== b.item || a.qty > b.qty || a.qty + b.qty > w.binCapacity) continue;
+    // 注ぐ量が少なく、近い組を優先
+    const score = a.qty * 10 + manhattan(a.stack, b.stack);
+    if (!best || score < best.score) best = { from: a.stack, fromBin: a.binId, to: b.stack, toBin: b.binId, score };
+  }
+  return best;
+}
+
+function assignMerge(w: WorldState, r: Robot, inFlight: Set<number>): boolean {
+  if (!needsEmptyBin(w).length) return false;
+  if (w.robots.some((o) => [o.job, ...o.queue].some((j) => j?.type === 'merge'))) return false;
+  const pair = findMergePair(w, inFlight);
+  if (!pair) return false;
+  r.job = { type: 'merge', stackId: pair.from.id, binId: pair.fromBin, toStackId: pair.to.id, targetBinId: pair.toBin, manual: false };
+  r.step = 0;
+  return true;
+}
+
 /** 在庫再配置: 暇なときに人気商品を上へ */
 function assignRelocate(w: WorldState, r: Robot, inFlight: Set<number>): boolean {
   const auto = w.automation;
@@ -306,7 +370,10 @@ export function popularity(w: WorldState, item: string | null): number {
 export function findRelocation(w: WorldState, inFlight: Set<number>): { stack: Stack; binId: number } | null {
   let best: { stack: Stack; binId: number; gain: number } | null = null;
   const busyStacks = new Set<number>();
-  for (const r of w.robots) for (const j of [r.job, ...r.queue]) if (j?.type === 'relocate' || j?.type === 'retrieve') busyStacks.add(j.stackId);
+  for (const r of w.robots) for (const j of [r.job, ...r.queue]) {
+    if (j?.type === 'relocate' || j?.type === 'retrieve') busyStacks.add(j.stackId);
+    if (j?.type === 'merge') busyStacks.add(j.stackId).add(j.toStackId);
+  }
   for (const s of w.stacks) {
     if (busyStacks.has(s.id) || s.bins.length < 2) continue;
     for (let i = 0; i < s.bins.length - 1; i++) {

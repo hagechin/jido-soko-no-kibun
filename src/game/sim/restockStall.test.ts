@@ -77,3 +77,48 @@ describe('欠品商品の補充（空ビンが埋まっている・欠品待ち�
     expect(stuffed).toBeLessThan(6000);
   });
 });
+
+describe('空ビンが無いときのビンの統合（★ デッドロック解消）', () => {
+  it('欠品商品の山が入荷口にあり空ビンが無ければ、同じ商品の 2 つのビンをまとめて空ビンを作り、欠品商品を補充する', () => {
+    const w = createWorld({ seed: 31 });
+    const rt = createRuntime();
+    w.coins = 1e6;
+    w.automation = { dispatch: 3, restock: true, relocate: false, amrPriority: 'balanced', lastRetrieveTick: 0 };
+    w.levels = 2;
+    w.nextOrderTick = 1e9;
+    for (const s of w.stacks) s.bins = [];
+    for (const id of Object.keys(w.bins)) delete w.bins[Number(id)];
+    // 全スタックの頂上に「半分入ったビン」（商品は banana / book を交互）。空ビンは 1 個も無い。apple のビンも無い
+    const items = ['banana', 'book'];
+    w.stacks.forEach((s, i) => s.bins.push(createBin(w, items[i % 2], Math.floor(w.binCapacity / 2) - 1).id));
+    expect(stockOf(w, 'apple')).toBe(0);
+    addPallet(w, 'apple', 30);
+    order(w, 1, [['apple', 2]]);
+    let merged = -1;
+    let stuffed = -1;
+    for (let t = 0; t < 9000; t++) {
+      stepSim(w, rt);
+      if (merged < 0 && Object.values(w.bins).some((b) => b.item === null)) merged = t;
+      if (stuffed < 0 && stockOf(w, 'apple') > 0) stuffed = t;
+      if (stuffed >= 0) break;
+    }
+    expect(merged).toBeGreaterThanOrEqual(0);
+    expect(stuffed).toBeGreaterThan(merged);
+    expect(stuffed).toBeLessThan(6000);
+    // まとめた側のビンは空（item null）になり、受け側は合算されている。商品の総数は変わらない
+    const banana = Object.values(w.bins).filter((b) => b.item === 'banana').reduce((a, b) => a + b.qty, 0);
+    expect(banana).toBe(w.stacks.filter((_, i) => i % 2 === 0).length * (Math.floor(w.binCapacity / 2) - 1));
+  });
+
+  it('空ビンがあるときは統合しない', () => {
+    const w = createWorld({ seed: 32 });
+    const rt = createRuntime();
+    w.automation = { dispatch: 3, restock: true, relocate: false, amrPriority: 'balanced', lastRetrieveTick: 0 };
+    w.nextOrderTick = 1e9;
+    addPallet(w, 'apple', 30);
+    for (let t = 0; t < 600; t++) {
+      stepSim(w, rt);
+      expect(w.robots.some((r) => r.job?.type === 'merge')).toBe(false);
+    }
+  });
+});
