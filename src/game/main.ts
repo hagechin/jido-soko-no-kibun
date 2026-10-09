@@ -383,7 +383,11 @@ class Game {
           : undefined,
         openSandbox: hasFeature('sandbox') ? () => this.bar.show('debug') : undefined,
         featureStatus: () => featureStatusNode(),
-        exportSave: () => exportSaveFile(this.world),
+        exportSave: () => {
+          void exportSaveFile(this.world).then((err) => {
+            if (err) showToast(tr('書き出せませんでした: {0}', err), 5000, 'triangle-alert');
+          });
+        },
         importSave: (file) => this.importSave(file),
         extra: (body) => {
           body.append(el('h4', { text: tr('サウンド') }));

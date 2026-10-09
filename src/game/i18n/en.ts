@@ -791,4 +791,5 @@ export const EN: Record<string, string> = {
   '入荷の積載量: {0}': 'Inbound load: {0}',
   '{0}（いまの在庫の目標: 1 商品につきビン {1} 杯）': '{0} (current stock target: {1} bins per item)',
   '1 回に積む量は頻度の間隔ぶん（月 1 なら 4 週ぶん）なので、頻度を変えても週あたりの入荷量は同じ。倉庫を広げて空ビンが余っているなら積載量を上げると在庫が増える': 'Each truck carries one interval\'s worth (4 weeks for monthly), so the weekly amount is the same at any frequency. If you expanded the warehouse and have spare empty bins, raise the load to grow stock',
+  '書き出せませんでした: {0}': 'Could not export: {0}',
 };
