@@ -9,6 +9,7 @@ import { automationPrice, dispatchPrice, price, rankShippedAt } from './pricing'
 import { queuedCount, visibleOrders } from './orders';
 import { binsToRecommended, freeBinSlots, reservedSlots } from './shop';
 import { inboundSettings } from './inbound';
+import { hasIdlePicker } from './build';
 import type { WorldState } from './types';
 import { tr } from '../i18n';
 
@@ -81,6 +82,8 @@ export function adviseNext(w: WorldState, st: AdvisorStats, opts: AdvisorOptions
     return { id: 'rank-dispatch2', text: tr('あと {0} 件出荷するとランクが上がり、自動配車AI Lv2（棚ロボの自動取り出し）が解放されます', Math.max(0, nextRankAt(AUTOMATION.unlockRank.dispatch2) - w.stats.totalShipped)), panel: 'upgrades' };
   }
   if (!a.restock && dock > 0 && unlockedRank(w, AUTOMATION.unlockRank.restock)) return { id: 'restock', text: tr('自動補充AI（{0} コイン）で入荷口の山をロボが自動で棚に取り込みます', automationPrice(w, AUTOMATION.restockCost)), panel: 'upgrades' };
+  // 担当の無いピッカー: 仕事が来ないので、増やしても出荷が伸びない
+  if (hasIdlePicker(w)) return { id: 'assign', text: tr('担当商品の無いピッキングステーションがあります。ステーションをタップ → 「担当を自動で割り振る」で全ピッカーに仕事が回ります'), panel: 'build' };
   // 2. 空ビンが無いと入荷を取り込めない
   if (dock > 0 && empties === 0) {
     // 同じ商品のビンをまとめて空ビンを作れるなら棚ロボが自分でやる（ビンの統合）。作れないときだけ買い物を勧める

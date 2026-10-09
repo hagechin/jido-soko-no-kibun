@@ -54,7 +54,8 @@ function startWork(w: WorldState, s: Station, r: Robot, binId: number): void {
   let ticks = 1;
   if (s.kind === 'pick') {
     count = bin.item ? Math.min(bin.qty, neededForItem(w, bin.item)) : 0;
-    const assigned = bin.item ? s.assignedItems.includes(bin.item) : true;
+    // 担当外の速度は「別のピッカーの担当」のときだけ。どこにも担当が無い商品は通常の速さ（担当を決めていないだけで遅くなる罠を避ける）
+    const assigned = bin.item ? s.assignedItems.includes(bin.item) || !w.stations.some((o) => o.kind === 'pick' && o.assignedItems.includes(bin.item!)) : true;
     ticks = count ? Math.round((count * pickTicks(s)) / (assigned ? 1 : PICKER.offDutySpeedFactor)) : pickTicks(s);
   } else {
     count = stuffableCount(w, binId).count;

@@ -1,11 +1,11 @@
 import { iconText } from './icon';
 /** ピッカーの担当商品を変更する（§5.1） */
 import { ITEMS } from '../data/items';
-import { assignItem } from '../sim/build';
+import { assignItem, autoAssignItems } from '../sim/build';
 import { availableItemIds } from '../sim/orders';
 import type { WorldState } from '../sim/types';
 import { iconImg } from './icons';
-import { el } from './layout';
+import { el, showToast } from './layout';
 import { tr } from '../i18n';
 
 export function renderStationPanel(body: HTMLElement, w: WorldState, stationId: number, refresh: () => void): void {
@@ -16,7 +16,14 @@ export function renderStationPanel(body: HTMLElement, w: WorldState, stationId: 
     body.append(el('p', { class: 'muted small', text: tr('空ビンには一番多く滞留している商品を詰めます。') }));
     return;
   }
-  body.append(el('p', { class: 'small', text: tr('担当商品をタップで切り替え。担当外の商品は 1/3 の速さでしか処理できません。') }));
+  body.append(el('p', { class: 'small', text: tr('担当商品をタップで切り替え。ほかのピッカーの担当商品は 1/3 の速さでしか処理できません。担当の無いピッカーには仕事が来ません') }));
+  const auto = el('button', { class: 'btn', type: 'button' }, iconText('sparkles', tr('担当を自動で割り振る（全ピッカー）'), 14));
+  auto.addEventListener('click', () => {
+    const n = autoAssignItems(w);
+    showToast(tr('{0} か所のピッカーに {1} 品目を人気度で均等に割り振りました', w.stations.filter((s) => s.kind === 'pick').length, n));
+    refresh();
+  });
+  body.append(el('div', { class: 'settings-row' }, auto));
   const grid = el('div', { class: 'assign-grid' });
   const ids = availableItemIds(w);
   for (const def of ITEMS) {

@@ -920,4 +920,10 @@ export const EN: Record<string, string> = {
   'いま {0} ビン → おすすめ {1} ビン（{2}）。空ビン 1 個 {3} コイン × {4}': 'Now {0} bins → recommended {1} bins ({2}). {3} coins per empty bin × {4}',
   'いま {0} ビンでおすすめ（{1} ビン）に達しています。段数を上げるかスタックを増やすと増えます': 'You have {0} bins, which meets the recommendation ({1}). Add levels or stacks to raise it',
   '全ロボの速度・リフト・積載を一気に最大まで（強化が要る {0} 台ぶんの合計）{1}': 'Max out speed, lift and cargo on every robot at once (total for the {0} robots that still need it){1}',
+  '担当商品の無いピッキングステーションがあります。ステーションをタップ → 「担当を自動で割り振る」で全ピッカーに仕事が回ります': 'A pick station has no assigned items. Tap the station → "Auto-assign items" to give every picker work',
+  '新しいピッキングステーションに {0} 品目の担当を割り振りました（ステーションをタップで変更）': 'Assigned {0} items to the new pick station (tap the station to change)',
+  'ピッカーが商品を取り、オーダーが揃うと出荷。早く出荷するほどボーナスが付きます。ピッカーを増やしたら担当商品を決める（ステーションをタップ →「担当を自動で割り振る」。建設したときは自動で分けます）': 'Pickers take items and the order ships once complete. Faster shipping earns a bonus. After adding pickers, assign items (tap the station → "Auto-assign items"; a newly built station gets items automatically)',
+  '担当商品をタップで切り替え。ほかのピッカーの担当商品は 1/3 の速さでしか処理できません。担当の無いピッカーには仕事が来ません': 'Tap an item to toggle it. Items assigned to another picker are handled at 1/3 speed. A picker with no items gets no work',
+  '担当を自動で割り振る（全ピッカー）': 'Auto-assign items (all pickers)',
+  '{0} か所のピッカーに {1} 品目を人気度で均等に割り振りました': 'Spread {1} items evenly by popularity across {0} pickers',
 };

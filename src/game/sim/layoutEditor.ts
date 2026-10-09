@@ -10,7 +10,7 @@ import { layerOf } from './layers';
 import { BUILD } from '../data/balance';
 import type { CellKind } from '../data/balance';
 import { approachCells, cellAt, inBounds, isAdjacentToStack, isFacingFloor, isFloorWalkable, isRailWalkable, neighbors4 } from './grid';
-import { railConnected, wouldDisconnectFloor, type BuildKind, buildCost } from './build';
+import { fillEmptyPickers, railConnected, wouldDisconnectFloor, type BuildKind, buildCost } from './build';
 import { pickStackWithRoom } from './robots';
 import type { Port, Stack, Station, Vec2, WorldState } from './types';
 import { tr } from '../i18n';
@@ -273,6 +273,8 @@ export function finishEdit(w: WorldState): EditResult {
     r.phase = 'idle';
   }
   w.flags.layoutEditor = false;
+  // 編集で増えたピッキングステーションに担当を割り振る（担当が無いと仕事が来ない）
+  fillEmptyPickers(w);
   return { ok: true };
 }
 
