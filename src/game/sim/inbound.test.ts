@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
 import { createRuntime, stepMany, stepSim } from './sim';
 import { CALENDAR, INBOUND_WORKER } from '../data/balance';
-import { addPallet, dockBacklog, emptyBinCount, forecastRestock, stockSummary } from './inbound';
+import { buildPreset } from './presets';
+import { addPallet, dockBacklog, emptyBinCount, forecastRestock, restockStockCap, setInbound, stockOf, stockSummary, truckLoadFactor, truckPeriodTicks } from './inbound';
 import { commandFetch, commandGoStation, commandRetrieve } from './commands';
 import { itemInStock } from './orders';
 import type { WorldState } from './types';
@@ -102,5 +103,60 @@ describe('M5 inbound', () => {
     until(w, rt, () => w.stats.totalShipped === 1);
     expect(w.bins[binId]).toMatchObject({ item: null, qty: 0 });
     expect(w.stats.stockouts).toBe(1);
+  });
+});
+
+describe('inbound settings: frequency and load', () => {
+  it('frequency changes the interval and scales each truck so the weekly amount stays the same', () => {
+    const w = createWorld({ seed: 1 });
+    const weekly = forecastRestock(w).find((p) => p.item === 'apple')!.qty;
+    setInbound(w, { freq: 'daily' });
+    expect(truckPeriodTicks(w)).toBe(Math.round(CALENDAR.ticksPerWeek / 7));
+    const daily = forecastRestock(w).find((p) => p.item === 'apple')!.qty;
+    expect(daily * 7).toBeGreaterThanOrEqual(weekly - 7);
+    expect(daily * 7).toBeLessThanOrEqual(weekly + 7);
+    setInbound(w, { freq: 'monthly' });
+    expect(truckPeriodTicks(w)).toBe(CALENDAR.ticksPerMonth);
+    expect(forecastRestock(w).find((p) => p.item === 'apple')!.qty).toBe(weekly * 4);
+    // 月 1: 1 か月で 1 回だけ
+    const rt = createRuntime();
+    w.nextOrderTick = 1e9;
+    stepMany(w, rt, CALENDAR.ticksPerMonth + 40);
+    expect(w.stats.trucks).toBe(1);
+    // 週 2: 1 週で 2 回（入荷口の山が残っている商品は送られないので、山は片づけておく）
+    setInbound(w, { freq: 'twice' });
+    w.pallets = [];
+    const before = w.stats.trucks;
+    stepMany(w, rt, CALENDAR.ticksPerWeek + 40);
+    expect(w.stats.trucks - before).toBe(2);
+  });
+
+  it('load multiplies each truck and the stock cap; fill mode follows the bin count and caps the truck at 4x', () => {
+    const w = createWorld({ seed: 1 });
+    const base = forecastRestock(w).find((p) => p.item === 'apple')!.qty;
+    const cap = restockStockCap(w);
+    setInbound(w, { load: 'huge' });
+    expect(forecastRestock(w).find((p) => p.item === 'apple')!.qty).toBe(base * 4);
+    expect(restockStockCap(w)).toBe(cap * 4);
+    // 在庫が標準の目標を超えていても、たっぷりなら入荷が続く
+    for (const b of Object.values(w.bins)) if (b.item === 'apple') b.qty = w.binCapacity;
+    const applesBins = Object.values(w.bins).filter((b) => b.item === 'apple').length;
+    addPallet(w, 'apple', 0);
+    setInbound(w, { load: 'standard' });
+    const stock = stockOf(w, 'apple');
+    if (stock >= cap) expect(forecastRestock(w).some((p) => p.item === 'apple')).toBe(false);
+    setInbound(w, { load: 'huge' });
+    expect(forecastRestock(w).some((p) => p.item === 'apple')).toBe(true);
+    expect(applesBins).toBeGreaterThan(0);
+    // 倉庫いっぱい: メガDC（1800 ビン・24 商品）では 1 商品 52 杯が目標、トラックは 4 倍止まり
+    const m = buildPreset('mega');
+    setInbound(m, { load: 'fill' });
+    expect(truckLoadFactor(m)).toBe(INBOUND_WORKER.maxLoadFactor);
+    expect(restockStockCap(m) / m.binCapacity).toBeCloseTo((Object.keys(m.bins).length * INBOUND_WORKER.fillShare) / 24, 0);
+    // 小さい倉庫では標準より下がらない
+    const s = createWorld({ seed: 1 });
+    setInbound(s, { load: 'fill' });
+    expect(truckLoadFactor(s)).toBe(1);
+    expect(restockStockCap(s)).toBe(restockStockCap(createWorld({ seed: 1 })));
   });
 });

@@ -8,6 +8,7 @@ import { isDrone } from './layers';
 import { automationPrice, dispatchPrice, price, rankShippedAt } from './pricing';
 import { queuedCount, visibleOrders } from './orders';
 import { binsToRecommended, freeBinSlots, reservedSlots } from './shop';
+import { inboundSettings } from './inbound';
 import type { WorldState } from './types';
 import { tr } from '../i18n';
 
@@ -32,7 +33,7 @@ export interface Hint {
   id: string;
   text: string;
   /** 開くと良いパネル */
-  panel: 'upgrades' | 'build' | 'inventory';
+  panel: 'upgrades' | 'build' | 'inventory' | 'settings';
 }
 
 export function createAdvisorStats(): AdvisorStats {
@@ -98,6 +99,9 @@ export function adviseNext(w: WorldState, st: AdvisorStats, opts: AdvisorOptions
   if (st.pickersBusy >= ADVISOR.pickersBusyRatio) return { id: 'picker', text: tr('ピッカーが手一杯です。ピック速度を上げるか、ピッキングステーションを増設してみましょう'), panel: 'upgrades' };
   if (st.shelfIdle <= ADVISOR.lowIdleRatio && st.amrIdle >= ADVISOR.highIdleRatio) return { id: 'shelf', text: tr('棚ロボが足りません（棚ロボは常に忙しく、搬送ロボは暇）。棚ロボを追加してみましょう（現在 {0} 台）', shelves), panel: 'upgrades' };
   if (st.amrIdle <= ADVISOR.lowIdleRatio && st.shelfIdle >= ADVISOR.highIdleRatio) return { id: 'amr', text: tr('搬送ロボが足りません（搬送ロボは常に忙しく、棚ロボは暇）。搬送ロボを追加してみましょう（現在 {0} 台）', amrs), panel: 'upgrades' };
+  // 空ビンが余っているのに入荷が止まっている → 入荷の積載量を上げると在庫が増える（倉庫を広げた後）
+  const bins = Object.keys(w.bins).length;
+  if (a.restock && dock === 0 && bins >= ADVISOR.emptyBinsMin && empties >= bins * ADVISOR.emptyBinsShare && inboundSettings(w).load === 'standard') return { id: 'inboundLoad', text: tr('空ビンが余っています（{0} / {1}）。設定の「入荷トラック」で積載量を「倉庫いっぱい」にすると、空いたビンに在庫が入ります', empties, bins), panel: 'settings' };
   // 4. 残りの自動化
   if (a.dispatch < 3 && unlockedRank(w, AUTOMATION.unlockRank.dispatch3)) return { id: 'dispatch3', text: tr('自動配車AI Lv3（{0} コイン）で同じ商品のオーダーをまとめて効率が上がります', dispatchPrice(w, 2)), panel: 'upgrades' };
   if (!a.relocate && w.levels >= 2 && unlockedRank(w, AUTOMATION.unlockRank.relocate)) return { id: 'relocate', text: tr('在庫再配置AI（{0} コイン）で人気商品が上段に並び、掘り出しが減ります', automationPrice(w, AUTOMATION.relocateCost)), panel: 'upgrades' };

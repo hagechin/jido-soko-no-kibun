@@ -1,7 +1,7 @@
 import { iconText } from './icon';
 /** 設定パネル: セーブ・新規開始・画質（書き出し／読み込みは M10、眺めモードの fps は M10） */
 import { saveQuality, settingsFor, type QualityLevel } from '../render/quality';
-import { DIFFICULTY, DIFFICULTY_ORDER, ECONOMY_MODES, ECONOMY_ORDER, type DifficultyId, type EconomyId } from '../data/balance';
+import { DIFFICULTY, DIFFICULTY_ORDER, ECONOMY_MODES, ECONOMY_ORDER, INBOUND_FREQ, INBOUND_FREQ_ORDER, INBOUND_LOAD, INBOUND_LOAD_ORDER, type DifficultyId, type EconomyId, type InboundFreqId, type InboundLoadId } from '../data/balance';
 import { el, showToast } from './layout';
 import { THEMES, type Skin, type Theme } from './cosmetics';
 import type { LocaleSetting } from '../i18n';
@@ -28,6 +28,9 @@ export interface SettingsContext {
   /** 経済モード（コインの貯まりやすさと値段。途中で変更できる） */
   economy?: EconomyId;
   setEconomy?: (e: EconomyId) => void;
+  /** 入荷トラック（頻度と積載量。途中で変更できる） */
+  inbound?: { freq: InboundFreqId; load: InboundLoadId; stockBins: number };
+  setInbound?: (next: Partial<{ freq: InboundFreqId; load: InboundLoadId }>) => void;
   /** 操作方法を開く */
   openHelp?: () => void;
   /** バックグラウンド動作（他のタブを見ている間も進める） */
@@ -100,6 +103,35 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     body.append(row);
     body.append(el('p', { class: 'muted small', text: ECONOMY_MODES[cur].desc }));
     body.append(el('p', { class: 'muted small', text: tr('難易度とは別の軸。切り替えた時点から報酬・値段・昇格に要る出荷数が変わる（持っているコインやロボはそのまま）。難易度と組み合わせられる（例: スーパーハード × ロングラン）') }));
+  }
+  if (ctx.inbound && ctx.setInbound) {
+    body.append(el('h4', { text: tr('入荷トラック（いつでも変更できます）') }));
+    const cur = ctx.inbound;
+    body.append(el('p', { class: 'muted small', text: tr('頻度') }));
+    const fr = el('div', { class: 'settings-row' });
+    for (const id of INBOUND_FREQ_ORDER) {
+      const b = el('button', { class: `btn${cur.freq === id ? ' is-active' : ''}`, type: 'button', text: INBOUND_FREQ[id].name });
+      b.addEventListener('click', () => {
+        ctx.setInbound!({ freq: id });
+        showToast(tr('入荷の頻度: {0}', INBOUND_FREQ[id].name));
+      });
+      fr.append(b);
+    }
+    body.append(fr);
+    body.append(el('p', { class: 'muted small', text: INBOUND_FREQ[cur.freq].desc }));
+    body.append(el('p', { class: 'muted small', text: tr('積載量') }));
+    const lr = el('div', { class: 'settings-row' });
+    for (const id of INBOUND_LOAD_ORDER) {
+      const b = el('button', { class: `btn${cur.load === id ? ' is-active' : ''}`, type: 'button', text: INBOUND_LOAD[id].name });
+      b.addEventListener('click', () => {
+        ctx.setInbound!({ load: id });
+        showToast(tr('入荷の積載量: {0}', INBOUND_LOAD[id].name));
+      });
+      lr.append(b);
+    }
+    body.append(lr);
+    body.append(el('p', { class: 'muted small', text: tr('{0}（いまの在庫の目標: 1 商品につきビン {1} 杯）', INBOUND_LOAD[cur.load].desc, cur.stockBins) }));
+    body.append(el('p', { class: 'muted small', text: tr('1 回に積む量は頻度の間隔ぶん（月 1 なら 4 週ぶん）なので、頻度を変えても週あたりの入荷量は同じ。倉庫を広げて空ビンが余っているなら積載量を上げると在庫が増える') }));
   }
   if (ctx.openStore || ctx.openSandbox) {
     body.append(el('h4', { text: tr('追加機能') }));
