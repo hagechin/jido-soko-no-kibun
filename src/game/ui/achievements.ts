@@ -1,4 +1,4 @@
-/** 実績の一覧（設定パネルの「実績」セクション）: メダル・いまの値・次の段・進捗バー */
+/** 実績の一覧（下部バーの「実績」パネル）: メダル・いまの値・次の段・進捗バー */
 import { MEDALS } from '../data/balance';
 import { achievementStatuses, formatAchievementValue, type AchievementStatus } from '../sim/achievements';
 import type { WorldState } from '../sim/types';
@@ -22,7 +22,7 @@ function row(s: AchievementStatus): HTMLElement {
 export function renderAchievements(body: HTMLElement, w: WorldState): void {
   const all = achievementStatuses(w);
   const earned = all.filter((s) => s.tier > 0).length;
-  body.append(el('h4', { text: `実績（${earned} / ${all.length}）` }));
+  body.append(el('h4', { text: `実績（${earned} / ${all.length} 達成）` }));
   body.append(el('p', { class: 'muted small', text: '計測はゲーム内の時間（倍速で早くはなりません）。距離は 1 マス = 1 m。金の先にプラチナと「月まで」がある実績もあります' }));
   for (const s of all.filter((s) => !s.def.negative)) body.append(row(s));
   body.append(el('h4', { text: '称号（ネガティブ）' }));
