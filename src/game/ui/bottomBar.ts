@@ -1,7 +1,7 @@
 import { icon, type IconName } from './icon';
 import { $, el } from './layout';
 
-export type PanelId = 'build' | 'upgrades' | 'inventory' | 'settings' | 'station' | 'debug' | 'robots' | 'port' | 'store';
+export type PanelId = 'build' | 'upgrades' | 'inventory' | 'settings' | 'station' | 'debug' | 'robots' | 'port' | 'store' | 'achievements';
 
 export class BottomBar {
   private sheet = $('sheet');
@@ -43,7 +43,7 @@ export class BottomBar {
   show(id: PanelId): void {
     const switched = this.current !== id;
     this.current = id;
-    const titles: Record<PanelId, string> = { build: '建設モード', upgrades: 'アップグレード', inventory: '在庫', settings: '設定', station: 'ステーション', debug: 'サンドボックス', robots: 'ロボ一覧', port: 'ポート', store: '追加機能ストア' };
+    const titles: Record<PanelId, string> = { build: '建設モード', upgrades: 'アップグレード', inventory: '在庫', settings: '設定', station: 'ステーション', debug: 'サンドボックス', robots: 'ロボ一覧', port: 'ポート', store: '追加機能ストア', achievements: '実績' };
     this.sheetTitle.textContent = titles[id];
     this.sheet.classList.toggle('is-compact', id === 'build');
     this.refresh();

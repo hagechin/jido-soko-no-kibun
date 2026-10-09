@@ -34,8 +34,6 @@ export interface SettingsContext {
   setInbound?: (next: Partial<{ freq: InboundFreqId; load: InboundLoadId }>) => void;
   /** iOS アプリ: アプリのバージョンと同梱 Web のビルド情報（同梱が古くないかの確認用） */
   buildInfo?: string;
-  /** 実績の一覧を描く */
-  achievements?: (body: HTMLElement) => void;
   /** 操作方法を開く */
   openHelp?: () => void;
   /** バックグラウンド動作（他のタブを見ている間も進める） */
@@ -75,7 +73,6 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     body.append(row);
     body.append(el('p', { class: 'muted small', text: 'オンにすると PC で他のタブやアプリを使っている間もシミュレーションが進みます（音も鳴ります）。スマホはスリープやアプリ切替で OS に止められるため、戻ったときに追いつき計算（5 分まで）かお留守番レポート（それ以上）になります。既定: PC はオン、タッチ端末はオフ' }));
   }
-  if (ctx.achievements) ctx.achievements(body);
   if (ctx.setDifficulty) {
     body.append(el('h4', { text: '難易度（いつでも変更できます）' }));
     const cur = ctx.difficulty ?? 'normal';
