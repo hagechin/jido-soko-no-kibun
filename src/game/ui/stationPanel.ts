@@ -43,7 +43,8 @@ export function renderStationPanel(body: HTMLElement, w: WorldState, stationId: 
 export function renderPortPanel(body: HTMLElement, w: WorldState, portId: number, refresh: () => void): void {
   const p = w.ports.find((p) => p.id === portId);
   if (!p) return;
-  body.append(el('p', { text: `ポート (${p.x}, ${p.z})　出庫待ち ${p.outbound.length} / 返却待ち ${p.returns.length}` }));
+  const inboundBins = p.outbound.filter((id) => w.bins[id]?.purpose === 'inbound').length;
+  body.append(el('p', { text: `ポート (${p.x}, ${p.z})　出庫待ち ${p.outbound.length}（ピック ${p.outbound.length - inboundBins} / 入荷 ${inboundBins}） / 返却待ち ${p.returns.length}` }));
   const b = el('button', { class: `btn${p.closed ? ' danger' : ''}`, type: 'button', }, p.closed ? iconText('play', '使用を再開する', 14) : iconText('ban', '使用を停止する', 14));
   b.addEventListener('click', () => {
     p.closed = !p.closed;

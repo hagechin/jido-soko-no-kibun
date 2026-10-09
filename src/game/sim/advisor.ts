@@ -7,7 +7,7 @@ import { findMergePair, needsEmptyBin, outboundLoad } from './automation';
 import { isDrone } from './layers';
 import { automationPrice, dispatchPrice, price, rankShippedAt } from './pricing';
 import { queuedCount, visibleOrders } from './orders';
-import { binsToRecommended, freeBinSlots, reservedSlots } from './shop';
+import { binsToRecommended, freeBinSlots, reservedSlots, upgradeAllRobotsCost } from './shop';
 import { inboundSettings } from './inbound';
 import { hasIdlePicker } from './build';
 import type { WorldState } from './types';
@@ -110,6 +110,8 @@ export function adviseNext(w: WorldState, st: AdvisorStats, opts: AdvisorOptions
   // 5. 溜まっているなら全体の底上げ
   if (queuedCount(w) >= ADVISOR.queueHint && visibleOrders(w).length) {
     if (st.shelfIdle <= ADVISOR.lowIdleRatio && st.amrIdle <= ADVISOR.lowIdleRatio) return { id: 'both', text: 'オーダーが溜まっています。ロボを両方とも増やすか、速度アップグレードで回転を上げましょう', panel: 'upgrades' };
+    // 全ロボが最大なら速度の案内は的外れ（第 13・23 回）: 台数とピッカー側を案内
+    if (upgradeAllRobotsCost(w) === null) return { id: 'speed-maxed', text: 'オーダーが溜まっています。ロボは最大強化済みなので、ロボの追加、ピック速度の強化、ピッキングステーションやポートの増設が効きます', panel: 'upgrades' };
     return { id: 'speed', text: 'オーダーが溜まっています。ロボの速度・リフト速度・ピック速度のアップグレードが効きます', panel: 'upgrades' };
   }
   return null;
