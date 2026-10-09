@@ -909,4 +909,6 @@ export const EN: Record<string, string> = {
   '実績（{0} / {1}）': 'Achievements ({0} / {1})',
   '計測はゲーム内の時間（倍速で早くはなりません）。距離は 1 マス = 1 m。金の先にプラチナと「月まで」がある実績もあります': 'Measured in game time (fast-forward does not help). Distance: 1 cell = 1 m. Some achievements go beyond gold to platinum and "to the Moon"',
   '称号（ネガティブ）': 'Titles (negative)',
+  '実績（{0} / {1} 達成）': 'Achievements ({0} / {1} earned)',
+  '下部バーの「実績」に金銀銅のアチーブメントと、ため込みすぎ・欠品王などのネガティブ称号。計測はゲーム内の時間（倍速で早くはならない）。総移動距離は 100 km（東京〜山梨）から月までの 384,400 km まで': '"Achievements" in the bottom bar has bronze/silver/gold achievements plus negative titles such as Hoarder and Stockout King. Everything is measured in game time (fast-forward does not help). Total distance runs from 100 km (Tokyo to Yamanashi) up to 384,400 km (to the Moon)',
 };

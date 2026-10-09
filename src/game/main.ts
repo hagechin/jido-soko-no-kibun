@@ -327,6 +327,7 @@ class Game {
     if (this.debug.enabled) this.bar.addButton('debug', 'bug', tr('デバッグ'));
     // ストア（iOS 版の買い切り）。購入状態が変わったら開いているパネルを描き直す
     this.bar.registerPanel('store', (body) => renderStore(body, { refresh: () => this.bar.refresh() }));
+    this.bar.registerPanel('achievements', (body) => renderAchievements(body, this.world));
     onEntitlementsChange(() => {
       setLimitsExpanded(hasFeature('limits'));
       this.applyCosmetics();
@@ -365,7 +366,6 @@ class Game {
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
         buildInfo: this.buildInfo,
-        achievements: (body) => renderAchievements(body, this.world),
         openStore: () => this.bar.show('store'),
         language: {
           setting: localeSetting(),
@@ -548,6 +548,7 @@ class Game {
     else if (code === 'KeyU') panel('upgrades');
     else if (code === 'KeyI') panel('inventory');
     else if (code === 'KeyS') panel('settings');
+    else if (code === 'KeyA') panel('achievements');
     else if (code === 'KeyN') {
       this.calm.enter();
       e.preventDefault();
@@ -1052,7 +1053,7 @@ class Game {
             showToast(`${def.negative ? '称号' : '実績'}「${def.name}」${medal}: ${def.tiers[e.tier - 1]?.label ?? ''}`, 5000, e.tier >= 5 ? 'moon' : e.tier >= 4 ? 'gem' : 'medal');
             this.sound.notice();
             nativeTry('haptic', { kind: 'success' });
-            if (this.bar.open === 'settings') this.bar.refresh();
+            if (this.bar.open === 'achievements') this.bar.refresh();
           }
           break;
         }
