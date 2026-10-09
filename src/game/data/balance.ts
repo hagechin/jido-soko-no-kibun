@@ -396,6 +396,8 @@ export const AUTOMATION = {
   amrsPerInboundStation: 2,
   /** 緊急の補充（入荷口の商品が欠品）のとき、入荷ビンがポートの出庫枠をいくつ残して使うか（ピックと同じ 1） */
   urgentPortHeadroom: 1,
+  /** 1 つのポートに同時に置く入荷ビンの上限（取り出し中込み）。入荷ビンだけでポートが埋まるとピックが止まる */
+  inboundBinsPerPortMax: 2,
   /** 入荷口にある商品の棚の在庫がビン何杯分を下回ったら「欠品しそう」として緊急の補充に含める（0 = 欠品してからだけ） */
   urgentStockBins: 0.25,
 };
