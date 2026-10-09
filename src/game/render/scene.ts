@@ -26,7 +26,7 @@ import {
   LineBasicMaterial,
   LineSegments,
 } from 'three';
-import { RENDER, BIN, INBOUND_WORKER } from '../data/balance';
+import { RENDER, BIN, INBOUND_WORKER, ROBOT } from '../data/balance';
 import { itemDef } from '../data/items';
 import { ICONS, ICON_SIZE, PALETTE } from '../data/icons';
 import { Effects, groundColorForMonth } from './effects';
@@ -211,9 +211,15 @@ export class WarehouseRenderer {
     return RENDER.railBaseHeight + w.levels * RENDER.binHeight + 0.15;
   }
 
-  /** ドローンの飛行高さ（棚ロボの上） */
+  /**
+   * ドローンの飛行高さ（★ 棚の高さ + 棚ロボの背丈 + ドローンがぶら下げる荷物の最大の高さ + 余裕）。
+   * 段数を上げれば上がり、ドローンの積載を上げれば（持てるビンが増えれば）さらに上がる。全ドローン同じ高度。
+   * 荷物は本体の下に吊るので、棚ロボの天面と荷物の底がぶつからない高さにする（棚の中を飛んで見えないように）
+   */
   droneHeight(w: WorldState): number {
-    return this.railHeight(w) + 1.1;
+    let bins = 1;
+    for (const r of w.robots) if (isDrone(r)) bins = Math.max(bins, ROBOT.cargo[Math.min(r.cargoLevel, ROBOT.cargo.length - 1)].bins);
+    return this.railHeight(w) + RENDER.shelfRobotHeight + RENDER.droneClearance + RENDER.droneHangerLength + bins * RENDER.binHeight;
   }
 
   private rebuildStatic(w: WorldState): void {
@@ -502,7 +508,7 @@ export class WarehouseRenderer {
           this.robotBatch.add(x + dx, y + 0.06, z + dz, 0.08, 0.03, 0.34, COLORS.rotor, spin * dir);
         }
         r.carrying.forEach((id, i) => {
-          this.robotBatch.add(x, y - 0.2 - bh / 2 - i * bh, z, RENDER.binSize * 0.8, bh * 0.9, RENDER.binSize * 0.8, this.binColor(w, id));
+          this.robotBatch.add(x, y - RENDER.droneHangerLength - bh / 2 - i * bh, z, RENDER.binSize * 0.8, bh * 0.9, RENDER.binSize * 0.8, this.binColor(w, id));
         });
         if (r.id === this.selectedRobotId) {
           this.selectionRing.visible = true;
