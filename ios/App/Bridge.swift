@@ -77,6 +77,7 @@ final class Bridge {
             guard let dataUrl = p["data"] as? String, let image = Bridge.decodeDataUrl(dataUrl) else { throw BridgeError.badParams }
             let name = (p["name"] as? String) ?? "hakoniwa.jpg"
             Bridge.share(image: image, name: name, from: webView)
+            return true
         case "shareFile":
             // セーブの書き出し: WKWebView は blob: の <a download> を扱えない（遷移をキャンセルしている）ので、
             // 一時ファイルに書いて共有シート（「ファイルに保存」「AirDrop」など）を出す
