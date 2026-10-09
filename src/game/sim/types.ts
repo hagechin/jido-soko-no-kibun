@@ -163,6 +163,8 @@ export interface Order {
   shownTick: number | null;
   /** 遅延ペナルティを適用済み */
   penalized: boolean;
+  /** 欠品で止まったことを数えた（stats.stockouts は 1 オーダー 1 回） */
+  stockout?: boolean;
 }
 
 export interface Pallet {
@@ -277,6 +279,8 @@ export interface WorldState {
   inbound?: { freq: InboundFreqId; load: InboundLoadId };
   /** 次の定期トラックを手配する tick（省略なら次の区切りから） */
   nextTruckTick?: number;
+  /** サンドボックスのプリセット倉庫（実績はプレイヤー全体の記録に入れない） */
+  sandbox?: boolean;
   /** 解放したアチーブメント: id → 達した段（1 = 銅 …）と tick。古いセーブは migrate で静かに初期化 */
   achievements?: Record<string, { tier: number; at: number }>;
   width: number;

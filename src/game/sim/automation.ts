@@ -12,6 +12,7 @@ import { isDrone, layerOf } from './layers';
 import { passableFor } from './goals';
 import { AUTOMATION, PATHING, PORT } from '../data/balance';
 import { demandFor } from '../data/seasons';
+import { ITEM_BY_ID } from '../data/items';
 import { cellAt, isFloorWalkable, isRailWalkable, manhattan, neighbors4 } from './grid';
 import { rand } from './rng';
 import { visibleOrders } from './orders';
@@ -298,19 +299,24 @@ export function needsEmptyBin(w: WorldState): string[] {
   if (!w.pallets.length) return [];
   const stock = new Map<string, number>();
   const partial = new Set<string>();
-  let empty = false;
-  for (const s of w.stacks) for (const id of s.bins) {
-    const b = w.bins[id];
-    if (!b) continue;
-    if (b.item === null) empty = true;
-    else {
-      stock.set(b.item, (stock.get(b.item) ?? 0) + b.qty);
-      if (b.qty < w.binCapacity) partial.add(b.item);
+  const inFlight = binsInFlight(w);
+  const locked = lockedStacks(w);
+  let freeEmpty = false;
+  for (const s of w.stacks) {
+    for (const id of s.bins) {
+      const b = w.bins[id];
+      if (!b) continue;
+      if (b.item !== null) {
+        stock.set(b.item, (stock.get(b.item) ?? 0) + b.qty);
+        if (b.qty < w.binCapacity) partial.add(b.item);
+      }
     }
+    // 「使える空ビン」= 誰も使っていないスタックの頂上にある空ビンだけ。埋まっている・運搬中・ポート上・仕事で予約済みの空ビンは
+    // 欠品の補充にすぐ回らない（第 20 回: 空ビンが 1〜2 個残ったまま統合が始まらず欠品が 9 分続いた）ので数えない
+    const top = s.bins[s.bins.length - 1];
+    if (top !== undefined && w.bins[top]?.item === null && !locked.has(s.id) && !inFlight.has(top)) freeEmpty = true;
   }
-  if (empty) return [];
-  // 持ち運び中・ポート上のビンも在庫に数える（空ビンが運搬中なら作らなくてよい）
-  for (const b of Object.values(w.bins)) if (b.item === null) return [];
+  if (freeEmpty) return [];
   const out: string[] = [];
   for (const item of new Set(w.pallets.map((p) => p.item))) if ((stock.get(item) ?? 0) <= 0 && !partial.has(item)) out.push(item);
   return out;
@@ -575,7 +581,7 @@ export function diagnoseIdle(w: WorldState): string[] {
     const all = Object.entries(w.bins).filter(([, b]) => b.item === item && b.qty > 0).map(([id]) => Number(id));
     if (!all.length) {
       const dock = w.pallets.find((p) => p.item === item)?.qty ?? 0;
-      out.push(`${item}: 欠品（在庫ゼロ）${dock ? `。入荷口に ${dock} 個あるので補充待ち` : '。入荷口にも無く、次のトラック待ち'}`);
+      out.push(`${ITEM_BY_ID[item]?.name ?? item}: 欠品（在庫ゼロ）${dock ? `。入荷口に ${dock} 個あるので補充待ち` : '。入荷口にも無く、次のトラック待ち'}`);
       continue;
     }
     const masked = all.filter((id) => inFlight.has(id) && w.bins[id].purpose !== 'inbound');

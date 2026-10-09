@@ -26,6 +26,7 @@ import {
   upgradeLevels,
   upgradeAllRobots,
   upgradeAllRobotsCost,
+  robotMaxed,
   upgradeLift,
   upgradePicker,
   upgradeSpeed,
@@ -84,7 +85,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const recBins = recommendedBins(w);
   const recNeed = binsToRecommended(w);
   const totalBins = Object.keys(w.bins).length;
-  body.append(row(recNeed > 0 ? `おすすめのビン数まで追加（空ビン ${recNeed} 個）` : 'おすすめのビン数まで追加（達成）', buyBinsToRecommendedCost(w), recNeed > 0 ? () => buyBinsToRecommended(w) : null, ctx, recNeed > 0 ? `いま ${totalBins} 個 → おすすめ ${recBins} 個（${w.levels <= 1 ? '1 段は掘り出しが無いので予約ぶん以外すべて' : `棚のスロットの ${Math.round(BIN.recommendedFillRatio * 100)}% まで。残りは掘り出しの退避先`}）。空ビン 1 個 ${price(w, BIN.emptyBinCost)} コイン × ${recNeed}` : `いま ${totalBins} 個でおすすめ（${recBins} 個）に達しています。段数を上げるかスタックを増やすと増えます`));
+  body.append(row(recNeed > 0 ? `おすすめのビン数まで追加（空ビン ${recNeed} 個）` : 'おすすめのビン数まで追加（達成）', buyBinsToRecommendedCost(w), recNeed > 0 ? () => buyBinsToRecommended(w) : null, ctx, recNeed > 0 ? `いま ${totalBins} ビン → おすすめ ${recBins} ビン（${w.levels <= 1 ? '1 段は掘り出しが無いので予約ぶん以外すべて' : `棚のスロットの ${Math.round(BIN.recommendedFillRatio * 100)}% まで。残りは掘り出しの退避先`}）。空ビン 1 個 ${price(w, BIN.emptyBinCost)} コイン × ${recNeed}` : `いま ${totalBins} ビンでおすすめ（${recBins} ビン）に達しています。段数を上げるかスタックを増やすと増えます`));
   const areaMax = expansionCost(w, 'east') === null && expansionCost(w, 'south') === null;
   body.append(row(areaMax ? `面積拡張 ${w.width}×${w.height}（MAX）` : '面積拡張（東へ +4 列／南へ +4 行）', null, null, ctx, areaMax ? `これ以上は広げられません${limitHint(true, `${LIMITS.expanded.maxWidth}×${LIMITS.expanded.maxHeight} まで`)}` : '建設モードのツールバーから行います', areaMax ? undefined : '建設'));
   body.append(el('p', { class: 'muted small', text: `スタック ${price(w, BUILD.stackCost)} / ポート ${price(w, BUILD.portCost)} / ステーション ${price(w, BUILD.pickStationCost)} コイン。「建設」で配置します` }));
@@ -107,7 +108,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const allCost = upgradeAllRobotsCost(w);
   body.append(el('h4', { text: 'ロボの強化（全機）' }));
   const allShort = allCost !== null && w.coins < allCost;
-  body.append(row(allCost === null ? '全ロボを最大強化（MAX）' : allShort ? '全ロボを最大強化（足りるぶんまで）' : '全ロボを最大強化', allCost, () => upgradeAllRobots(w), ctx, allCost === null ? '全ロボとも速度・リフト・積載が最大です。ロボを追加するとまた押せます' : `全ロボの速度・リフト・積載を一気に最大まで（${w.robots.length} 台ぶんの合計）${allShort ? `。コインが ${(allCost - w.coins).toLocaleString('ja-JP')} 足りないので、押すと安い段階から足りるぶんだけ強化します` : ''}`, undefined, { allowShort: true }));
+  body.append(row(allCost === null ? '全ロボを最大強化（MAX）' : allShort ? '全ロボを最大強化（足りるぶんまで）' : '全ロボを最大強化', allCost, () => upgradeAllRobots(w), ctx, allCost === null ? '全ロボとも速度・リフト・積載が最大です。ロボを追加するとまた押せます' : `全ロボの速度・リフト・積載を一気に最大まで（強化が要る ${w.robots.filter((r) => !robotMaxed(w, r)).length} 台ぶんの合計）${allShort ? `。コインが ${(allCost - w.coins).toLocaleString('ja-JP')} 足りないので、押すと安い段階から足りるぶんだけ強化します` : ''}`, undefined, { allowShort: true }));
   const r = w.robots.find((r) => r.id === ctx.selectedRobotId) ?? null;
   body.append(el('h4', { text: r ? `${r.name} の強化（機体ごと）` : 'ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）' }));
   if (r) {

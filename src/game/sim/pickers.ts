@@ -85,8 +85,7 @@ function finishWork(w: WorldState, s: Station): void {
       if (picked > 0) w.events.push({ type: 'pick', stationId: s.id, item: bin.item, count: picked });
       if (bin.qty <= 0) {
         bin.qty = 0;
-        bin.item = null; // 空ビンとして残る（§3.1）
-        w.stats.stockouts++;
+        bin.item = null; // 空ビンとして残る（§3.1）。欠品の回数は orders.ts で「欠品で止まったオーダー」として数える
       }
       // 完了したオーダーを出荷
       for (const o of [...visibleOrders(w)]) if (isOrderComplete(o)) shipOrder(w, o, s.id);

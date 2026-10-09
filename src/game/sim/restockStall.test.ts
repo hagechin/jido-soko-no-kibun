@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { addPallet, stockOf } from './inbound';
+import { needsEmptyBin } from './automation';
 import { createRuntime, stepSim } from './sim';
 import { addRobot, createBin, createWorld } from './world';
 import type { WorldState } from './types';
@@ -108,6 +109,39 @@ describe('空ビンが無いときのビンの統合（★ デッドロック解
     // まとめた側のビンは空（item null）になり、受け側は合算されている。商品の総数は変わらない
     const banana = Object.values(w.bins).filter((b) => b.item === 'banana').reduce((a, b) => a + b.qty, 0);
     expect(banana).toBe(w.stacks.filter((_, i) => i % 2 === 0).length * (Math.floor(w.binCapacity / 2) - 1));
+  });
+
+  it('空ビンが棚の底に埋まっている（頂上に使える空ビンが無い）ときも統合する（第 20 回の回帰）', () => {
+    const w = createWorld({ seed: 33 });
+    const rt = createRuntime();
+    w.coins = 1e6;
+    w.automation = { dispatch: 3, restock: true, relocate: false, amrPriority: 'balanced', lastRetrieveTick: 0 };
+    w.levels = 3;
+    w.nextOrderTick = 1e9;
+    for (const s of w.stacks) s.bins = [];
+    for (const id of Object.keys(w.bins)) delete w.bins[Number(id)];
+    // 1 つのスタックだけ底に空ビン、その上に半分入ったビン 2 つ。ほかは頂上が半分入ったビン。apple は無い
+    const items = ['banana', 'book'];
+    w.stacks.forEach((s, i) => {
+      if (i === 0) s.bins.push(createBin(w, null, 0).id);
+      s.bins.push(createBin(w, items[i % 2], Math.floor(w.binCapacity / 2) - 1).id);
+      if (i === 0) s.bins.push(createBin(w, items[1], Math.floor(w.binCapacity / 2) - 1).id);
+    });
+    expect(Object.values(w.bins).filter((b) => b.item === null)).toHaveLength(1);
+    expect(needsEmptyBin(w)).toEqual([]);
+    addPallet(w, 'apple', 30);
+    order(w, 1, [['apple', 2]]);
+    expect(needsEmptyBin(w)).toEqual(['apple']);
+    let stuffed = -1;
+    for (let t = 0; t < 9000; t++) {
+      stepSim(w, rt);
+      if (stockOf(w, 'apple') > 0) {
+        stuffed = t;
+        break;
+      }
+    }
+    expect(stuffed).toBeGreaterThanOrEqual(0);
+    expect(stuffed).toBeLessThan(6000);
   });
 
   it('空ビンがあるときは統合しない', () => {

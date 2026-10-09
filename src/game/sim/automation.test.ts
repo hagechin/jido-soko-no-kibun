@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ITEM_BY_ID } from '../data/items';
 import { createWorld, addRobot } from './world';
 import { createRuntime, stepMany, stepSim } from './sim';
 import { buyAutomation, buyEmptyBin, upgradeLevels } from './shop';
@@ -309,6 +310,6 @@ describe('idle diagnosis (debug panel)', () => {
     // 在庫ゼロの商品を注文させると「欠品」として説明される
     w.orders.unshift({ id: 9999, lines: [{ item: 'fish', qty: 1, picked: 0 }], arrivedTick: w.tick, shownTick: w.tick, penalized: false });
     for (const b of Object.values(w.bins)) if (b.item === 'fish') b.qty = 0;
-    expect(diagnoseIdle(w).some((l) => l.startsWith('fish: 欠品'))).toBe(true);
+    expect(diagnoseIdle(w).some((l) => l.startsWith(`${ITEM_BY_ID.fish.name}: 欠品`))).toBe(true);
   });
 });

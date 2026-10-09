@@ -102,7 +102,8 @@ describe('M5 inbound', () => {
     commandFetch(w, rt, amr.id, w.ports[0].id);
     until(w, rt, () => w.stats.totalShipped === 1);
     expect(w.bins[binId]).toMatchObject({ item: null, qty: 0 });
-    expect(w.stats.stockouts).toBe(1);
+    // 取り切って空になっただけでは「欠品」には数えない（欠品で止まったオーダーを数える）
+    expect(w.stats.stockouts).toBe(0);
   });
 });
 
@@ -158,5 +159,20 @@ describe('inbound settings: frequency and load', () => {
     setInbound(s, { load: 'fill' });
     expect(truckLoadFactor(s)).toBe(1);
     expect(restockStockCap(s)).toBe(restockStockCap(createWorld({ seed: 1 })));
+  });
+});
+
+describe('stockout counter', () => {
+  it('counts an order once when one of its lines has zero stock', () => {
+    const w = createWorld({ seed: 6 });
+    const rt = createRuntime();
+    w.nextOrderTick = 1e9;
+    for (const b of Object.values(w.bins)) if (b.item === 'apple') { b.qty = 0; b.item = null; }
+    w.orders.push({ id: 900, lines: [{ item: 'apple', qty: 1, picked: 0 }], arrivedTick: w.tick, shownTick: null, penalized: false });
+    const before = w.stats.stockouts;
+    stepMany(w, rt, 200);
+    expect(w.stats.stockouts).toBe(before + 1);
+    stepMany(w, rt, 600);
+    expect(w.stats.stockouts).toBe(before + 1);
   });
 });

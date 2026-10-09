@@ -79,6 +79,22 @@ export function tierOf(def: AchievementDef, value: number): number {
   return t;
 }
 
+/** プレイヤー全体の記録（倉庫が替わっても残る。UI が localStorage／ネイティブに保存） */
+export type AchievementProfile = Record<string, { tier: number; at: number }>;
+
+/** 倉庫の記録をプレイヤー全体の記録に取り込む（段の高い方）。変わったら true */
+export function mergeProfile(profile: AchievementProfile, w: WorldState): boolean {
+  if (w.sandbox || !w.achievements) return false;
+  let changed = false;
+  for (const [id, a] of Object.entries(w.achievements)) {
+    if ((profile[id]?.tier ?? 0) < a.tier) {
+      profile[id] = { tier: a.tier, at: Date.now() };
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 export interface AchievementStatus {
   def: AchievementDef;
   value: number;
@@ -91,10 +107,11 @@ export interface AchievementStatus {
 }
 
 /** 一覧用 */
-export function achievementStatuses(w: WorldState): AchievementStatus[] {
+export function achievementStatuses(w: WorldState, profile: AchievementProfile = {}): AchievementStatus[] {
   return ACHIEVEMENTS.map((def) => {
     const value = achievementValue(w, def.id);
-    const tier = Math.max(tierOf(def, value), w.achievements?.[def.id]?.tier ?? 0);
+    // 段はプレイヤー全体の記録も見る（サンドボックスの倉庫はその倉庫の記録だけ）
+    const tier = Math.max(tierOf(def, value), w.achievements?.[def.id]?.tier ?? 0, w.sandbox ? 0 : (profile[def.id]?.tier ?? 0));
     const next = def.tiers[tier] ?? null;
     const prev = tier > 0 ? def.tiers[tier - 1].value : 0;
     const progress = next ? Math.min(1, Math.max(0, (value - prev) / (next.value - prev))) : 1;
@@ -149,7 +166,8 @@ function settle(w: WorldState, silent: boolean): void {
     const had = w.achievements[def.id]?.tier ?? 0;
     if (tier > had) {
       w.achievements[def.id] = { tier, at: w.tick };
-      if (!silent) w.events.push({ type: 'achievement', id: def.id, tier });
+      // サンドボックスのプリセット倉庫ではトーストを出さない（読み込むたびに同じ実績が出るので）
+      if (!silent && !w.sandbox) w.events.push({ type: 'achievement', id: def.id, tier });
     }
   }
 }
