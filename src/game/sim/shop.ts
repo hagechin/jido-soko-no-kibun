@@ -145,6 +145,14 @@ export function maxOutRobots(w: WorldState): { upgraded: number; skipped: number
   return { upgraded, skipped };
 }
 
+/** そのロボの強化（速度・リフト・積載）がすべて最大か（ロボ一覧の「強化」ボタンを無効にする判定） */
+export function robotMaxed(w: WorldState, r: Robot): boolean {
+  if (r.speedLevel < ROBOT.maxSpeedLevel) return false;
+  if (r.kind === 'shelf' && r.liftLevel < ROBOT.maxLiftLevel) return false;
+  if (r.kind === 'amr' && r.cargoLevel < limitsFor(w).maxCargoLevel) return false;
+  return true;
+}
+
 /** 全ロボを最大まで強化（速度・リフト・積載）したときの合計コイン。全部最大なら null */
 export function upgradeAllRobotsCost(w: WorldState): number | null {
   let total = 0;

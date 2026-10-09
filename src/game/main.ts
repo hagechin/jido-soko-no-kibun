@@ -116,7 +116,7 @@ class Game {
   private hiddenAt: number | null = null;
   private catchUp = 0;
   /** バックグラウンド動作（PC 既定オン）: 隠れている間も Worker のタイマーで進める */
-  backgroundMode = loadBackgroundSetting();
+  backgroundMode = native.available ? false : loadBackgroundSetting();
   private ticker = new BackgroundTicker();
   /** バックグラウンド動作の前回時刻（フレームループの this.last とは別。隠れていてもフレームが走る環境があるため） */
   private bgLast = 0;
@@ -335,10 +335,13 @@ class Game {
       renderSettings(body, {
         openHelp: () => this.openHelp(),
         background: this.backgroundMode,
-        setBackground: (on) => {
-          this.setBackgroundMode(on);
-          this.bar.refresh();
-        },
+        // iOS アプリでは OS に止められるので「バックグラウンド動作」は出さない（常にオフ: 戻ったときに追いつき／お留守番）
+        setBackground: native.available
+          ? undefined
+          : (on) => {
+              this.setBackgroundMode(on);
+              this.bar.refresh();
+            },
         difficulty: this.world.difficulty,
         setDifficulty: (d) => {
           this.world.difficulty = d;

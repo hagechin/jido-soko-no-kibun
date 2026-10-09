@@ -1,5 +1,6 @@
 /** 稼働中ロボ一覧: 動いているロボをタップで捕まえにくいので、ここから選択・強化する */
 import { ROBOT } from '../data/balance';
+import { robotMaxed } from '../sim/shop';
 import { isDrone, speedLevelOf } from '../sim/layers';
 import { describeRobot } from '../sim/robots';
 import type { WorldState } from '../sim/types';
@@ -52,10 +53,10 @@ export function renderRobotList(body: HTMLElement, w: WorldState, selectedId: nu
         'div',
         { class: `robot-row${r.id === selectedId ? ' is-active' : ''}`, 'data-robot': String(r.id) },
         el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + r.name })), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small robot-meta', 'data-lv': lv, text: tr('{0} / 運んだ {1}{2}', lv, r.carried ?? 0, r.job?.manual ? tr(' / 手動指示中') : '') })),
-        el('button', { class: 'btn', type: 'button', text: tr('強化') }),
+        el('button', { class: 'btn', type: 'button', text: robotMaxed(w, r) ? 'MAX' : tr('強化'), ...(robotMaxed(w, r) ? { disabled: 'true', title: tr('速度・リフト・積載とも最大です') } : {}) }),
       );
       row.children[0].addEventListener('click', () => onSelect(r.id));
-      row.children[1].addEventListener('click', () => onUpgrade(r.id));
+      if (!robotMaxed(w, r)) row.children[1].addEventListener('click', () => onUpgrade(r.id));
       body.append(row);
     }
   }

@@ -802,4 +802,5 @@ export const EN: Record<string, string> = {
   '「ファイルに書き出し」は共有シート（ファイルに保存・AirDrop）。シートが出ないときはクリップボード経由で、メモなどに貼り付けて保管できます': '"Export to file" opens the share sheet (Save to Files, AirDrop). If the sheet does not appear, go through the clipboard and paste into Notes or similar',
   'クリップボードを読めませんでした（{0}）': 'Could not read the clipboard ({0})',
   'クリップボードが空です': 'The clipboard is empty',
+  '速度・リフト・積載とも最大です': 'Speed, lift and cargo are all at max',
 };
