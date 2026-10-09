@@ -8,6 +8,10 @@ import {
   buyDrone,
   buyDoubleDecker,
   buyEmptyBin,
+  buyBinsToRecommended,
+  buyBinsToRecommendedCost,
+  binsToRecommended,
+  recommendedBins,
   freeBinSlots,
   reservedSlots,
   buyShelfRobot,
@@ -47,16 +51,17 @@ export interface UpgradeContext {
   amrStaged?: number;
 }
 
-function row(label: string, cost: number | null, onBuy: (() => ShopResult) | null, ctx: UpgradeContext, extra = '', lockedText?: string): HTMLElement {
+function row(label: string, cost: number | null, onBuy: (() => ShopResult) | null, ctx: UpgradeContext, extra = '', lockedText?: string, opts: { allowShort?: boolean } = {}): HTMLElement {
   const btn = el('button', { class: 'btn buy-btn', type: 'button' });
   if (lockedText) btn.textContent = lockedText;
   else if (cost === null) btn.textContent = 'MAX';
   else btn.append(icon('coins', 14), document.createTextNode(` ${cost.toLocaleString('ja-JP')}`));
-  if (lockedText || cost === null || ctx.world.coins < cost || !onBuy) btn.setAttribute('disabled', 'true');
+  // allowShort: コインが合計に足りなくても押せる（足りるぶんだけ買う行）
+  if (lockedText || cost === null || (ctx.world.coins < cost && !opts.allowShort) || !onBuy) btn.setAttribute('disabled', 'true');
   btn.addEventListener('click', () => {
     if (!onBuy) return;
     const r = onBuy();
-    showToast(r.ok ? `${label} を購入しました` : r.reason);
+    showToast(r.ok ? r.message ?? `${label} を購入しました` : r.reason);
     ctx.refresh();
   });
   return el('div', { class: 'shop-row' }, el('div', { class: 'shop-label' }, el('div', { text: label }), extra ? el('div', { class: 'muted small', text: extra }) : null), btn);
@@ -75,6 +80,11 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   body.append(row(`ビン容量 ${w.binCapacity} → ${w.binCapacity + 10}`, binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, '1 ビンに入る個数'));
   const binsLeft = Math.max(0, freeBinSlots(w) - reservedSlots(w));
   body.append(row('空ビン 1 個', price(w, BIN.emptyBinCost), binsLeft > 0 ? () => buyEmptyBin(w) : null, ctx, `空きのあるスタックの頂上に置く（買えるのはあと ${binsLeft} 個。掘り出し用に ${reservedSlots(w)} スロットは空けておく）`));
+  // おすすめのビン数までまとめ買い（★ 倉庫を広げてスタックを増やした後、1 個ずつ買う手間を省く）
+  const recBins = recommendedBins(w);
+  const recNeed = binsToRecommended(w);
+  const totalBins = Object.keys(w.bins).length;
+  body.append(row(recNeed > 0 ? `おすすめのビン数まで追加（空ビン ${recNeed} 個）` : 'おすすめのビン数まで追加（達成）', buyBinsToRecommendedCost(w), recNeed > 0 ? () => buyBinsToRecommended(w) : null, ctx, recNeed > 0 ? `いま ${totalBins} 個 → おすすめ ${recBins} 個（${w.levels <= 1 ? '1 段は掘り出しが無いので予約ぶん以外すべて' : `棚のスロットの ${Math.round(BIN.recommendedFillRatio * 100)}% まで。残りは掘り出しの退避先`}）。空ビン 1 個 ${price(w, BIN.emptyBinCost)} コイン × ${recNeed}` : `いま ${totalBins} 個でおすすめ（${recBins} 個）に達しています。段数を上げるかスタックを増やすと増えます`));
   const areaMax = expansionCost(w, 'east') === null && expansionCost(w, 'south') === null;
   body.append(row(areaMax ? `面積拡張 ${w.width}×${w.height}（MAX）` : '面積拡張（東へ +4 列／南へ +4 行）', null, null, ctx, areaMax ? `これ以上は広げられません${limitHint(true, `${LIMITS.expanded.maxWidth}×${LIMITS.expanded.maxHeight} まで`)}` : '建設モードのツールバーから行います', areaMax ? undefined : '建設'));
   body.append(el('p', { class: 'muted small', text: `スタック ${price(w, BUILD.stackCost)} / ポート ${price(w, BUILD.portCost)} / ステーション ${price(w, BUILD.pickStationCost)} コイン。「建設」で配置します` }));
@@ -96,7 +106,8 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
 
   const allCost = upgradeAllRobotsCost(w);
   body.append(el('h4', { text: 'ロボの強化（全機）' }));
-  body.append(row(allCost === null ? '全ロボを最大強化（MAX）' : '全ロボを最大強化', allCost, () => upgradeAllRobots(w), ctx, allCost === null ? '全ロボとも速度・リフト・積載が最大です' : `全ロボの速度・リフト・積載を一気に最大まで（${w.robots.length} 台ぶんの合計）`));
+  const allShort = allCost !== null && w.coins < allCost;
+  body.append(row(allCost === null ? '全ロボを最大強化（MAX）' : allShort ? '全ロボを最大強化（足りるぶんまで）' : '全ロボを最大強化', allCost, () => upgradeAllRobots(w), ctx, allCost === null ? '全ロボとも速度・リフト・積載が最大です。ロボを追加するとまた押せます' : `全ロボの速度・リフト・積載を一気に最大まで（${w.robots.length} 台ぶんの合計）${allShort ? `。コインが ${(allCost - w.coins).toLocaleString('ja-JP')} 足りないので、押すと安い段階から足りるぶんだけ強化します` : ''}`, undefined, { allowShort: true }));
   const r = w.robots.find((r) => r.id === ctx.selectedRobotId) ?? null;
   body.append(el('h4', { text: r ? `${r.name} の強化（機体ごと）` : 'ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）' }));
   if (r) {

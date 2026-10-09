@@ -7,7 +7,7 @@ import { findMergePair, needsEmptyBin, outboundLoad } from './automation';
 import { isDrone } from './layers';
 import { automationPrice, dispatchPrice, price, rankShippedAt } from './pricing';
 import { queuedCount, visibleOrders } from './orders';
-import { freeBinSlots, reservedSlots } from './shop';
+import { binsToRecommended, freeBinSlots, reservedSlots } from './shop';
 import type { WorldState } from './types';
 
 export interface AdvisorStats {
@@ -85,7 +85,7 @@ export function adviseNext(w: WorldState, st: AdvisorStats, opts: AdvisorOptions
     const stuck = needsEmptyBin(w);
     if (stuck.length && findMergePair(w, new Set())) return null;
     const why = stuck.length ? 'まとめて空にできるビンも無いので、' : '';
-    if (freeBinSlots(w) > reservedSlots(w)) return { id: 'bins', text: `空ビンがありません。${why}空ビンを買うと入荷口の山（欠品の商品）を棚に取り込めます`, panel: 'upgrades' };
+    if (freeBinSlots(w) > reservedSlots(w)) return { id: 'bins', text: `空ビンがありません。${why}空ビンを買うと入荷口の山（欠品の商品）を棚に取り込めます${binsToRecommended(w) > 0 ? `（「おすすめのビン数まで追加」で ${binsToRecommended(w)} 個まとめて買えます）` : ''}`, panel: 'upgrades' };
     return { id: 'slots', text: `空ビンも棚の空きもありません。${why}段数を上げるかスタックを増やしてから空ビンを買いましょう`, panel: 'upgrades' };
   }
   if (!warmedUp) return null;
