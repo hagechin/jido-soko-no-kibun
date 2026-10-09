@@ -2,7 +2,7 @@
  * ゲーム状態の型。state は丸ごと JSON 化できること（§11.3）。
  * 描画や DOM に依存する値は入れない。
  */
-import type { CellKind, DifficultyId, EconomyId } from '../data/balance';
+import type { CellKind, DifficultyId, EconomyId, InboundFreqId, InboundLoadId } from '../data/balance';
 import type { RngState } from './rng';
 
 export type { CellKind };
@@ -253,6 +253,10 @@ export interface WorldState {
   difficulty: DifficultyId;
   /** 経済モード（省略は標準。古いセーブには無い） */
   economy?: EconomyId;
+  /** 入荷トラックの設定（省略は週 1・標準。古いセーブには無い） */
+  inbound?: { freq: InboundFreqId; load: InboundLoadId };
+  /** 次の定期トラックを手配する tick（省略なら次の区切りから） */
+  nextTruckTick?: number;
   width: number;
   height: number;
   cells: CellKind[];
