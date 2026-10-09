@@ -1,7 +1,7 @@
 import { limitsFor } from './limits';
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
-import { buyAmr, buyBinsToRecommended, buyBinsToRecommendedCost, binsToRecommended, buyEmptyBin, buyShelfRobot, freeBinSlots, maxOutRobots, recommendedBins, upgradeAllRobots, upgradeAllRobotsCost, upgradeLevels, upgradeSpeed } from './shop';
+import { buyAmr, buyBinsToRecommended, buyBinsToRecommendedCost, binsToRecommended, buyEmptyBin, buyShelfRobot, freeBinSlots, maxOutRobots, recommendedBins, robotMaxed, upgradeAllRobots, upgradeAllRobotsCost, upgradeLevels, upgradeSpeed } from './shop';
 import { buildPreset } from './presets';
 import { createRuntime, stepSim } from './sim';
 import { BIN, ROBOT } from '../data/balance';
@@ -143,6 +143,23 @@ describe('buy bins up to the recommended count', () => {
     expect(buyBinsToRecommended(w).ok).toBe(false);
     expect(Object.keys(w.bins).length).toBe(before);
     expect(w.coins).toBe(1);
+  });
+});
+
+describe('robotMaxed', () => {
+  it('is true only when speed, lift (shelf) and cargo (amr) are all at the limit', () => {
+    const w = createWorld({ seed: 1 });
+    w.coins = 1e6;
+    const shelf = w.robots.find((r) => r.kind === 'shelf')!;
+    const amr = w.robots.find((r) => r.kind === 'amr')!;
+    expect(robotMaxed(w, shelf)).toBe(false);
+    expect(robotMaxed(w, amr)).toBe(false);
+    expect(upgradeAllRobots(w).ok).toBe(true);
+    expect(robotMaxed(w, shelf)).toBe(true);
+    expect(robotMaxed(w, amr)).toBe(true);
+    // 追加したロボは最大ではない
+    buyAmr(w);
+    expect(robotMaxed(w, w.robots[w.robots.length - 1])).toBe(false);
   });
 });
 
