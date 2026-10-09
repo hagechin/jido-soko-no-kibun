@@ -638,6 +638,11 @@ button {
   .order-card .order-cell:nth-child(n + 13) {
     display: none;
   }
+  .order-card:not(.is-expanded) .order-more {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
   /* 縮小表示中はカード全体が 1 つのタップ対象（タップで拡大） */
   .order-card:not(.is-expanded) .order-cell {
     pointer-events: none;
@@ -673,6 +678,9 @@ button {
   }
   .order-card.is-expanded .order-cell:nth-child(n + 13) {
     display: flex;
+  }
+  .order-card.is-expanded .order-more {
+    display: none;
   }
 }
 
@@ -1650,4 +1658,9 @@ kbd.key {
 }
 .medal-5 {
   color: #fff3b0;
+}
+
+/* 注文票の「+N」（スマホの縮小表示だけ。PC と拡大表示では全部の行を見せる） */
+.order-more {
+  display: none;
 }

@@ -4,7 +4,7 @@ import { icon } from './icon';
 import { dockBacklog } from '../sim/inbound';
 import { restockMode } from '../sim/automation';
 import type { WorldState } from '../sim/types';
-import { $ } from './layout';
+import { $, showToast } from './layout';
 
 /** 評判の色: 0〜30 は赤、60 で黄、100 で緑（間は補間） */
 export function reputationColor(rep: number): string {
@@ -32,6 +32,20 @@ export class Hud {
   private lastNonZeroSpeed = 1;
 
   constructor(onSpeed: (speed: number) => void) {
+    // ★ 各アイコンはタップで説明（iOS ではホバーの説明が見えない）
+    const explain: [HTMLElement, () => string][] = [
+      [$('hud-coins'), () => 'コイン: 出荷の報酬。ロボ・設備・強化に使います'],
+      [$('hud-rank'), () => '倉庫ランク: 累計出荷で昇格し、新商品や設備が解放されます（難易度・経済モードも表示）'],
+      [$('hud-rep'), () => '評判: 速い出荷で上がり、遅延や溜まりすぎで下がります。高いほど客が増えます'],
+      [this.sandbox, () => 'SB: サンドボックスを使ったセーブの印（正規の進行ではありません。新しく始めると消えます）'],
+      [this.dock, () => `入荷口の滞留: トラックが運んできて、まだ棚に入っていない商品の数（${this.last.dock} 個）。空ビンがあればロボが取り込みます`],
+      [$('hud-date'), () => '暦: 1 か月 = 6 分。入荷トラックは設定の頻度で、季節イベントは月ごとに変わります'],
+      [this.season, () => '季節: いま売れやすい商品が変わります（上の帯の文を参照）'],
+    ];
+    for (const [elm, text] of explain) {
+      elm.style.cursor = 'pointer';
+      elm.addEventListener('click', () => showToast(text(), 5000, 'info'));
+    }
     for (const b of this.speedBtns) {
       if (b === this.cycleBtn) continue;
       b.addEventListener('click', () => {

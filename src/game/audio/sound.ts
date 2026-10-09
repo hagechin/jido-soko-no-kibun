@@ -12,6 +12,9 @@ const KEY = 'jido-soko-no-kibun:sound';
 export class Sound {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  /** 効果音のバス（追いつき計算中は 0 にして、終わったらフェードイン。BGM と環境音は別） */
+  private sfx: GainNode | null = null;
+  private sfxSuppressed = false;
   /** ロボの駆動音: ブラウンノイズ（モーター／ファン）＋ 低い三角波（わずかなビブラート） */
   private hum: { gain: GainNode; osc: OscillatorNode; lfo: OscillatorNode } | null = null;
   private bgmGain: GainNode | null = null;
@@ -48,6 +51,9 @@ export class Sound {
       this.master = this.ctx.createGain();
       this.master.gain.value = this.enabled ? AUDIO.masterVolume : 0;
       this.master.connect(this.ctx.destination);
+      this.sfx = this.ctx.createGain();
+      this.sfx.gain.value = this.sfxSuppressed ? 0 : 1;
+      this.sfx.connect(this.master);
       this.unlocked = true;
       void this.ctx.resume();
       this.startHum();
@@ -65,6 +71,23 @@ export class Sound {
       /* ignore */
     }
     this.fadeMaster(on ? AUDIO.masterVolume : 0, on ? AUDIO.fadeInSec : AUDIO.fadeOutSec);
+  }
+
+  /**
+   * 効果音を止める／戻す（★ 離席からの追いつき計算中はピックやコインの音が一気に鳴ってびっくりするので止め、
+   * 通常進行に戻ったらフェードインで戻す）。BGM と環境音はそのまま
+   */
+  setSfxSuppressed(on: boolean): void {
+    this.sfxSuppressed = on;
+    if (!this.sfx || !this.ctx) return;
+    const g = this.sfx.gain;
+    const now = this.ctx.currentTime;
+    g.cancelScheduledValues(now);
+    if (on) g.setValueAtTime(0, now);
+    else {
+      g.setValueAtTime(0, now);
+      g.linearRampToValueAtTime(1, now + AUDIO.sfxFadeInSec);
+    }
   }
 
   /** マスター音量をなめらかに目標へ（等ラウドネス寄りの曲線: 下げるときは最初ゆっくり後半速く、上げるときは逆） */
@@ -156,7 +179,7 @@ export class Sound {
     g.gain.setValueAtTime(0, t0);
     g.gain.linearRampToValueAtTime(vol, t0 + 0.01);
     g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    osc.connect(g).connect(this.master);
+    osc.connect(g).connect(this.sfx ?? this.master);
     osc.start(t0);
     osc.stop(t0 + dur + 0.02);
   }
@@ -302,6 +325,7 @@ export class Sound {
     }
     this.ctx = null;
     this.master = null;
+    this.sfx = null;
     this.hum = null;
     this.bgmGain = null;
     this.unlocked = false;

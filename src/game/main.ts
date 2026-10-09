@@ -119,6 +119,8 @@ class Game {
   private lastRender = 0;
   private hiddenAt: number | null = null;
   private catchUp = 0;
+  /** 追いつき計算の最中（効果音・触覚を止めている） */
+  private catchingUp = false;
   /** バックグラウンド動作（PC 既定オン）: 隠れている間も Worker のタイマーで進める */
   backgroundMode = native.available ? false : loadBackgroundSetting();
   private ticker = new BackgroundTicker();
@@ -986,6 +988,8 @@ class Game {
     } else if (hit.kind === 'station') {
       this.stationPanelId = hit.id;
       this.bar.show('station');
+      const st = w.stations.find((s) => s.id === hit.id);
+      if (st) this.bar.setTitle(`${st.kind === 'pick' ? 'ピッキングステーション' : '入荷ステーション'} (${st.x},${st.z})`);
     }
   }
 
@@ -1029,7 +1033,7 @@ class Game {
           this.renderer.effects.ship(this.world, e.stationId, e.coins, e.bonus);
           this.sound.ship(e.bonus);
           if (!this.calm.active) showToast(`出荷！ +${e.coins} コイン${e.bonus > 1 ? `（×${e.bonus} ボーナス）` : ''}`, 2200, 'package-check');
-          nativeTry('haptic', { kind: 'light' });
+          if (!this.catchingUp) nativeTry('haptic', { kind: 'light' });
           break;
         case 'pick':
           this.renderer.effects.pickFlash(this.world, e.stationId);
@@ -1124,6 +1128,11 @@ class Game {
       }
       // 離席からの追いつき計算（1 フレームに少しずつ。終わるまでは描画せず「反映中」の表示だけ）
       if (this.catchUp >= 1 && !this.world.flags.buildMode && !this.editor.open) {
+        if (!this.catchingUp) {
+          // ★ 追いつき中は効果音と触覚を止める（一気に鳴ってびっくりしない）。終わったらフェードインで戻す
+          this.catchingUp = true;
+          this.sound.setSfxSuppressed(true);
+        }
         const n = Math.min(OFFLINE.catchUpTicksPerFrame, Math.floor(this.catchUp));
         for (let i = 0; i < n; i++) stepSim(this.world, this.rt);
         this.catchUp -= n;
@@ -1138,6 +1147,10 @@ class Game {
         }
         this.catchupOverlay.hidden = true;
         this.rt.dirty = true;
+      }
+      if (this.catchingUp && this.catchUp < 1) {
+        this.catchingUp = false;
+        this.sound.setSfxSuppressed(false);
       }
       if (this.world.events.length) {
         this.handleEvents(this.world.events);
