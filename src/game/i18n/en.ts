@@ -739,4 +739,13 @@ export const EN: Record<string, string> = {
   '欠品を作る': 'Create a stockout',
   '在庫のある商品がありません': 'No item has stock',
   '{0} を欠品にしました（ビン {1} 個を空に、入荷口に {2} 個、オーダー 1 件）': '{0} is now out of stock ({1} bins emptied, {2} units at the dock, 1 order added)',
+  'まとめて空にできるビンも無いので、': 'no two bins can be merged into an empty one either, so ',
+  '空ビンがありません。{0}空ビンを買うと入荷口の山（欠品の商品）を棚に取り込めます': 'No empty bins. {0}Buy an empty bin to get the dock pile (the out-of-stock item) onto the shelves',
+  '空ビンも棚の空きもありません。{0}段数を上げるかスタックを増やしてから空ビンを買いましょう': 'No empty bins and no free shelf slots. {0}Add a level or more stacks, then buy an empty bin',
+  '{0} がビンをまとめて空ビンを作りました': '{0} merged two bins to free an empty one',
+  'ビンをまとめて空ビンを作る（{0}）': 'Merging bins to free an empty one ({0})',
+  '空ビンを使い切る': 'Use up empty bins',
+  '商品の入ったビンがありません': 'No bin holds an item',
+  '空ビン {0} 個を {1} が半分入ったビンにしました': 'Turned {0} empty bins into half-full bins of {1}',
+  '空ビンはありません': 'There are no empty bins',
 };

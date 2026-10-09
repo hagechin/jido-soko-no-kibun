@@ -70,7 +70,7 @@ export function shipOrder(w: WorldState, o: Order, stationId: number): void {
   for (const e of activeEvents(w.calendar.month, w.calendar.week)) eventMult *= e.rewardFactor;
   const r = rewardFor(w, o, eventMult);
   addCoins(w, r.total);
-  changeReputation(w, REWARD.repGainPerShipment, tr(tr(tr(tr(tr('出荷'))))));
+  changeReputation(w, REWARD.repGainPerShipment, tr(tr(tr(tr(tr(tr('出荷')))))));
   w.stats.totalShipped++;
   w.stats.recentShipments.push({ tick: w.tick, coins: r.total, items: r.items });
   if (w.season.cyber) {

@@ -8,7 +8,7 @@ import { iconImg } from './icons';
 import { tr } from '../i18n';
 
 export function selectedInfoNode(w: WorldState, r: Robot | null, hint: string | null, onCancel: () => void): Node {
-  if (!r) return el('span', { class: 'muted', text: hint ?? tr(tr(tr(tr(tr('ロボをタップして選択'))))) });
+  if (!r) return el('span', { class: 'muted', text: hint ?? tr(tr(tr(tr(tr(tr('ロボをタップして選択')))))) });
   const root = el('div', { class: 'selected-inner' });
   root.append(el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${r.kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + r.name })));
   root.append(el('span', { class: 'sel-status', text: describeRobot(w, r) }));
@@ -17,13 +17,13 @@ export function selectedInfoNode(w: WorldState, r: Robot | null, hint: string | 
     for (const id of r.carrying) {
       const b = w.bins[id];
       if (b?.item) cargo.append(iconImg(b.item, 20));
-      else cargo.append(el('span', { class: 'slot-empty', title: tr(tr(tr(tr(tr('空ビン'))))) }));
+      else cargo.append(el('span', { class: 'slot-empty', title: tr(tr(tr(tr(tr(tr('空ビン')))))) }));
     }
     root.append(cargo);
   }
-  if (r.queue.length) root.append(el('span', { class: 'sel-queue', text: tr(tr(tr(tr(tr('予約 {0}')))), r.queue.length) }));
-  root.append(el('span', { class: 'hint', text: hint ?? (r.kind === 'shelf' ? tr(tr(tr(tr(tr('スタックをタップで取り出し'))))) : tr(tr(tr(tr(tr('ポート／ステーションをタップ')))))) }));
-  const cancel = el('button', { class: 'btn', type: 'button', title: tr(tr(tr(tr(tr('指示を取り消す'))))) }, iconText('x', tr(tr(tr(tr(tr('指示取消'))))), 14));
+  if (r.queue.length) root.append(el('span', { class: 'sel-queue', text: tr(tr(tr(tr(tr(tr('予約 {0}'))))), r.queue.length) }));
+  root.append(el('span', { class: 'hint', text: hint ?? (r.kind === 'shelf' ? tr(tr(tr(tr(tr(tr('スタックをタップで取り出し')))))) : tr(tr(tr(tr(tr(tr('ポート／ステーションをタップ'))))))) }));
+  const cancel = el('button', { class: 'btn', type: 'button', title: tr(tr(tr(tr(tr(tr('指示を取り消す')))))) }, iconText('x', tr(tr(tr(tr(tr(tr('指示取消')))))), 14));
   cancel.addEventListener('click', onCancel);
   root.append(el('span', { class: 'sel-actions' }, cancel));
   return root;
@@ -32,6 +32,6 @@ export function selectedInfoNode(w: WorldState, r: Robot | null, hint: string | 
 export function binLabel(w: WorldState, binId: number): string {
   const b = w.bins[binId];
   if (!b) return '?';
-  if (!b.item) return tr(tr(tr(tr(tr('空ビン')))));
+  if (!b.item) return tr(tr(tr(tr(tr(tr('空ビン'))))));
   return `${itemDef(b.item).name} ×${b.qty}`;
 }

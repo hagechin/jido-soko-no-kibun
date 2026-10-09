@@ -129,7 +129,7 @@ export class Effects {
       this.particles.push({ x: sx, y: 1.2, z: sz, vx: (Math.random() - 0.5) * 2.5, vy: 3 + Math.random() * 2, vz: (Math.random() - 0.5) * 2.5, life: 1.1, maxLife: 1.1, size: 0.18, color: new Color('#ffd700'), gravity: 6, kind: 'coin' });
     }
     this.pop(sx, 1.6, sz, `+${coins}`, '#ffd700');
-    if (bonus > 1) this.pop(sx, 2.2, sz, tr(tr(tr(tr(tr('×{0} ボーナス!')))), bonus), '#ff8c42');
+    if (bonus > 1) this.pop(sx, 2.2, sz, tr(tr(tr(tr(tr(tr('×{0} ボーナス!'))))), bonus), '#ff8c42');
   }
 
   pickFlash(w: WorldState, stationId: number): void {

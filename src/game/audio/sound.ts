@@ -235,16 +235,16 @@ export class Sound {
   status(): string {
     switch (this.state()) {
       case 'off':
-        return tr('オフ');
+        return tr(tr('オフ'));
       case 'not-started':
-        return tr('未開始（画面をタップすると始まります）');
+        return tr(tr('未開始（画面をタップすると始まります）'));
       case 'running':
-        return tr('再生中{0}', this.recovered ? tr('（止まったのを {0} 回立て直し）', this.recovered) : '');
+        return tr(tr('再生中{0}'), this.recovered ? tr(tr('（止まったのを {0} 回立て直し）'), this.recovered) : '');
       case 'suspended':
       case 'interrupted':
-        return tr('一時停止中（タップで再開します）');
+        return tr(tr('一時停止中（タップで再開します）'));
       case 'closed':
-        return tr('停止（作り直します）');
+        return tr(tr('停止（作り直します）'));
     }
   }
 

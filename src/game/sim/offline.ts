@@ -117,7 +117,7 @@ export function applyOffline(w: WorldState, elapsedMs: number): OfflineReport {
   w.coins += coins;
   w.stats.totalCoins += coins;
   w.stats.totalShipped += shipped;
-  if (shipped === 0 && minutes > 5 && w.orders.length) changeReputation(w, -Math.min(10, Math.floor(minutes / 10)), tr(tr(tr(tr(tr('留守中にオーダーが溜まった'))))));
+  if (shipped === 0 && minutes > 5 && w.orders.length) changeReputation(w, -Math.min(10, Math.floor(minutes / 10)), tr(tr(tr(tr(tr(tr('留守中にオーダーが溜まった')))))));
   // 溜まっていたオーダーは「留守中に処理された」扱いにはせず、遅延ペナルティだけ避ける
   for (const o of w.orders) {
     o.arrivedTick = w.tick;

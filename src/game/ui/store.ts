@@ -23,17 +23,17 @@ export interface StoreContext {
 
 /** 商品の並び（ネイティブの一覧が空でも案内に使う） */
 export const PRODUCT_ORDER: { id: string; name: string; desc: string }[] = [
-  { id: PRODUCTS.robots, name: tr(tr(tr(tr('特別ロボパック')))), desc: tr(tr(tr(tr('ドローン搬送ロボ（棚を飛び越える。大きな倉庫で特に威力を発揮）と、ダブルデッカー棚ロボ（ビンを 2 段持つ。狭い棚でも棚ロボ 2 台ぶんの働きで序盤から活躍）')))) },
-  { id: PRODUCTS.limits, name: tr(tr(tr(tr('上限突破パック')))), desc: tr(tr(tr(tr('ロボ上限 80/120 台、積載 Lv4、棚 12 段、倉庫 64×48')))) },
-  { id: PRODUCTS.sandbox, name: tr(tr(tr(tr('サンドボックスモード')))), desc: tr(tr(tr(tr('コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断を設定から使える')))) },
-  { id: PRODUCTS.supporter, name: tr(tr(tr(tr('サポーターパック')))), desc: tr(tr(tr(tr('上の 3 つ全部 ＋ 金色ロボスキン ＋ 倉庫カラーテーマ')))) },
+  { id: PRODUCTS.robots, name: tr(tr(tr(tr(tr('特別ロボパック'))))), desc: tr(tr(tr(tr(tr('ドローン搬送ロボ（棚を飛び越える。大きな倉庫で特に威力を発揮）と、ダブルデッカー棚ロボ（ビンを 2 段持つ。狭い棚でも棚ロボ 2 台ぶんの働きで序盤から活躍）'))))) },
+  { id: PRODUCTS.limits, name: tr(tr(tr(tr(tr('上限突破パック'))))), desc: tr(tr(tr(tr(tr('ロボ上限 80/120 台、積載 Lv4、棚 12 段、倉庫 64×48'))))) },
+  { id: PRODUCTS.sandbox, name: tr(tr(tr(tr(tr('サンドボックスモード'))))), desc: tr(tr(tr(tr(tr('コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断を設定から使える'))))) },
+  { id: PRODUCTS.supporter, name: tr(tr(tr(tr(tr('サポーターパック'))))), desc: tr(tr(tr(tr(tr('上の 3 つ全部 ＋ 金色ロボスキン ＋ 倉庫カラーテーマ'))))) },
 ];
 
 const FEATURE_LABEL: Record<Feature, string> = {
-  specialRobots: tr(tr(tr(tr('特別ロボ（ドローン・ダブルデッカー）')))),
-  limits: tr(tr(tr(tr('上限突破')))),
-  sandbox: tr(tr(tr(tr('サンドボックス')))),
-  cosmetics: tr(tr(tr(tr('金色スキン・カラーテーマ')))),
+  specialRobots: tr(tr(tr(tr(tr('特別ロボ（ドローン・ダブルデッカー）'))))),
+  limits: tr(tr(tr(tr(tr('上限突破'))))),
+  sandbox: tr(tr(tr(tr(tr('サンドボックス'))))),
+  cosmetics: tr(tr(tr(tr(tr('金色スキン・カラーテーマ'))))),
 };
 
 /** 解放済み機能の一覧（設定パネルとストアで共用） */
@@ -66,43 +66,43 @@ export function loadProducts(force = false): Promise<StoreProduct[]> {
 
 export function renderStore(body: HTMLElement, ctx: StoreContext): void {
   if (!native.available) {
-    body.append(el('p', { class: 'muted small', text: tr(tr(tr(tr('ここに並ぶ追加機能は iOS 版（App Store）で購入できます。この Web 版では購入できません。')))) }));
+    body.append(el('p', { class: 'muted small', text: tr(tr(tr(tr(tr('ここに並ぶ追加機能は iOS 版（App Store）で購入できます。この Web 版では購入できません。'))))) }));
     for (const p of PRODUCT_ORDER) body.append(el('div', { class: 'shop-row' }, el('div', { class: 'shop-label' }, el('div', { text: p.name }), el('div', { class: 'muted small', text: p.desc }))));
-    body.append(el('h4', { text: tr(tr(tr(tr('解放済みの機能')))) }));
+    body.append(el('h4', { text: tr(tr(tr(tr(tr('解放済みの機能'))))) }));
     body.append(featureStatusNode());
     return;
   }
 
-  body.append(el('p', { class: 'muted small', text: tr(tr(tr(tr('買い切りです（広告なし・消耗品なし）。ファミリー共有に対応。再インストールしたときは「購入を復元」で戻ります。')))) }));
+  body.append(el('p', { class: 'muted small', text: tr(tr(tr(tr(tr('買い切りです（広告なし・消耗品なし）。ファミリー共有に対応。再インストールしたときは「購入を復元」で戻ります。'))))) }));
   const list = el('div', { class: 'store-list' });
   body.append(list);
 
-  const restoreBtn = el('button', { class: 'btn', type: 'button' }, iconText('refresh-cw', tr(tr(tr(tr('購入を復元'))))));
+  const restoreBtn = el('button', { class: 'btn', type: 'button' }, iconText('refresh-cw', tr(tr(tr(tr(tr('購入を復元')))))));
   restoreBtn.addEventListener('click', async () => {
     restoreBtn.setAttribute('disabled', 'true');
     try {
       const r = await native.call<{ ids: string[] }>('restore', {}, 120_000);
       const ids = r.ids ?? [];
       setOwnedProducts(ids);
-      showToast(ids.length ? tr(tr(tr(tr('購入を復元しました（{0} 件）'))), ids.length) : tr(tr(tr(tr('復元できる購入はありません')))));
+      showToast(ids.length ? tr(tr(tr(tr(tr('購入を復元しました（{0} 件）')))), ids.length) : tr(tr(tr(tr(tr('復元できる購入はありません'))))));
     } catch {
-      showToast(tr(tr(tr(tr('復元できませんでした。オンラインで試してください')))));
+      showToast(tr(tr(tr(tr(tr('復元できませんでした。オンラインで試してください'))))));
     }
     ctx.refresh();
   });
   body.append(el('div', { class: 'settings-row' }, restoreBtn));
-  body.append(el('h4', { text: tr(tr(tr(tr('解放済みの機能')))) }));
+  body.append(el('h4', { text: tr(tr(tr(tr(tr('解放済みの機能'))))) }));
   body.append(featureStatusNode());
 
   const draw = (products: StoreProduct[]) => {
     list.replaceChildren();
     if (!products.length) {
-      const retry = el('button', { class: 'btn', type: 'button' }, iconText('refresh-cw', tr(tr(tr(tr('再読み込み'))))));
+      const retry = el('button', { class: 'btn', type: 'button' }, iconText('refresh-cw', tr(tr(tr(tr(tr('再読み込み')))))));
       retry.addEventListener('click', () => {
-        list.replaceChildren(el('p', { class: 'muted small', text: tr(tr(tr(tr('読み込み中…')))) }));
+        list.replaceChildren(el('p', { class: 'muted small', text: tr(tr(tr(tr(tr('読み込み中…'))))) }));
         void loadProducts(true).then(draw);
       });
-      list.append(el('p', { class: 'muted small', text: tr(tr(tr(tr('商品を読み込めませんでした。オンラインのときに再読み込みしてください（ゲームはオフラインでも遊べます）。')))) }), el('div', { class: 'settings-row' }, retry));
+      list.append(el('p', { class: 'muted small', text: tr(tr(tr(tr(tr('商品を読み込めませんでした。オンラインのときに再読み込みしてください（ゲームはオフラインでも遊べます）。'))))) }), el('div', { class: 'settings-row' }, retry));
       return;
     }
     const owned = ownedProducts();
@@ -112,11 +112,11 @@ export function renderStore(body: HTMLElement, ctx: StoreContext): void {
       const bought = p.purchased || owned.has(p.id);
       const btn = el('button', { class: 'btn buy-btn', type: 'button' });
       if (bought) {
-        btn.append(iconText('check', tr(tr(tr(tr('購入済み')))), 14));
+        btn.append(iconText('check', tr(tr(tr(tr(tr('購入済み'))))), 14));
         btn.setAttribute('disabled', 'true');
       } else {
         btn.textContent = p.price;
-        btn.title = tr(tr(tr(tr('{0} を購入'))), p.title);
+        btn.title = tr(tr(tr(tr(tr('{0} を購入')))), p.title);
         btn.addEventListener('click', async () => {
           btn.setAttribute('disabled', 'true');
           btn.textContent = '…';
@@ -124,11 +124,11 @@ export function renderStore(body: HTMLElement, ctx: StoreContext): void {
             const r = await native.call<{ state: string }>('purchase', { id: p.id }, 10 * 60_000);
             if (r.state === 'purchased') {
               setOwnedProducts([...ownedProducts(), p.id]);
-              showToast(tr(tr(tr(tr('{0} を購入しました'))), p.title), 3000, 'party-popper');
-            } else if (r.state === 'pending') showToast(tr(tr(tr(tr('購入は承認待ちです（ファミリーの承認など）。完了すると自動で反映されます')))), 4000);
-            else showToast(tr(tr(tr(tr('購入をキャンセルしました')))));
+              showToast(tr(tr(tr(tr(tr('{0} を購入しました')))), p.title), 3000, 'party-popper');
+            } else if (r.state === 'pending') showToast(tr(tr(tr(tr(tr('購入は承認待ちです（ファミリーの承認など）。完了すると自動で反映されます'))))), 4000);
+            else showToast(tr(tr(tr(tr(tr('購入をキャンセルしました'))))));
           } catch (e) {
-            showToast(tr(tr(tr(tr('購入できませんでした: {0}'))), e instanceof Error ? e.message : String(e)), 3500);
+            showToast(tr(tr(tr(tr(tr('購入できませんでした: {0}')))), e instanceof Error ? e.message : String(e)), 3500);
           }
           cache = null; // 購入済みフラグを取り直す
           ctx.refresh();
@@ -137,6 +137,6 @@ export function renderStore(body: HTMLElement, ctx: StoreContext): void {
       list.append(el('div', { class: 'shop-row store-row' }, el('div', { class: 'shop-label' }, el('div', { text: p.title || meta.name }), el('div', { class: 'muted small', text: p.description || meta.desc })), btn));
     }
   };
-  list.append(el('p', { class: 'muted small', text: tr(tr(tr(tr('読み込み中…')))) }));
+  list.append(el('p', { class: 'muted small', text: tr(tr(tr(tr(tr('読み込み中…'))))) }));
   void loadProducts().then(draw);
 }

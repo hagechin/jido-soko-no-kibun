@@ -44,7 +44,7 @@ export class BottomBar {
   show(id: PanelId): void {
     if (this.current !== id) this.sheetBody.scrollTop = 0; // 別のパネルに切り替えたら先頭から
     this.current = id;
-    const titles: Record<PanelId, string> = { build: tr(tr(tr(tr(tr('建設モード'))))), upgrades: tr(tr(tr(tr(tr('アップグレード'))))), inventory: tr(tr(tr(tr(tr('在庫'))))), settings: tr(tr(tr(tr(tr('設定'))))), station: tr(tr(tr(tr(tr('ステーション'))))), debug: tr(tr(tr(tr(tr('サンドボックス'))))), robots: tr(tr(tr(tr(tr('ロボ一覧'))))), port: tr(tr(tr(tr(tr('ポート'))))), store: tr(tr(tr(tr(tr('追加機能ストア'))))) };
+    const titles: Record<PanelId, string> = { build: tr(tr(tr(tr(tr(tr('建設モード')))))), upgrades: tr(tr(tr(tr(tr(tr('アップグレード')))))), inventory: tr(tr(tr(tr(tr(tr('在庫')))))), settings: tr(tr(tr(tr(tr(tr('設定')))))), station: tr(tr(tr(tr(tr(tr('ステーション')))))), debug: tr(tr(tr(tr(tr(tr('サンドボックス')))))), robots: tr(tr(tr(tr(tr(tr('ロボ一覧')))))), port: tr(tr(tr(tr(tr(tr('ポート')))))), store: tr(tr(tr(tr(tr(tr('追加機能ストア')))))) };
     this.sheetTitle.textContent = titles[id];
     this.sheet.classList.toggle('is-compact', id === 'build');
     this.refresh();
@@ -60,7 +60,7 @@ export class BottomBar {
     const r = this.renderers.get(this.current);
     this.sheetBody.replaceChildren();
     if (r) r(this.sheetBody);
-    else this.sheetBody.append(el('p', { class: 'muted', text: tr(tr(tr(tr(tr('このパネルは後のマイルストーンで実装します。'))))) }));
+    else this.sheetBody.append(el('p', { class: 'muted', text: tr(tr(tr(tr(tr(tr('このパネルは後のマイルストーンで実装します。')))))) }));
   }
 
   close(): void {
