@@ -26,6 +26,9 @@ import { binLabel, selectedInfoNode } from './ui/selection';
 import { iconImg } from './ui/icons';
 import { $, el, showToast } from './ui/layout';
 import { renderUpgrades } from './ui/upgrades';
+import { renderAchievements } from './ui/achievements';
+import { ACHIEVEMENT_BY_ID } from './sim/achievements';
+import { MEDALS } from './data/balance';
 import { renderInventory } from './ui/inventory';
 import { lastSavedText, renderSettings } from './ui/settings';
 import { renderBuild, type BuildUiState } from './ui/buildMode';
@@ -360,6 +363,7 @@ class Game {
         quality: this.quality,
         lastSavedAt: this.lastSavedAt,
         buildInfo: this.buildInfo,
+        achievements: (body) => renderAchievements(body, this.world),
         openStore: () => this.bar.show('store'),
         cosmetics: {
           unlocked: hasFeature('cosmetics'),
@@ -1031,6 +1035,17 @@ class Game {
         case 'notice':
           showToast(e.text, 3500, NOTICE_ICON[e.icon ?? 'info']);
           break;
+        case 'achievement': {
+          const def = ACHIEVEMENT_BY_ID[e.id];
+          if (def) {
+            const medal = MEDALS[Math.min(e.tier, MEDALS.length) - 1];
+            showToast(`${def.negative ? '称号' : '実績'}「${def.name}」${medal}: ${def.tiers[e.tier - 1]?.label ?? ''}`, 5000, e.tier >= 5 ? 'moon' : e.tier >= 4 ? 'gem' : 'medal');
+            this.sound.notice();
+            nativeTry('haptic', { kind: 'success' });
+            if (this.bar.open === 'settings') this.bar.refresh();
+          }
+          break;
+        }
         case 'truckArrived':
           this.renderer.effects.truckArrive(this.world);
           this.sound.truck();
