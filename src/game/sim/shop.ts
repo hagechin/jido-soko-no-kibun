@@ -5,7 +5,7 @@ import { cellAt, isFloorWalkable } from './grid';
 import { addRobot, createBin } from './world';
 import type { Robot, Stack, WorldState } from './types';
 
-export type ShopResult = { ok: true } | { ok: false; reason: string };
+export type ShopResult = { ok: true; message?: string } | { ok: false; reason: string };
 
 function pay(w: WorldState, cost: number): ShopResult {
   if (w.coins < cost) return { ok: false, reason: `コインが足りません（${cost} 必要）` };
@@ -156,19 +156,33 @@ export function upgradeAllRobotsCost(w: WorldState): number | null {
   return total > 0 ? price(w, total) : null;
 }
 
-/** 全ロボを一気に最大まで強化する（コインを払う版。積載は底面積が変わらない設定なので停車中でなくてもよい） */
+/**
+ * 全ロボを一気に最大まで強化する（コインを払う版。積載は底面積が変わらない設定なので停車中でなくてもよい）。
+ * コインが足りなければ、足りるぶんだけ段階的に強化する（ロボを追加した後に押しても、買えるところまで進む）
+ */
 export function upgradeAllRobots(w: WorldState): ShopResult {
   const cost = upgradeAllRobotsCost(w);
   if (cost === null) return { ok: false, reason: '全ロボとも最大です' };
-  const p = pay(w, cost);
-  if (!p.ok) return p;
   const maxCargo = limitsFor(w).maxCargoLevel;
+  // 1 段階ずつ: 安い段階から順に（全ロボの Lv1 → Lv2 → …）
+  const steps: { apply: () => void; cost: number }[] = [];
   for (const r of w.robots) {
-    r.speedLevel = ROBOT.maxSpeedLevel;
-    if (r.kind === 'shelf') r.liftLevel = ROBOT.maxLiftLevel;
-    if (r.kind === 'amr') r.cargoLevel = Math.max(r.cargoLevel, maxCargo);
+    for (let lv = r.speedLevel; lv < ROBOT.maxSpeedLevel; lv++) steps.push({ cost: price(w, ROBOT.speedUpgradeCosts[Math.min(lv, ROBOT.speedUpgradeCosts.length - 1)]), apply: () => { r.speedLevel++; } });
+    if (r.kind === 'shelf') for (let lv = r.liftLevel; lv < ROBOT.maxLiftLevel; lv++) steps.push({ cost: price(w, ROBOT.liftUpgradeCosts[Math.min(lv, ROBOT.liftUpgradeCosts.length - 1)]), apply: () => { r.liftLevel++; } });
+    if (r.kind === 'amr') for (let lv = r.cargoLevel; lv < maxCargo; lv++) steps.push({ cost: price(w, ROBOT.cargoUpgradeCosts[lv]), apply: () => { r.cargoLevel++; } });
   }
-  return { ok: true };
+  steps.sort((a, b) => a.cost - b.cost);
+  let upgraded = 0;
+  // 同じロボの段階は順番どおりに積む（ソートは安定なので Lv 順は保たれる）
+  for (const st of steps) {
+    if (w.coins < st.cost) break;
+    w.coins -= st.cost;
+    st.apply();
+    upgraded++;
+  }
+  if (upgraded === 0) return { ok: false, reason: `コインが足りません（1 段階 ${steps[0]?.cost ?? 0} コインから）` };
+  const short = upgradeAllRobotsCost(w);
+  return { ok: true, message: short === null ? '全ロボを最大まで強化しました' : `${upgraded} 段階強化しました（全ロボ最大まであと ${short.toLocaleString('ja-JP')} コイン）` };
 }
 
 // ---------------------------------------------------------------- 倉庫のアップグレード（§9.4）
@@ -264,6 +278,43 @@ export function buyEmptyBin(w: WorldState): ShopResult {
   const p = pay(w, price(w, BIN.emptyBinCost));
   if (!p.ok) return p;
   stack.bins.push(createBin(w, null, 0).id);
+  return { ok: true };
+}
+
+/** おすすめのビン数（在庫入り・空を合わせた総数）: 全スロットの 3/4（1 段なら全部）を、掘り出し用の予約スロットを残せる範囲に収める（★ 倉庫を広げた後にビンを一気に買い足す目安） */
+export function recommendedBins(w: WorldState): number {
+  const slots = w.stacks.length * w.levels;
+  const cap = slots - reservedSlots(w);
+  const target = w.levels <= 1 ? cap : Math.floor(slots * BIN.recommendedFillRatio);
+  return Math.max(0, Math.min(target, cap));
+}
+
+/** おすすめのビン数まであと何個買い足せるか（0 なら達している） */
+export function binsToRecommended(w: WorldState): number {
+  return Math.max(0, recommendedBins(w) - Object.keys(w.bins).length);
+}
+
+/** おすすめのビン数まで空ビンをまとめ買いする合計金額（買い足す必要が無ければ null） */
+export function buyBinsToRecommendedCost(w: WorldState): number | null {
+  const n = binsToRecommended(w);
+  return n > 0 ? n * price(w, BIN.emptyBinCost) : null;
+}
+
+/** おすすめのビン数まで空ビンをまとめて買い、空きのあるスタックの頂上に置く（★ 1 個ずつ買う手間を省く）。代金は合計で一度に払う */
+export function buyBinsToRecommended(w: WorldState): ShopResult {
+  const n = binsToRecommended(w);
+  if (n <= 0) return { ok: false, reason: 'ビンはもうおすすめの数に達しています' };
+  const cost = n * price(w, BIN.emptyBinCost);
+  // 置ける数を先に確かめる（運搬中のビンが戻る先は空けてあるので通常は n 個とも置ける）
+  const room = w.stacks.reduce((s, st) => s + Math.max(0, w.levels - st.bins.length), 0);
+  if (room < n) return { ok: false, reason: '今は空いているスタックが足りません（運搬中のビンが戻るまで待つ）' };
+  const p = pay(w, cost);
+  if (!p.ok) return p;
+  for (let i = 0; i < n; i++) {
+    const stack = stackForNewEmptyBin(w);
+    if (!stack) break;
+    stack.bins.push(createBin(w, null, 0).id);
+  }
   return { ok: true };
 }
 

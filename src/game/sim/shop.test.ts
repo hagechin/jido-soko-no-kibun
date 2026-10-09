@@ -1,10 +1,10 @@
 import { limitsFor } from './limits';
 import { describe, expect, it } from 'vitest';
 import { createWorld } from './world';
-import { buyAmr, buyEmptyBin, buyShelfRobot, freeBinSlots, maxOutRobots, upgradeAllRobots, upgradeAllRobotsCost, upgradeLevels, upgradeSpeed } from './shop';
+import { buyAmr, buyBinsToRecommended, buyBinsToRecommendedCost, binsToRecommended, buyEmptyBin, buyShelfRobot, freeBinSlots, maxOutRobots, recommendedBins, upgradeAllRobots, upgradeAllRobotsCost, upgradeLevels, upgradeSpeed } from './shop';
 import { buildPreset } from './presets';
 import { createRuntime, stepSim } from './sim';
-import { ROBOT } from '../data/balance';
+import { BIN, ROBOT } from '../data/balance';
 
 describe('shop', () => {
   it('buys robots when affordable and places them on free cells', () => {
@@ -33,7 +33,7 @@ describe('shop', () => {
     }
     expect(cost).toBe(expected);
     const before = w.coins;
-    expect(upgradeAllRobots(w)).toEqual({ ok: true });
+    expect(upgradeAllRobots(w).ok).toBe(true);
     expect(w.coins).toBe(before - cost);
     for (const r of w.robots) {
       expect(r.speedLevel).toBe(ROBOT.maxSpeedLevel);
@@ -42,11 +42,30 @@ describe('shop', () => {
     }
     expect(upgradeAllRobotsCost(w)).toBeNull();
     expect(upgradeAllRobots(w).ok).toBe(false);
-    // コイン不足なら何も変わらない
+    // 1 段階ぶんも買えなければ何も変わらない
     const w2 = createWorld({ seed: 1 });
     w2.coins = 1;
     expect(upgradeAllRobots(w2).ok).toBe(false);
     expect(w2.robots.every((r) => r.speedLevel === 0)).toBe(true);
+  });
+  it('upgrades as far as the coins go when short, cheapest steps first, and becomes available again after adding a robot', () => {
+    const w = createWorld({ seed: 1 });
+    w.coins = 1e6;
+    expect(upgradeAllRobots(w).ok).toBe(true);
+    expect(upgradeAllRobotsCost(w)).toBeNull();
+    // ロボを追加すると、そのロボのぶんがまた買える
+    buyAmr(w);
+    const full = upgradeAllRobotsCost(w)!;
+    expect(full).toBeGreaterThan(0);
+    // 安い段階 2 つぶん（速度 Lv1 150 + 積載 Lv1 250）だけのコインで押す
+    w.coins = ROBOT.speedUpgradeCosts[0] + ROBOT.cargoUpgradeCosts[0];
+    const r = upgradeAllRobots(w);
+    expect(r.ok).toBe(true);
+    const added = w.robots[w.robots.length - 1];
+    expect(added.speedLevel).toBe(1);
+    expect(added.cargoLevel).toBe(1);
+    expect(w.coins).toBe(0);
+    expect(upgradeAllRobotsCost(w)).toBe(full - ROBOT.speedUpgradeCosts[0] - ROBOT.cargoUpgradeCosts[0]);
   });
   it('refuses when coins are short', () => {
     const w = createWorld({ seed: 1 });
@@ -82,6 +101,48 @@ describe('empty bins never exceed stack slots', () => {
     // 掘り出し用の空き（段数 2 + 棚ロボ 1 = 3 スロット）は残す
     while (buyEmptyBin(w).ok) {}
     expect(freeBinSlots(w)).toBe(3);
+  });
+});
+
+describe('buy bins up to the recommended count', () => {
+  it('targets 3/4 of the slots (all but the reserve at 1 level) and buys the difference, paying once', () => {
+    const w = createWorld({ seed: 1 });
+    w.coins = 1e6;
+    w.rank = 4; // 段数の解放
+    const stacks = w.stacks.length;
+    // 1 段: 掘り出しが無いので予約ぶん（段数 + 棚ロボ 1）以外すべて
+    expect(recommendedBins(w)).toBe(stacks * 1 - (w.levels + 1));
+    upgradeLevels(w);
+    upgradeLevels(w);
+    expect(w.levels).toBe(3);
+    const rec = recommendedBins(w);
+    expect(rec).toBe(Math.min(Math.floor(stacks * 3 * BIN.recommendedFillRatio), stacks * 3 - (3 + 1)));
+    const need = binsToRecommended(w);
+    expect(need).toBe(rec - Object.keys(w.bins).length);
+    expect(need).toBeGreaterThan(0);
+    expect(buyBinsToRecommendedCost(w)).toBe(need * BIN.emptyBinCost);
+    const coins = w.coins;
+    expect(buyBinsToRecommended(w).ok).toBe(true);
+    expect(w.coins).toBe(coins - need * BIN.emptyBinCost);
+    expect(Object.keys(w.bins).length).toBe(rec);
+    expect(binsToRecommended(w)).toBe(0);
+    expect(buyBinsToRecommendedCost(w)).toBeNull();
+    expect(buyBinsToRecommended(w).ok).toBe(false);
+    // 掘り出し用の空きはまだ残っている
+    expect(freeBinSlots(w)).toBeGreaterThanOrEqual(w.levels + 1);
+    for (const s of w.stacks) expect(s.bins.length).toBeLessThanOrEqual(w.levels);
+  });
+
+  it('refuses when coins are short and buys nothing', () => {
+    const w = createWorld({ seed: 1 });
+    w.coins = 1e6;
+    upgradeLevels(w);
+    w.coins = 1;
+    const before = Object.keys(w.bins).length;
+    expect(binsToRecommended(w)).toBeGreaterThan(0);
+    expect(buyBinsToRecommended(w).ok).toBe(false);
+    expect(Object.keys(w.bins).length).toBe(before);
+    expect(w.coins).toBe(1);
   });
 });
 
