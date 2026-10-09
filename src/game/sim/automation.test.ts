@@ -280,7 +280,8 @@ describe('AMR priority setting', () => {
     port.outbound.push(empty.id, apple.id); // 入荷行きが先に置かれている
     return { empty, apple };
   }
-  for (const [pri, expectFirst] of [['pick', 'apple'], ['restock', 'empty'], ['balanced', 'empty']] as const) {
+  // ★ 均等でもピックのビン（オーダーが待っている）を先に積む。入荷ビンを先に積むのは補充優先のときだけ
+  for (const [pri, expectFirst] of [['pick', 'apple'], ['restock', 'empty'], ['balanced', 'apple']] as const) {
     it(`${pri}: loads the ${expectFirst} bin first`, () => {
       const w = createWorld({ seed: 31 });
       const rt = createRuntime();

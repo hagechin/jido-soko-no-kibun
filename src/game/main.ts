@@ -1140,8 +1140,9 @@ void (async () => {
   if (native.available) {
     native.on('background', () => game.save(true)); // 背面に回るときは iCloud にも即送る
     // 前面に戻ったとき／電話などの割り込みが終わったときは BGM を立て直す
-    native.on('foreground', () => game.sound.check(performance.now(), true));
-    native.on('audioResume', () => game.sound.check(performance.now(), true));
+    // ★ 実機では戻ったあと AudioContext が running のまま無音になるので、前面復帰と割り込み終了では作り直す
+    native.on('foreground', () => game.sound.onForeground());
+    native.on('audioResume', () => game.sound.onForeground());
     // WKWebView は操作なしで音を出せる設定（mediaTypesRequiringUserActionForPlayback = []）なので、起動直後から BGM を始める
     game.sound.unlock();
     document.documentElement.classList.add('is-native');
