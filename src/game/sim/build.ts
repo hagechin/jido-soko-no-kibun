@@ -12,6 +12,8 @@ import { isDrone, shapeOf } from './layers';
 import { createBin, placeCell, removeCell } from './world';
 import type { WorldState } from './types';
 import { limitsFor } from './limits';
+import { demandFor } from '../data/seasons';
+import { availableItemIds } from './orders';
 
 export type BuildKind = 'stack' | 'port' | 'pickStation' | 'inboundStation' | 'waitSpot';
 export type BuildResult = { ok: true } | { ok: false; reason: string };
@@ -146,7 +148,76 @@ export function place(w: WorldState, kind: BuildKind, x: number, z: number, free
     const st = w.stacks.find((s) => s.x === x && s.z === z);
     if (st) st.bins.push(createBin(w, null, 0).id);
   }
+  if (kind === 'pickStation') {
+    // ★ 新しいピッカーに担当が無いと仕事が来ない（担当のあるピッカーに集中する）ので、重いピッカーから担当を分ける
+    const moved = fillEmptyPickers(w);
+    if (moved) w.events.push({ type: 'notice', text: `新しいピッキングステーションに ${moved} 品目の担当を割り振りました（ステーションをタップで変更）`, icon: 'info' });
+  }
   return { ok: true };
+}
+
+// ---------------------------------------------------------------- ピッカーの担当の自動割り振り（★）
+/** 担当の重み（人気度: 累計出荷 + 今月の需要）。0 にならないよう +1 */
+export function itemLoad(w: WorldState, item: string): number {
+  return (w.stats.shippedByItem[item] ?? 0) + demandFor(item, w.calendar.month) * 5 + 1;
+}
+
+function pickerLoad(w: WorldState, s: WorldState['stations'][number]): number {
+  return s.assignedItems.reduce((a, i) => a + itemLoad(w, i), 0);
+}
+
+/**
+ * 全商品の担当を人気度で均等に割り振り直す（重い商品から順に、いちばん軽いピッカーへ）。
+ * 今の担当は無視して組み直す。戻り値は担当を割り当てた商品数
+ */
+export function autoAssignItems(w: WorldState): number {
+  const pickers = w.stations.filter((s) => s.kind === 'pick');
+  if (!pickers.length) return 0;
+  const items = availableItemIds(w).slice().sort((a, b) => itemLoad(w, b) - itemLoad(w, a));
+  for (const p of pickers) p.assignedItems = [];
+  const load = new Map(pickers.map((p) => [p.id, 0]));
+  for (const item of items) {
+    let best = pickers[0];
+    for (const p of pickers) {
+      const lb = load.get(best.id)!;
+      const lp = load.get(p.id)!;
+      if (lp < lb || (lp === lb && p.assignedItems.length < best.assignedItems.length)) best = p;
+    }
+    best.assignedItems.push(item);
+    load.set(best.id, load.get(best.id)! + itemLoad(w, item));
+  }
+  return items.length;
+}
+
+/**
+ * 担当の無いピッカーに、いちばん重いピッカーから担当を移す（既存の担当はなるべく崩さない）。
+ * 移す側の負荷が受け側を下回る手前で止める。戻り値は移した商品数
+ */
+export function fillEmptyPickers(w: WorldState): number {
+  const pickers = w.stations.filter((s) => s.kind === 'pick');
+  let moved = 0;
+  for (const target of pickers) {
+    if (target.assignedItems.length) continue;
+    for (let guard = 0; guard < 64; guard++) {
+      const donors = pickers.filter((p) => p !== target && p.assignedItems.length > 1).sort((a, b) => pickerLoad(w, b) - pickerLoad(w, a));
+      const donor = donors[0];
+      if (!donor) break;
+      // 受け側に最も効く（軽い順の）商品を 1 つ移す。移すと donor が target より軽くなるなら止める
+      const item = donor.assignedItems.slice().sort((a, b) => itemLoad(w, a) - itemLoad(w, b))[0];
+      const il = itemLoad(w, item);
+      if (target.assignedItems.length && pickerLoad(w, donor) - il < pickerLoad(w, target) + il) break;
+      donor.assignedItems = donor.assignedItems.filter((i) => i !== item);
+      target.assignedItems.push(item);
+      moved++;
+    }
+  }
+  return moved;
+}
+
+/** 担当の無いピッカーがあるか（商品の数がピッカー以上のとき） */
+export function hasIdlePicker(w: WorldState): boolean {
+  const pickers = w.stations.filter((s) => s.kind === 'pick');
+  return pickers.length >= 2 && availableItemIds(w).length >= pickers.length && pickers.some((p) => p.assignedItems.length === 0);
 }
 
 export function canRemove(w: WorldState, x: number, z: number): string | null {
