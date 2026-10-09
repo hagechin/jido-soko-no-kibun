@@ -1019,3 +1019,10 @@ npm run preview   # http://localhost:4321 で確認
 - **原因**: 書き出しは Blob URL を `<a download>` でクリックする実装。iOS の WebView（`WebView.swift`）は `hakoniwa://` 以外への遷移をすべてキャンセルするので `blob:` が握りつぶされ、何も起きなかった（WKWebView はそもそも `download` 属性でのダウンロードを扱えない）
 - ★ ブリッジに `shareFile { name, text }` を追加（`Bridge.swift`）: 一時ファイルに書いて `UIActivityViewController`（共有シート。「ファイルに保存」「AirDrop」など）を出す。iPad はボタン付近のポップオーバー。シートを閉じたら解決。`exportSaveFile` は iOS ではこれを呼び、Web はこれまでどおりブラウザのダウンロード。失敗はトースト「書き出せませんでした: …」（`storage.ts`、`main.ts`）
 - 読み込み（`<input type=file>`）は WKWebView で動くのでそのまま。SPEC-iOS §2 に `shareFile`、TESTPLAN D9
+
+---
+
+## 「眺めモードにする？」をタップしても眺めモードにならない（iOS）
+
+- **原因**: 画面のどこかを触ったら提案ボタンを隠す `pointerdown` の監視（`calmMode.ts`）が、ボタン自身のタップにも反応していた。pointerdown でボタンが `display:none` になり、pointerup はその下のキャンバスに落ちるので、`click` はボタンに届かない（タッチでは必ず、マウスでも起きる）。iPhone エミュレーションの Playwright で再現（タップ後も `is-calm` にならない）
+- ★ ボタン内の pointerdown は無視するように修正。同じ検証でタップ後に眺めモードに入る。下部バーの「眺める」とキーボードの N は元から別経路で動いていた
