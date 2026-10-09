@@ -72,19 +72,37 @@ export function clearStorage(): void {
 }
 
 /** セーブをファイルに書き出す（§11.4） */
-export function exportSaveFile(w: WorldState): void {
+/** 書き出すファイル名（日時入り） */
+export function exportFileName(d = new Date()): string {
+  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+  return `jido-soko-save-${stamp}.json`;
+}
+
+/**
+ * セーブをファイルに書き出す。iOS アプリは共有シート（「ファイルに保存」など。WKWebView は blob: のダウンロードを扱えない）、
+ * Web はブラウザのダウンロード。失敗したら理由を返す（null なら成功、'cancel' は共有シートを閉じただけ）
+ */
+export async function exportSaveFile(w: WorldState): Promise<string | null> {
   const text = serialize(w);
+  const name = exportFileName();
+  if (native.available) {
+    try {
+      await native.call('shareFile', { name, text }, 120_000);
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : String(e);
+    }
+  }
   const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const d = new Date();
-  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
   a.href = url;
-  a.download = `jido-soko-save-${stamp}.json`;
+  a.download = name;
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return null;
 }
 
 /** ファイルからセーブを読み込む */
