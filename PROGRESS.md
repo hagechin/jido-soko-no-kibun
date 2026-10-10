@@ -1184,3 +1184,13 @@ npm run preview   # http://localhost:4321 で確認
 - 商品アイコンは外部素材ではなく、このプロジェクト用に `src/game/data/icons.ts` に文字で描いた 16×16 のドット絵（M2 で作成、canvas で data URL にして表示）。権利上の問題なし
 - `scripts/export-icons.mjs` で PNG（16 / 128 / 512 px、透過、最近傍拡大）・SVG・スプライト（`sheet-128.png`）に書き出し → `assets/item-icons/`（zip も同梱）
 - 3D 版: `scripts/export-icons-3d.mjs`（headless Chromium + ゲームと同じ three.js、擬似 http オリジンで配信）で、ビンの上にボクセルを押し出した状態を斜め上から透過 PNG に。ゲーム準拠の 8×8（`render-3d/`）と 16×16 の高精細版（`render-3d-hd/`）、各 1024px と一覧 `sheet.png`
+
+---
+
+## LP 用のミニ倉庫（WebGL、/embed/mini-warehouse.html）
+
+- `src/pages/embed/mini-warehouse.astro` + `src/game/embed/miniWarehouse.ts`。ゲーム本体の sim は使わず、定型の流れを台本（async の tween）で無限再生: トラック入荷 → 搬送ロボがポートへ → 棚ロボが収納 → 別の商品をポートへ → 搬送ロボがピッカーへ → 梱包して出荷（コンベア） → 空ビンを入荷口へ戻して次の入荷に使う
+- 商品 4 種（りんご・本・マグカップ・植物）、スタック 6（1 列。どの向きからもポートが棚の陰に隠れにくい）、ポート 1。各スタックはその商品の置き場で、4 回の出荷（入荷 k → スタック k、出荷はスタック k+2）で在庫の高さが元に戻る
+- 上空からのオービット（仰角 52°、70 秒で 1 周）。背景は透明（`?bg=%23f5f5f5` で色指定）。画面外・非表示のときは描画を止める。見た目（色・寸法・ライト・ボクセルのアイコン）は `render/scene.ts` に合わせた
+- ★ 本番は `main` を push すると Deploy Now で公開される。LP（Webflow）にはセクション「倉庫は、こんなふうに回っています」を hero の直後に追加し、iframe で埋め込んだ（`.hk-demo`、2:1、スマホは 4:3）。LP の公開はユーザー
+- 確認: headless Chromium（SwiftShader）で 48 秒分のスクリーンショット。棚ロボの昇降・ピッカーの梱包・空ビンの戻りが見える
