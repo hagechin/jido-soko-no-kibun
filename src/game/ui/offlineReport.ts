@@ -17,7 +17,7 @@ export function offlineReportNode(r: OfflineReport): Node {
   if (r.events.length) rows.append(li('calendar', `その間の季節イベント: ${r.events.join('・')}`));
   const note =
     r.cappedBy === 'cyberWeek'
-      ? 'サイバーウィークの直前で止めました。えらい目に遭う準備はいいですか？'
+      ? 'サイバーウィークの直前で止めました（本番の週は自分で遊ぶ週です。留守番はここまで）。えらい目に遭う準備はいいですか？'
       : r.cappedBy === 'max'
         ? '留守番は最長 8 時間ぶんまでです。'
         : r.shipped === 0
