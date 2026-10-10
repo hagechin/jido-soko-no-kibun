@@ -22,7 +22,7 @@
 ## 流れ（1 ラウンド）
 
 1. **開発**: 直すものを直して push → `TEST_REQUEST.md` を書き換え（round を +1、status: requested）→ コミット `test-request: round N …` → push
-2. **テスト**（定期的に `git fetch origin` して見張る）: `TEST_REQUEST.md` の status が `requested` で、round が自分の最後の報告より新しければ
+2. **テスト**（定期的に `git fetch origin` して見張る。**読むのは origin 側のファイル**: `git show origin/<branch>:ios/test-report/TEST_REQUEST.md`。手元の作業ツリーは自分が最後に push した状態のままなので、見ても新しい依頼は見えない）: origin の `TEST_REQUEST.md` の status が `requested` で、round が自分の最後の報告より新しければ
    - `git pull` → `./ios/sync-web.sh` → `cd ios && xcodegen generate` → 依頼の項目を実施
    - `TEST_REPORT.md` の末尾に「# 第N回: <branch> `<commit>`（…）」の節を追記（`TESTPLAN.md` §4 のフォーマット。結果まとめの表 → 項目ごとの詳細 → 気づき）。画像を同じフォルダに置く
    - `TEST_REQUEST.md` の status を `reported` に書き換える
@@ -54,5 +54,5 @@ ios/test-report/TEST_REQUEST.md に新しい依頼があります。ios/test-rep
 完全に自動にしたい場合は、Mac の Terminal で Claude Code CLI をリポジトリで起動し、次を貼る（ビルド・自動テスト・`simctl` での起動とスクリーンショットは CLI でもできる。画面を指で操作する項目は Xcode のチャットのほうが得意なので、依頼にその旨を書く）:
 
 ```
-/loop 15m リポジトリ jido-soko-no-kibun で git fetch origin を実行し、ios/test-report/TEST_REQUEST.md に書かれた branch の先端の同ファイルを読む。status が requested で、round が ios/test-report/TEST_REPORT.md の最後の「第N回」より大きければ、ios/test-report/PROTOCOL.md の「流れ」2 のとおりにテストを実施して報告を追記し、status を reported にして push する。それ以外は何もしない。
+/loop 15m リポジトリ jido-soko-no-kibun で `git fetch origin feature/photo-mode && git show origin/feature/photo-mode:ios/test-report/TEST_REQUEST.md | head -5` を実行して、origin 側（手元の作業ツリーではない）の round と status を読む。status が requested で、round が手元の ios/test-report/TEST_REPORT.md の最後の「第N回」より大きければ、`git pull --ff-only origin feature/photo-mode` してから ios/test-report/PROTOCOL.md の「流れ」2 のとおりにテストを実施して報告を追記し、status を reported にして push する。それ以外は何もしない。
 ```
