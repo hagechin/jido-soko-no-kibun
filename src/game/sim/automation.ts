@@ -10,19 +10,25 @@
  */
 import { isDrone, layerOf } from './layers';
 import { passableFor } from './goals';
-import { AUTOMATION, PATHING, PORT } from '../data/balance';
+import { ROBOT, AUTOMATION, PATHING, PORT } from '../data/balance';
 import { demandFor } from '../data/seasons';
 import { ITEM_BY_ID } from '../data/items';
 import { cellAt, isFloorWalkable, isRailWalkable, manhattan, neighbors4 } from './grid';
 import { rand } from './rng';
 import { visibleOrders } from './orders';
 import { describeRobot, finishJob, lockedStacks, nearestPort, portReachable, setGoal } from './robots';
+import { auditBins } from './integrity';
 import { goalTargetCells } from './goals';
 import type { Runtime } from './runtime';
 import type { Robot, Stack, WorldState } from './types';
 
 function idle(r: Robot): boolean {
-  return !r.job && !r.queue.length && r.actRemaining === 0 && r.phase === 'idle';
+  return !r.job && !r.queue.length && r.actRemaining === 0 && r.phase === 'idle' && !r.carrying.length;
+}
+
+/** ビンを持ったまま仕事が無いロボ（古いセーブや想定外の中断）には、置きに行く仕事を与える */
+function putDownCarried(w: WorldState, rt: Runtime): void {
+  for (const r of w.robots) if (!r.job && !r.queue.length && r.carrying.length && r.actRemaining === 0) finishJob(w, rt, r);
 }
 
 /** 取り出し中・ポート待ち・運搬中のビン（二重に取り出さないため） */
@@ -369,7 +375,7 @@ function assignRelocate(w: WorldState, r: Robot, inFlight: Set<number>): boolean
   if (auto.relocate && w.levels >= 2 && relocating < AUTOMATION.maxRelocating && w.tick - auto.lastRetrieveTick >= AUTOMATION.relocateIdleTicks) {
     const target = findRelocation(w, inFlight);
     if (target) {
-      r.job = { type: 'relocate', stackId: target.stack.id, binId: target.binId, manual: false };
+      r.job = { type: 'relocate', stackId: target.stack.id, binId: target.binId, manual: false, tempStackId: target.tempStackId };
       r.step = 0;
       return true;
     }
@@ -384,8 +390,8 @@ export function popularity(w: WorldState, item: string | null): number {
 }
 
 /** 下にあるのに上のビンより人気な商品 → 一番差が大きいもの */
-export function findRelocation(w: WorldState, inFlight: Set<number>): { stack: Stack; binId: number } | null {
-  let best: { stack: Stack; binId: number; gain: number } | null = null;
+export function findRelocation(w: WorldState, inFlight: Set<number>): { stack: Stack; binId: number; tempStackId: number } | null {
+  let best: { stack: Stack; binId: number; gain: number; tempStackId: number } | null = null;
   const busyStacks = new Set<number>();
   for (const r of w.robots) for (const j of [r.job, ...r.queue]) {
     if (j?.type === 'relocate' || j?.type === 'retrieve') busyStacks.add(j.stackId);
@@ -402,7 +408,33 @@ export function findRelocation(w: WorldState, inFlight: Set<number>): { stack: S
       let maxAbove = -Infinity;
       for (let j = i + 1; j < s.bins.length; j++) maxAbove = Math.max(maxAbove, popularity(w, w.bins[s.bins[j]]?.item ?? null));
       const gain = mine - maxAbove;
-      if (gain > AUTOMATION.relocateMinGain && (!best || gain > best.gain)) best = { stack: s, binId: id, gain };
+      if (gain > AUTOMATION.relocateMinGain && (!best || gain > best.gain)) {
+        // ★ 退避先は「移す上のビンより人気なビンの上」を避ける。そこへ置くと今度は退避先で並べ替えが要り、2 つのスタックの間で往復し続ける
+        const temp = pickRelocateTemp(w, s, i);
+        if (temp) best = { stack: s, binId: id, gain, tempStackId: temp.id };
+      }
+    }
+  }
+  return best;
+}
+
+/** 退避先: 空きがあり、頂上のビンが「移すビンの一番人気の低いもの + 最小差」より人気でないスタック（空のスタックは常に可）。近い順 */
+export function pickRelocateTemp(w: WorldState, from: Stack, targetIndex: number): Stack | null {
+  const locked = lockedStacks(w);
+  let minMoved = Infinity;
+  for (let j = targetIndex + 1; j < from.bins.length; j++) minMoved = Math.min(minMoved, popularity(w, w.bins[from.bins[j]]?.item ?? null));
+  let best: Stack | null = null;
+  let bs = Infinity;
+  for (const s of w.stacks) {
+    if (s.id === from.id || locked.has(s.id) || s.bins.length >= w.levels) continue;
+    if (s.bins.length) {
+      const top = popularity(w, w.bins[s.bins[s.bins.length - 1]]?.item ?? null);
+      if (top > minMoved + AUTOMATION.relocateMinGain) continue;
+    }
+    const score = Math.abs(s.x - from.x) + Math.abs(s.z - from.z) + s.bins.length * ROBOT.digLevelWeight;
+    if (score < bs) {
+      bs = score;
+      best = s;
     }
   }
   return best;
@@ -553,6 +585,8 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
  */
 export function diagnoseIdle(w: WorldState): string[] {
   const out: string[] = [];
+  const orphans = auditBins(w);
+  if (orphans.length) out.push(`[!] どこにも無いビンが ${orphans.length} 個（${orphans.slice(0, 5).map((id) => `${w.bins[id]?.item ?? '空'} ${w.bins[id]?.qty ?? 0}`).join('、')}）。次の整合性チェックで棚に戻します`);
   const auto = w.automation;
   const inFlight = binsInFlight(w);
   const locate = (id: number): string => {
@@ -623,6 +657,7 @@ export function diagnoseIdle(w: WorldState): string[] {
 
 // ------------------------------------------------------------------ 毎 tick
 export function updateAutomation(w: WorldState, rt: Runtime): void {
+  putDownCarried(w, rt);
   releaseStaleRetrieves(w, rt);
   // 棚ロボ: 返却ビンの格納（常時）→ AI の仕事 → ポートから退く
   const storeTargets = new Set<number>();
