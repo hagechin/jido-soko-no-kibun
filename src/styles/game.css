@@ -1379,12 +1379,19 @@ body.is-calm .mini-hud {
   display: flex;
   pointer-events: none;
 }
-/* フォトモード中（眺めモードの中）はミニ HUD を隠し、フォトモード自身のトーストは見せる */
+/* フォトモード中（眺めモードの中）はミニ HUD を隠し、フォトモード自身のトーストは見せる（撮影パネルの上に） */
 body.is-photo .mini-hud {
   display: none;
 }
 body.is-calm.is-photo .toasts {
   display: flex !important;
+}
+body.is-photo .toasts {
+  bottom: calc(var(--photo-panel-h, 0px) + 12px);
+}
+/* モーダル（現像・撮れました）の間は撮影パネルを引っ込める（パネルの z-index はモーダルより上なので重なっていた。第 24 回） */
+body.has-modal .photo-panel {
+  display: none;
 }
 .mini-hud .mini-text {
   display: inline-flex;
@@ -1723,14 +1730,18 @@ kbd.key {
   max-height: none;
   overflow: visible;
 }
+/* ● は画面の真ん中（左右の列は同じ幅） */
 .photo-min {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 .photo-min > * {
   pointer-events: auto;
+}
+.photo-min > :last-child {
+  justify-self: end;
 }
 .photo-min .photo-shutter {
   width: 72px;
@@ -1754,7 +1765,7 @@ kbd.key {
   -webkit-overflow-scrolling: touch;
 }
 .photo-thumb {
-  height: 72px;
+  height: 96px;
   border-radius: 4px;
   border: 2px solid transparent;
   flex: none;
@@ -1766,6 +1777,27 @@ kbd.key {
 .photo-min-group {
   display: inline-flex;
   gap: 6px;
+}
+/* カメラの切り替え（回す｜歩く）: 今のほうが点灯 */
+.photo-seg {
+  display: inline-flex;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(20, 28, 38, 0.75);
+}
+.photo-seg .btn {
+  border-radius: 0;
+  background: transparent;
+  padding: 0 9px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.photo-min .btn {
+  white-space: nowrap;
+}
+.photo-seg .btn.is-active {
+  background: var(--accent);
+  color: #1d2733;
 }
 body.is-photo .update-banner,
 body.is-photo .catchup {

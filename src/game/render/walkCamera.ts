@@ -28,10 +28,11 @@ const MOVE_KEYS: Record<string, [number, number]> = {
 };
 /** 目の高さの下限（床面から） */
 const MIN_Y = 0.35;
-/** 歩く速さ（ワールド単位/秒）と、見回す感度（rad/px） */
+/** 歩く速さ（ワールド単位/秒） */
 const WALK_SPEED = 3.5;
 const FAST = 3;
-const LOOK_SPEED = 0.004;
+/** 見回す感度: 画面の高さいっぱいのドラッグで縦の画角 × LOOK_GAIN だけ回る（指の下の景色がついてくる感じ。望遠ほど細かく） */
+const LOOK_GAIN = 1.2;
 /** タッチの移動: ドラッグ量（px）→ 速さの倍率（画面の 1/4 で最大） */
 const STICK_PX = 90;
 
@@ -161,6 +162,12 @@ export class WalkCamera {
     this.apply();
   }
 
+  /** rad/px */
+  private lookSpeed(): number {
+    const h = Math.max(200, this.dom.clientHeight || 0);
+    return ((this.camera.fov * Math.PI) / 180 / h) * LOOK_GAIN;
+  }
+
   private apply(): void {
     const b = this.bounds;
     this.position.x = Math.min(b.maxX, Math.max(b.minX, this.position.x));
@@ -185,7 +192,11 @@ export class WalkCamera {
   private onPointerDown(e: PointerEvent): void {
     if (!this.enabled) return;
     if (e.isPrimary) this.pointers.clear();
-    this.dom.setPointerCapture?.(e.pointerId);
+    try {
+      this.dom.setPointerCapture?.(e.pointerId);
+    } catch {
+      /* 合成イベントなど、捕まえられないポインタ */
+    }
     const rect = this.dom.getBoundingClientRect();
     // マウスは左ドラッグで見回す。タッチは左半分で移動、右半分で見回す
     const side: Pointer['side'] = e.pointerType === 'mouse' ? 'look' : e.clientX - rect.left < rect.width / 2 ? 'move' : 'look';
@@ -219,8 +230,9 @@ export class WalkCamera {
       this.stick.x = Math.max(-1, Math.min(1, (p.x - p.startX) / STICK_PX));
       this.stick.z = Math.max(-1, Math.min(1, -(p.y - p.startY) / STICK_PX));
     } else {
-      this.yaw -= dx * LOOK_SPEED;
-      this.pitch -= dy * LOOK_SPEED;
+      const k = this.lookSpeed();
+      this.yaw -= dx * k;
+      this.pitch -= dy * k;
       this.apply();
     }
   }
@@ -229,7 +241,11 @@ export class WalkCamera {
     const p = this.pointers.get(e.pointerId);
     if (!p) return;
     this.pointers.delete(e.pointerId);
-    this.dom.releasePointerCapture?.(e.pointerId);
+    try {
+      this.dom.releasePointerCapture?.(e.pointerId);
+    } catch {
+      /* 捕まえていないポインタ */
+    }
     if (p.side === 'move') this.stick = { x: 0, z: 0 };
     const quick = performance.now() - p.startTime < 600;
     if (!p.moved && quick && p.button === 0 && e.type === 'pointerup') this.onTap?.(e.clientX, e.clientY, e);

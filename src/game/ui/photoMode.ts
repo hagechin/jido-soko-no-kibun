@@ -179,6 +179,7 @@ export class PhotoMode {
     document.body.classList.remove('is-photo');
     this.panel.hidden = true;
     this.mask.hidden = true;
+    document.body.style.removeProperty('--photo-panel-h');
     this.host.onExit();
   }
 
@@ -201,6 +202,7 @@ export class PhotoMode {
 
   setMinimal(on: boolean): void {
     this.minimal = on;
+    this.panel.scrollTop = 0;
     try {
       localStorage.setItem(UI_KEY, on ? 'min' : 'full');
     } catch {
@@ -356,6 +358,12 @@ export class PhotoMode {
     this.panel.classList.remove('is-busy');
   }
 
+  /** 撮影パネルの高さを CSS 変数に（トーストをパネルの上に出す） */
+  private updatePanelHeight(): void {
+    const h = this.active && !this.panel.hidden ? this.panel.offsetHeight : 0;
+    document.body.style.setProperty('--photo-panel-h', `${h}px`);
+  }
+
   private renderPanel(): void {
     const p = this.params;
     const row = (label: string, items: { key: string; text: string; on: boolean; pick: () => void }[]) => {
@@ -377,11 +385,19 @@ export class PhotoMode {
     this.panel.classList.toggle('is-min', this.minimal);
     if (this.minimal) {
       // シャッターだけの画面: 左に設定、中央に ●、右に終了
-      const settings = el('button', { class: 'btn photo-min-btn', type: 'button', title: '設定を出す（H）' }, iconText('settings', '設定', 14));
+      const settings = el('button', { class: 'btn photo-min-btn', type: 'button', title: '設定を出す（H）', 'aria-label': '設定' }, icon('settings', 16));
       settings.addEventListener('click', () => this.setMinimal(false));
-      const cam = el('button', { class: 'btn photo-min-btn', type: 'button', title: 'カメラの切り替え（V）' }, iconText('move', this.cameraMode === 'walk' ? '回す' : '歩く', 14));
-      cam.addEventListener('click', () => this.setCameraMode(this.cameraMode === 'walk' ? 'orbit' : 'walk'));
-      this.panel.replaceChildren(el('div', { class: 'photo-min' }, el('span', { class: 'photo-min-group' }, settings, cam), this.makeShutter(), close), el('div', { class: 'photo-min-hint' }, this.focusHint));
+      // カメラの切り替えは「回す｜歩く」の 2 つで、今のほうを点灯（片方だけだと今どちらか分からなかった。第 24 回）
+      const seg = el('span', { class: 'photo-seg', title: 'カメラの切り替え（V）' });
+      for (const [mode, label] of [['orbit', '回す'], ['walk', '歩く']] as [PhotoCameraMode, string][]) {
+        const b = el('button', { class: `btn photo-min-btn${this.cameraMode === mode ? ' is-active' : ''}`, type: 'button', text: label });
+        b.addEventListener('click', () => this.setCameraMode(mode));
+        seg.append(b);
+      }
+      const exit = el('button', { class: 'btn photo-min-btn', type: 'button', title: '眺めモードに戻る（Esc）', 'aria-label': '終了' }, icon('x', 16));
+      exit.addEventListener('click', () => this.exit());
+      this.panel.replaceChildren(el('div', { class: 'photo-min' }, el('span', { class: 'photo-min-group' }, settings, seg), this.makeShutter(), exit), el('div', { class: 'photo-min-hint' }, this.focusHint));
+      this.updatePanelHeight();
       return;
     }
     const hide = el('button', { class: 'btn', type: 'button', title: '設定を隠してシャッターだけにする（H）' }, iconText('image', '設定を隠す', 14));
@@ -430,6 +446,7 @@ export class PhotoMode {
         PHOTO_CHOICES.logo.map((l) => ({ key: l.id, text: l.name, on: p.logo === l.id, pick: () => this.set({ logo: l.id }) })),
       ),
     );
+    this.updatePanelHeight();
   }
 
   /** 撮影 → 確認モーダル（保存／共有、起動画面にする）。snap があればその瞬間を撮る */
@@ -449,9 +466,20 @@ export class PhotoMode {
     }
     this.busy = false;
     this.panel.classList.remove('is-busy');
+    this.showResult(url);
+  }
+
+  /** 「撮れました」のモーダル（保存のあとの案内から戻ってくるときにも使う） */
+  private showResult(url: string, saved = false): void {
+    if (!this.host) return;
     const img = el('img', { class: 'photo-preview', alt: '撮った写真' }) as HTMLImageElement;
+    // 大きな JPEG の読み込みに 1〜2 秒かかるので、その間は「現像中…」を出す
+    const loading = el('p', { class: 'muted small photo-loading', text: '現像中…' });
+    img.addEventListener('load', () => loading.remove());
+    img.addEventListener('error', () => (loading.textContent = '写真を表示できませんでした'));
     img.src = url;
-    const save = el('button', { class: 'btn primary', type: 'button' }, iconText(native.available ? 'image' : 'download', native.available ? 'カメラロールに保存' : 'ダウンロード', 14));
+    const save = el('button', { class: 'btn primary', type: 'button' }, saved ? iconText('check', '保存しました', 14) : iconText(native.available ? 'image' : 'download', native.available ? 'カメラロールに保存' : 'ダウンロード', 14));
+    if (saved) save.setAttribute('disabled', 'true');
     save.addEventListener('click', () => void this.savePhoto(url, save));
     const share = native.available ? el('button', { class: 'btn', type: 'button' }, iconText('upload', '共有', 14)) : null;
     share?.addEventListener('click', () => this.sharePhoto(url));
@@ -465,7 +493,7 @@ export class PhotoMode {
     });
     const again = el('button', { class: 'btn', type: 'button', text: '撮り直す' });
     again.addEventListener('click', () => this.host?.hideModal());
-    this.host.showModal('撮れました', img, el('div', { class: 'settings-row' }, save, share, startup, again));
+    this.host.showModal('撮れました', loading, img, el('div', { class: 'settings-row' }, save, share, startup, again));
   }
 
   private stamp(): string {
@@ -492,9 +520,10 @@ export class PhotoMode {
         if (r?.denied) {
           const open = el('button', { class: 'btn primary', type: 'button', text: '設定を開く' });
           open.addEventListener('click', () => nativeTry('openSettings'));
-          const back = el('button', { class: 'btn', type: 'button', text: '閉じる' });
-          back.addEventListener('click', () => this.host?.hideModal());
-          this.host?.showModal('写真への保存が許可されていません', el('p', { text: '設定 → 箱庭！DS → 写真 で「追加のみ」を許可すると、カメラロールに保存できます。共有シートからの「画像を保存」も使えます。' }), el('div', { class: 'settings-row' }, open, back));
+          // 「戻る」で撮った写真（撮れました）に戻る（以前は閉じると写真が失われた。第 24 回）
+          const back = el('button', { class: 'btn', type: 'button', text: '写真に戻る' });
+          back.addEventListener('click', () => this.showResult(url));
+          this.host?.showModal('写真への保存が許可されていません', el('p', { text: '設定 → 箱庭！DS → 写真 で「追加のみ」を許可すると、カメラロールに保存できます。許可しなくても「共有」から "ファイル" に保存したり、ほかのアプリへ送れます。' }), el('div', { class: 'settings-row' }, open, back));
           return;
         }
         showToast(`保存できませんでした${r?.error ? `: ${r.error}` : ''}`, 3000, 'triangle-alert', true);

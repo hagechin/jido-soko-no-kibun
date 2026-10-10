@@ -1308,3 +1308,19 @@ npm run preview   # http://localhost:4321 で確認
 - 絞りの選択肢に F32・F64 を追加（`PHOTO_CHOICES.fNumber`。ボケ オンのまま弱くしたいとき）
 - テストの依頼と報告を GitHub だけで往復する約束を `ios/test-report/PROTOCOL.md` に: 依頼は `TEST_REQUEST.md`（毎回書き換え。round / status: requested→reported→done / branch）、報告は `TEST_REPORT.md` に追記。両者が定期的に fetch して status を見る。Mac 側は `/loop 15m …` の例文を記載。クラウド側（この会話）は 1 時間ごとの Routine で `feature/photo-mode` の status を見て、reported なら報告を読んで対応し次の依頼を書く
 - 第 24 回の依頼（フォトモード一式: M24〜M25d、自動テスト、回帰 M1/M22/M44、性能）を `TEST_REQUEST.md` に。TESTPLAN M25d の行を 操作／期待 に分け直し
+
+---
+
+## Opus 第 24 回（フォトモード、feature/photo-mode `453ecb3`）への対応
+
+- 報告: 自動テスト 17 件パス、M24〜M25d はおおむね OK。NG: 「撮れました」「現像」にパネル／下のボタンが重なる（パネルの z-index 35 > モーダル 20）、許可しなかったときの「設定を開く」が設定のトップ（シミュレータ）、ピントのタップが近くの柱でも 10 m（床）、見回しが速すぎ、● が中央からずれ、「歩く／回す」が片方だけ
+- 直したこと
+  - モーダルの間は撮影パネルを消す（`body.has-modal .photo-panel { display: none }`）。これで設定パネルを出したままでも、隠した状態でも重ならない
+  - ピント: `distanceAt` はまず `Raycaster.intersectObjects(scene)` で描画している形（柱・ビン・ロボ・床）に当てる（Points／Sprite／Line は除外）。箱の当たり判定は予備。原因は、柱（セルの縁）を狙うと箱の面をかすめて外れ、床の交点（目の高さで俯角 8° → 10 m）になっていたこと
+  - 見回しの感度: 固定 0.004 rad/px → 画角に合わせる（画面の高さで縦の画角 × 1.2。50mm 相当で横 100px ≈ 4°）
+  - ● だけの画面: grid `minmax(0,1fr) auto minmax(0,1fr)` で ● をちょうど中央に。左は歯車（設定）と「回す｜歩く」のセグメント（今のほうが黄色）、右は ×
+  - 「撮れました」: 写真が出るまで「現像中…」。許可されていないときの案内は「写真に戻る」で撮れましたに戻る（以前は閉じると写真が失われた）。文言は「共有から "ファイル" に保存・ほかのアプリへ」。「設定を開く」は `openSettingsURLString` のまま（実機で確認依頼）
+  - サムネイル 72 → 96px、トーストはパネルの上（`--photo-panel-h`）、「設定」でパネルを出すたびに先頭から。`WalkCamera` の setPointerCapture／releasePointerCapture を try/catch（合成イベント）
+- 見送り: パネルの大きさ（UI の作り直し待ち）、2 本指の向き。仕様として説明: 写真の大きさ、サイバーウィークの赤いビネット、xcodebuild が終了しない（環境）
+- 確認: headless（390×844）でパネルを出したまま撮影 → モーダルの間はパネル display none、● 中心 195（画面中央）、「回す*｜歩く」、近くのビンをタップ → ピント 1.1 m、横 100px ドラッグ → 3.8°。全 187 件
+- 第 25 回の依頼を `TEST_REQUEST.md` に（直したところの確認、実機での「設定を開く」と性能）
