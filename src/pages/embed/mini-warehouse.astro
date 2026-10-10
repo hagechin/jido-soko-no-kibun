@@ -1,5 +1,5 @@
 ---
-// LP に iframe で埋め込むミニ倉庫（定型の流れを無限再生）。背景は透明。?bg=%23f5f5f5 で背景色を指定できる
+// LP に iframe で埋め込むミニ倉庫（定型の流れを無限再生）。背景は透明。?bg=%23f5f5f5 で背景色、?demo=shelf|double|amr|drone でロボ紹介
 ---
 <!doctype html>
 <html lang="ja">
@@ -29,9 +29,9 @@
     <script>
       import { startMiniWarehouse } from '../../game/embed/miniWarehouse';
       const canvas = document.getElementById('mini') as HTMLCanvasElement;
-      const bg = new URLSearchParams(location.search).get('bg');
+      const params = new URLSearchParams(location.search);
       try {
-        startMiniWarehouse(canvas, { background: bg });
+        startMiniWarehouse(canvas, { background: params.get('bg'), demo: params.get('demo') });
       } catch (e) {
         console.error(e);
       }
