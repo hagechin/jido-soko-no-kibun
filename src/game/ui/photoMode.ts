@@ -4,7 +4,7 @@
  * カメラは眺めモード MANUAL と同じ操作（ドラッグ・ピンチ、WASD / Q E / R F / Z X）。画面をタップするとそこにピント
  */
 import { icon, iconText } from './icon';
-import { DEFAULT_PHOTO, PHOTO_CHOICES, type PhotoParams } from '../render/photo';
+import { DEFAULT_PHOTO, PHOTO_CHOICES, PHOTO_SHARE_TEXT, type PhotoParams } from '../render/photo';
 import { native, nativeTry } from '../platform/native';
 import { $, el, showToast } from './layout';
 
@@ -22,6 +22,8 @@ export interface PhotoHost {
   apply: (p: PhotoParams) => void;
   /** 画面の点までの距離（ピント） */
   distanceAt: (clientX: number, clientY: number) => number | null;
+  /** 開始時のピント: いま見ている場所（カメラの注視点）までの距離 */
+  focusAtStart?: () => number | null;
   /** 撮影 → JPEG データ URL */
   capture: (longEdge: number) => string;
   /** 一時停止／再開（撮影中に止めたいとき） */
@@ -112,6 +114,9 @@ export class PhotoMode {
     this.active = true;
     document.body.classList.add('is-photo');
     this.host.onEnter();
+    // ピントは「いま見ている場所」に合わせて始める（前回の距離のままだと全体がぼけて見える）
+    const d = this.host.focusAtStart?.();
+    if (d !== null && d !== undefined && Number.isFinite(d)) this.params = { ...this.params, focusDistance: Math.max(1, d) };
     this.host.apply(this.params);
     this.panel.hidden = false;
     this.mask.hidden = false;
@@ -215,6 +220,10 @@ export class PhotoMode {
         '比率',
         PHOTO_CHOICES.aspect.map((a) => ({ key: a.id, text: a.name, on: p.aspect === a.id, pick: () => this.set({ aspect: a.id }) })),
       ),
+      row(
+        'ロゴ',
+        PHOTO_CHOICES.logo.map((l) => ({ key: l.id, text: l.name, on: p.logo === l.id, pick: () => this.set({ logo: l.id }) })),
+      ),
     );
   }
 
@@ -252,7 +261,7 @@ export class PhotoMode {
   private savePhoto(url: string): void {
     const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
     if (native.available) {
-      native.call('sharePhoto', { data: url, name: `hakoniwa-${stamp}.jpg` }, 120_000).catch(() => showToast('共有できませんでした'));
+      native.call('sharePhoto', { data: url, name: `hakoniwa-${stamp}.jpg`, text: PHOTO_SHARE_TEXT }, 120_000).catch(() => showToast('共有できませんでした'));
       return;
     }
     const a = document.createElement('a');

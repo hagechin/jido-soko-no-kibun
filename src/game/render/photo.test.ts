@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { apertureForF, aspectRatio, fovForFocal, photoSize, shutterFrames } from './photo';
+import { PHOTO_TITLE, apertureForF, aspectRatio, captionLines, fovForFocal, photoSize, shutterFrames } from './photo';
 
 describe('フォトモードのパラメータ', () => {
   it('焦点距離 → 縦の画角（35mm 換算、センサー縦 24mm）', () => {
@@ -23,5 +23,15 @@ describe('フォトモードのパラメータ', () => {
     expect(shutterFrames(0.6)).toBe(4);
     expect(shutterFrames(5)).toBe(15);
     expect(shutterFrames(100)).toBe(16);
+  });
+  it('ロゴの行: なし／ロゴ／ロゴ＋倉庫情報', () => {
+    const info = { rank: 'メガDC', year: 3, month: 5, shipped: 12345 };
+    expect(captionLines('none', info)).toEqual([]);
+    expect(captionLines('logo', info)).toEqual([PHOTO_TITLE]);
+    const two = captionLines('logoInfo', info);
+    expect(two).toHaveLength(2);
+    expect(two[1]).toContain('メガDC');
+    expect(two[1]).toContain('3 年目 5 月');
+    expect(two[1]).toContain('12,345');
   });
 });

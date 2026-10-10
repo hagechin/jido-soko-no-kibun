@@ -76,7 +76,7 @@ final class Bridge {
             // フォトモードの写真を共有シートへ（写真に保存・AirDrop・メールなど）
             guard let dataUrl = p["data"] as? String, let image = Bridge.decodeDataUrl(dataUrl) else { throw BridgeError.badParams }
             let name = (p["name"] as? String) ?? "hakoniwa.jpg"
-            Bridge.share(image: image, name: name, from: webView)
+            Bridge.share(image: image, name: name, text: p["text"] as? String, from: webView)
             return true
         case "shareFile":
             // セーブの書き出し: WKWebView は blob: の <a download> を扱えない（遷移をキャンセルしている）ので、
@@ -149,10 +149,12 @@ final class Bridge {
 
     /// 共有シート。iPad はポップオーバーの起点が要る
     @MainActor
-    static func share(image: UIImage, name: String, from webView: WKWebView?) {
+    static func share(image: UIImage, name: String, text: String? = nil, from webView: WKWebView?) {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         if let jpg = image.jpegData(compressionQuality: 0.92) { try? jpg.write(to: tmp) }
-        let items: [Any] = FileManager.default.fileExists(atPath: tmp.path) ? [tmp] : [image]
+        var items: [Any] = FileManager.default.fileExists(atPath: tmp.path) ? [tmp] : [image]
+        // ハッシュタグなどの添え文（SNS 系の共有先が拾う。「写真に保存」には影響しない）
+        if let text, !text.isEmpty { items.append(text) }
         let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
         guard var top = webView?.window?.rootViewController else { return }
         while let presented = top.presentedViewController { top = presented }

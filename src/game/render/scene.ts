@@ -33,7 +33,8 @@ import { Effects, groundColorForMonth } from './effects';
 import type { Robot, WorldState } from '../sim/types';
 import { BoxBatch, shade } from './voxel';
 import { shapeFor } from '../sim/footprint';
-import { PhotoRig, fovForFocal, photoSize, shutterFrames, type PhotoParams } from './photo';
+import { PhotoRig, captionLines, drawCaption, fovForFocal, photoSize, shutterFrames, type PhotoParams } from './photo';
+import { rankName } from '../sim/rank';
 import { isDoubleDecker, isDrone } from '../sim/layers';
 import { CameraController } from './camera';
 import type { QualitySettings } from './quality';
@@ -163,6 +164,7 @@ export class WarehouseRenderer {
       ctx.drawImage(this.canvas, 0, 0);
     }
     ctx.globalAlpha = 1;
+    drawCaption(ctx, size.width, size.height, captionLines(p?.logo ?? 'none', { rank: rankName(w), year: w.calendar.year, month: w.calendar.month, shipped: w.stats.totalShipped }));
     const url = out.toDataURL('image/jpeg', quality);
     this.renderer.setPixelRatio(prevRatio);
     this.resize();

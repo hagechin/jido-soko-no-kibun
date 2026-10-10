@@ -60,8 +60,8 @@ Web 版（[SPEC.md](./SPEC.md)）を WKWebView で包み、iOS 版だけの機�
 ## 1.5 フォトモード（Web 版にもある。feature/photo-mode）
 
 - 入口: 設定の「フォトモードを開く」、ショートカット P。HUD を隠し、下に撮影パネル。カメラは眺めモード MANUAL と同じ操作（ドラッグ・ピンチ、WASD / Q E / R F / Z X）。画面タップでピント（視線の先の物までの距離）、Enter で撮影、Space で一時停止、Esc で戻る（視点は元に戻す）
-- パラメータ（`render/photo.ts`、localStorage に保存）: 焦点距離 24/35/50/85/135mm（35mm 換算、縦の画角に変換）、絞り F1.4〜F16（BokehPass の被写界深度）、シャッター 1/250〜1/8（ゲーム内時間。動作中のロボの補間 alpha を少しずつ進めた 4〜16 コマを重ねるモーションブラー。シミュレーションは進めない）、エフェクト なし／フィルム／モノクロ／セピア／ビビッド／夕暮れ（色調シェーダ＋ FilmPass の粒子）、比率 画面／3:2／16:9／4:5／1:1（プレビューは黒帯、撮影は実寸）
-- 撮影: 長辺 2400px の JPEG。モーダルで「保存／共有」（iOS は `sharePhoto` → 共有シート、Web はダウンロード）、「起動画面にする」（長辺 1600px に縮めて localStorage `jido-soko-no-kibun:startup-photo` と、iOS では `save` で Documents にも）
+- パラメータ（`render/photo.ts`、localStorage に保存）: 焦点距離 24/35/50/85/135mm（35mm 換算、縦の画角に変換）、絞り F1.4〜F16（BokehPass の被写界深度）、シャッター 1/250〜1/8（ゲーム内時間。動作中のロボの補間 alpha を少しずつ進めた 4〜16 コマを重ねるモーションブラー。シミュレーションは進めない）、エフェクト なし／フィルム／モノクロ／セピア／ビビッド／夕暮れ（色調シェーダ＋ FilmPass の粒子）、比率 画面／3:2／16:9／4:5／1:1（プレビューは黒帯、撮影は実寸）、ロゴ なし／ロゴ／ロゴ＋倉庫情報（右下に「箱庭！ディストリビューション」、＋ランク・暦・出荷数。`captionLines` / `drawCaption`）
+- 撮影: 長辺 2400px の JPEG。モーダルで「保存／共有」（iOS は `sharePhoto` → 共有シート。写真に加えて `text`（`PHOTO_SHARE_TEXT`、ハッシュタグ付き）を activity item に添える。「写真に保存」には影響しない。Web はダウンロード）、「起動画面にする」（長辺 1600px に縮めて localStorage `jido-soko-no-kibun:startup-photo` と、iOS では `save` で Documents にも）
 - 起動画面: index.astro のインラインスクリプトが localStorage の写真を `--startup-photo` に入れ、HTML のスプラッシュの背景にする。iOS は `ContentView` が Documents の同じ写真を WebView の上に重ね、JS の `ready`（最初の描画後）で消す。これで起動直後から写真が出る
 - 後処理は three の examples/jsm（同梱）だけで、CDN や追加依存は無し
 

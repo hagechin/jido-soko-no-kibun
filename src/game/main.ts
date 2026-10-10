@@ -234,6 +234,7 @@ class Game {
       },
       apply: (p) => this.renderer.setPhotoParams(p),
       distanceAt: (x, y) => this.renderer.distanceAt(this.world, x, y, this.alpha),
+      focusAtStart: () => this.renderer.controls.distance,
       capture: (longEdge) => this.renderer.capturePhoto(this.world, this.alpha, longEdge),
       isPaused: () => this.world.speed === 0,
       togglePause: () => this.setSpeed(this.world.speed === 0 ? this.lastSpeed : 0),

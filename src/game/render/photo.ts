@@ -11,6 +11,8 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
 export type PhotoEffect = 'none' | 'film' | 'mono' | 'sepia' | 'vivid' | 'dusk';
 export type PhotoAspect = 'screen' | '3:2' | '16:9' | '4:5' | '1:1';
+/** 写真に入れるロゴ: なし／ロゴ／ロゴ＋倉庫情報（ランク・暦・出荷数） */
+export type PhotoLogo = 'none' | 'logo' | 'logoInfo';
 
 export interface PhotoParams {
   /** 焦点距離（35mm 換算 mm） */
@@ -23,6 +25,7 @@ export interface PhotoParams {
   shutterTicks: number;
   effect: PhotoEffect;
   aspect: PhotoAspect;
+  logo: PhotoLogo;
 }
 
 export const PHOTO_CHOICES = {
@@ -51,9 +54,60 @@ export const PHOTO_CHOICES = {
     { id: '4:5', name: '4:5' },
     { id: '1:1', name: '1:1' },
   ] as { id: PhotoAspect; name: string }[],
+  logo: [
+    { id: 'none', name: 'なし' },
+    { id: 'logo', name: 'ロゴ' },
+    { id: 'logoInfo', name: 'ロゴ＋倉庫情報' },
+  ] as { id: PhotoLogo; name: string }[],
 };
 
-export const DEFAULT_PHOTO: PhotoParams = { focalMm: 50, fNumber: 2.8, focusDistance: 12, shutterTicks: 0, effect: 'film', aspect: 'screen' };
+export const DEFAULT_PHOTO: PhotoParams = { focalMm: 50, fNumber: 2.8, focusDistance: 12, shutterTicks: 0, effect: 'film', aspect: 'screen', logo: 'logo' };
+
+export const PHOTO_TITLE = '箱庭！ディストリビューション';
+/** 共有シートに添える文（iOS） */
+export const PHOTO_SHARE_TEXT = '#箱庭ディストリビューション で撮りました';
+
+/** 写真の右下に入れる文字列（ロゴ行と、倉庫情報の行） */
+export function captionLines(logo: PhotoLogo, info: { rank: string; year: number; month: number; shipped: number }): string[] {
+  if (logo === 'none') return [];
+  if (logo === 'logo') return [PHOTO_TITLE];
+  return [PHOTO_TITLE, `${info.rank} ・ ${info.year} 年目 ${info.month} 月 ・ 出荷 ${info.shipped.toLocaleString('ja-JP')} 件`];
+}
+
+/** 2D canvas に右下のキャプションを描く（長辺に対する比率で大きさを決める） */
+export function drawCaption(ctx: CanvasRenderingContext2D, width: number, height: number, lines: string[]): void {
+  if (!lines.length) return;
+  const long = Math.max(width, height);
+  const size = Math.round(long * 0.016);
+  const small = Math.round(size * 0.78);
+  const pad = Math.round(size * 0.7);
+  const gap = Math.round(size * 0.35);
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'right';
+  const font = (px: number, bold: boolean) => `${bold ? '700' : '500'} ${px}px system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif`;
+  ctx.font = font(size, true);
+  const w0 = ctx.measureText(lines[0]).width;
+  ctx.font = font(small, false);
+  const w1 = lines[1] ? ctx.measureText(lines[1]).width : 0;
+  const boxW = Math.max(w0, w1) + pad * 2;
+  const boxH = pad * 2 + size + (lines[1] ? gap + small : 0);
+  const x = width - pad - boxW;
+  const y = height - pad - boxH;
+  ctx.fillStyle = 'rgba(29, 39, 51, 0.62)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, boxW, boxH, Math.round(size * 0.5));
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = font(size, true);
+  ctx.fillText(lines[0], x + boxW - pad, y + pad + size * 0.86);
+  if (lines[1]) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = font(small, false);
+    ctx.fillText(lines[1], x + boxW - pad, y + pad + size + gap + small * 0.86);
+  }
+  ctx.restore();
+}
 
 /** 35mm 換算の焦点距離 → 縦の画角（度）。センサー縦 24mm */
 export function fovForFocal(focalMm: number): number {
