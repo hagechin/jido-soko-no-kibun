@@ -24,6 +24,8 @@ const HOLD_MS = 350;
 const BURST_INTERVAL_MS = 250;
 const BURST_MAX = 20;
 
+export type PhotoCameraMode = 'orbit' | 'walk';
+
 /** ある瞬間の記録（世界と予約表の写し、カメラの位置、補間位置）。中身は main が作る */
 export interface PhotoSnapshot {
   at: number;
@@ -34,6 +36,8 @@ export interface PhotoHost {
   onEnter: () => void;
   onExit: () => void;
   apply: (p: PhotoParams) => void;
+  /** カメラ: オービット（回す）／ウォークスルー（歩く・飛ぶ） */
+  setCameraMode: (mode: PhotoCameraMode) => void;
   /** 画面の点までの距離（ピント） */
   distanceAt: (clientX: number, clientY: number) => number | null;
   /** 開始時のピント: いま見ている場所（カメラの注視点）までの距離 */
@@ -106,6 +110,7 @@ export class PhotoMode {
   params: PhotoParams = loadPhotoParams();
   /** 設定パネルを隠してシャッターだけにする */
   minimal = false;
+  cameraMode: PhotoCameraMode = 'orbit';
   private panel = $('photo-panel');
   private mask = $('photo-mask');
   private host: PhotoHost | null = null;
@@ -142,6 +147,9 @@ export class PhotoMode {
       } else if (e.code === 'KeyH') {
         this.setMinimal(!this.minimal);
         e.preventDefault();
+      } else if (e.code === 'KeyV') {
+        this.setCameraMode(this.cameraMode === 'walk' ? 'orbit' : 'walk');
+        e.preventDefault();
       }
     });
     window.addEventListener('resize', () => this.active && this.updateMask());
@@ -150,6 +158,7 @@ export class PhotoMode {
   enter(): void {
     if (this.active || !this.host) return;
     this.active = true;
+    this.cameraMode = 'orbit';
     document.body.classList.add('is-photo');
     this.host.onEnter();
     // ピントは「いま見ている場所」に合わせて始める（前回の距離のままだと全体がぼけて見える）
@@ -180,6 +189,14 @@ export class PhotoMode {
     if (d === null) return;
     this.set({ focusDistance: Math.max(1, d) });
     this.focusHint.textContent = `ピント: ${d.toFixed(1)} m`;
+  }
+
+  setCameraMode(mode: PhotoCameraMode): void {
+    if (!this.host || mode === this.cameraMode) return;
+    this.cameraMode = mode;
+    this.host.setCameraMode(mode);
+    this.renderPanel();
+    if (mode === 'walk') showToast('ウォークスルー: 左半分をドラッグで移動、右半分で見回す、2 本指の上下で上昇・下降（WASD・Q/E・Shift）', 4500, 'camera');
   }
 
   setMinimal(on: boolean): void {
@@ -362,13 +379,19 @@ export class PhotoMode {
       // シャッターだけの画面: 左に設定、中央に ●、右に終了
       const settings = el('button', { class: 'btn photo-min-btn', type: 'button', title: '設定を出す（H）' }, iconText('settings', '設定', 14));
       settings.addEventListener('click', () => this.setMinimal(false));
-      this.panel.replaceChildren(el('div', { class: 'photo-min' }, settings, this.makeShutter(), close), el('div', { class: 'photo-min-hint' }, this.focusHint));
+      const cam = el('button', { class: 'btn photo-min-btn', type: 'button', title: 'カメラの切り替え（V）' }, iconText('move', this.cameraMode === 'walk' ? '回す' : '歩く', 14));
+      cam.addEventListener('click', () => this.setCameraMode(this.cameraMode === 'walk' ? 'orbit' : 'walk'));
+      this.panel.replaceChildren(el('div', { class: 'photo-min' }, el('span', { class: 'photo-min-group' }, settings, cam), this.makeShutter(), close), el('div', { class: 'photo-min-hint' }, this.focusHint));
       return;
     }
     const hide = el('button', { class: 'btn', type: 'button', title: '設定を隠してシャッターだけにする（H）' }, iconText('image', '設定を隠す', 14));
     hide.addEventListener('click', () => this.setMinimal(true));
     this.panel.replaceChildren(
       el('div', { class: 'photo-head' }, el('span', { class: 'photo-title' }, icon('camera', 16), el('span', { text: ' フォトモード' })), this.focusHint, el('span', { class: 'photo-actions' }, pause, hide, this.makeShutter(), close)),
+      row('カメラ', [
+        { key: 'orbit', text: 'オービット（回す）', on: this.cameraMode === 'orbit', pick: () => this.setCameraMode('orbit') },
+        { key: 'walk', text: 'ウォークスルー（歩く・飛ぶ）', on: this.cameraMode === 'walk', pick: () => this.setCameraMode('walk') },
+      ]),
       row(
         '焦点距離',
         PHOTO_CHOICES.focalMm.map((f) => ({ key: String(f), text: `${f}mm`, on: p.focalMm === f, pick: () => this.set({ focalMm: f }) })),

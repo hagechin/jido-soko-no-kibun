@@ -14,6 +14,7 @@ import {
   MeshLambertMaterial,
   PerspectiveCamera,
   PlaneGeometry,
+  Plane,
   Raycaster,
   RingGeometry,
   Scene,
@@ -131,9 +132,18 @@ export class WarehouseRenderer {
   /** 画面上の点までの距離（ピント合わせ用）。何にも当たらなければ null */
   distanceAt(w: WorldState, clientX: number, clientY: number, alpha: number): number | null {
     const hit = this.pick(w, clientX, clientY, alpha, false);
-    if (!hit) return null;
-    const y = hit.kind === 'stack' ? this.railHeight(w) * 0.6 : hit.kind === 'robot' ? 0.4 : 0.2;
-    return this.camera.position.distanceTo(new Vector3(hit.x + 0.5, y, hit.z + 0.5));
+    if (hit) {
+      const y = hit.kind === 'stack' ? this.railHeight(w) * 0.6 : hit.kind === 'robot' ? 0.4 : 0.2;
+      return this.camera.position.distanceTo(new Vector3(hit.x + 0.5, y, hit.z + 0.5));
+    }
+    // 何にも当たらなければ床（y = 0）との交点までの距離（ウォークスルーで床を見ているときなど）
+    const rect = this.canvas.getBoundingClientRect();
+    const ndc = new Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    const ray = new Raycaster();
+    ray.setFromCamera(ndc, this.camera);
+    const p = new Vector3();
+    if (!ray.ray.intersectPlane(new Plane(new Vector3(0, 1, 0), 0), p)) return null;
+    return this.camera.position.distanceTo(p);
   }
 
   /**

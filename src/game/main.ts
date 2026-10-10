@@ -58,9 +58,10 @@ import { cloudAvailable, cloudEnabled, cloudLoad, onCloudChanged, setCloudEnable
 import { deserialize, type LoadResult } from './sim/save';
 import { formatDate } from './sim/calendar';
 import { installDemoSave, isDemoRequested } from './ui/demo';
-import { PhotoMode, type PhotoSnapshot } from './ui/photoMode';
+import { PhotoMode, type PhotoCameraMode, type PhotoSnapshot } from './ui/photoMode';
+import { WalkCamera, type WalkPose } from './render/walkCamera';
 
-type CameraPose = { target: Vector3; azimuth: number; polar: number; distance: number };
+type CameraPose = { kind: 'orbit'; target: Vector3; azimuth: number; polar: number; distance: number } | { kind: 'walk'; pose: WalkPose };
 /** 連写で記録した瞬間 */
 interface PhotoSnap extends PhotoSnapshot {
   world: WorldState;
@@ -122,6 +123,9 @@ class Game {
   sound = new Sound();
   private autoCam: AutoCamera;
   private keyCam: KeyboardCamera;
+  /** フォトモードのウォークスルー（歩く・飛ぶ）カメラ */
+  private walk: WalkCamera;
+  private photoCamera: PhotoCameraMode = 'orbit';
   private editor = new LayoutEditor();
   /** 最後に選ばれていた 0 以外の速度（Space で再開するとき用） */
   private lastSpeed = 1;
@@ -142,17 +146,53 @@ class Game {
 
   /** いまのカメラの位置（フォトモードの連写で、記録した瞬間と同じ構図で撮り直すため） */
   private cameraPose(): CameraPose {
+    if (this.photoCamera === 'walk') return { kind: 'walk', pose: this.walk.pose };
     const c = this.renderer.controls;
-    return { target: c.target.clone(), azimuth: c.azimuth, polar: c.polar, distance: c.distance };
+    return { kind: 'orbit', target: c.target.clone(), azimuth: c.azimuth, polar: c.polar, distance: c.distance };
   }
 
   private setCameraPose(p: CameraPose): void {
+    if (p.kind === 'walk') {
+      this.walk.setPose(p.pose);
+      return;
+    }
     const c = this.renderer.controls;
     c.target.copy(p.target);
     c.azimuth = p.azimuth;
     c.polar = p.polar;
     c.distance = p.distance;
     c.update();
+  }
+
+  /** フォトモードのカメラ: オービット（回す）⇄ ウォークスルー（歩く・飛ぶ）。切り替えで視点は飛ばない */
+  private setPhotoCamera(mode: PhotoCameraMode): void {
+    const c = this.renderer.controls;
+    if (mode === 'walk') {
+      this.walk.setWarehouse(this.world.width, this.world.height);
+      this.walk.enterFrom(this.renderer.camera);
+      this.walk.enabled = true;
+      c.enabled = false;
+      this.keyCam.enabled = false;
+    } else {
+      if (this.photoCamera === 'walk') {
+        // 今見ている構図をオービットの注視点・距離に直す
+        const pos = this.walk.position;
+        const d = this.walk.suggestedDistance();
+        const f = this.walk.forward();
+        c.target.set(pos.x + f.x * d, 0, pos.z + f.z * d);
+        c.target.x = Math.min(this.world.width, Math.max(0, c.target.x));
+        c.target.z = Math.min(this.world.height, Math.max(0, c.target.z));
+        const dist = Math.max(1, pos.distanceTo(c.target));
+        c.distance = dist;
+        c.azimuth = Math.atan2(pos.x - c.target.x, pos.z - c.target.z);
+        c.polar = Math.acos(Math.max(-1, Math.min(1, pos.y / dist)));
+      }
+      this.walk.enabled = false;
+      c.enabled = true;
+      this.keyCam.enabled = true;
+      c.update();
+    }
+    this.photoCamera = mode;
   }
   private stationPanelId: number | null = null;
   private portPanelId: number | null = null;
@@ -188,6 +228,10 @@ class Game {
     });
     this.autoCam = new AutoCamera(this.renderer.controls);
     this.keyCam = new KeyboardCamera(this.renderer.controls);
+    this.walk = new WalkCamera(this.renderer.camera, this.renderer.canvas);
+    this.walk.onTap = (x, y) => {
+      if (this.photo.active) this.photo.onTap(x, y);
+    };
     // 眺めモードのカメラ: AUTO は自動カメラ（タップで解除）、MANUAL はキーボードとドラッグ（Esc／× で解除）
     const applyCalmCamera = () => {
       const manual = this.calm.settings.camera === 'manual';
@@ -244,6 +288,9 @@ class Game {
       },
       onExit: () => {
         this.keyCam.enabled = false;
+        this.walk.enabled = false;
+        this.photoCamera = 'orbit';
+        this.renderer.controls.enabled = true;
         this.renderer.setPhotoMode(false);
         const c = this.renderer.controls;
         if (this.cameraBeforePhoto) {
@@ -257,8 +304,9 @@ class Game {
         this.renderer.resize();
       },
       apply: (p) => this.renderer.setPhotoParams(p),
+      setCameraMode: (mode) => this.setPhotoCamera(mode),
       distanceAt: (x, y) => this.renderer.distanceAt(this.world, x, y, this.alpha),
-      focusAtStart: () => this.renderer.controls.distance,
+      focusAtStart: () => (this.photoCamera === 'walk' ? this.walk.suggestedDistance() : this.renderer.controls.distance),
       capture: (longEdge) =>
         this.renderer.capturePhoto(this.world, this.alpha, longEdge, () => {
           // シャッター: 本物は動かさず、世界と予約表の写しを進める
@@ -1215,7 +1263,9 @@ class Game {
       this.sound.setActivity(this.world.speed === 0 ? 0 : this.world.robots.filter((r) => r.phase === 'moving').length);
       this.sound.check(now); // BGM の見張り（1 秒に 1 回。フォトモード中も）
       if (this.photo.active) {
-        this.keyCam.update(Math.min(0.25, (now - this.lastRender) / 1000));
+        const pdt = Math.min(0.25, (now - this.lastRender) / 1000);
+        this.keyCam.update(pdt);
+        this.walk.update(pdt);
         this.lastRender = now;
         this.renderer.render(this.world, this.alpha);
         return;

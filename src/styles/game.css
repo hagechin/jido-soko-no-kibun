@@ -1756,3 +1756,7 @@ kbd.key {
 .photo-thumb.is-active {
   border-color: var(--accent, #ffd400);
 }
+.photo-min-group {
+  display: inline-flex;
+  gap: 6px;
+}
