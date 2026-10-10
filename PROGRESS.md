@@ -1174,3 +1174,14 @@ npm run preview   # http://localhost:4321 で確認
 - 上空からのオービット（仰角 52°、70 秒で 1 周）。背景は透明（`?bg=%23f5f5f5` で色指定）。画面外・非表示のときは描画を止める。見た目（色・寸法・ライト・ボクセルのアイコン）は `render/scene.ts` に合わせた
 - ★ 本番は `main` を push すると Deploy Now で公開される。LP（Webflow）にはセクション「倉庫は、こんなふうに回っています」を hero の直後に追加し、iframe で埋め込んだ（`.hk-demo`、2:1、スマホは 4:3）。LP の公開はユーザー
 - 確認: headless Chromium（SwiftShader）で 48 秒分のスクリーンショット。棚ロボの昇降・ピッカーの梱包・空ビンの戻りが見える
+
+---
+
+## LP 用のロボ紹介デモ（?demo=shelf|double|amr|drone）
+
+- ミニ倉庫を `embed/engine.ts`（ステージ・tween・ビン・ロボ・床とレール・ラベル）と台本（`miniWarehouse.ts` = 流れ、`robots.ts` = ロボ紹介）に分けた。ラベルは CanvasTexture のスプライトで、運んだ数を更新
+- shelf: 棚ロボ 2 列（速度 Lv1・リフト Lv1 と Lv4・Lv4）。遠いスタックのビンをポートへ降ろして戻す。秒数はゲームの `ROBOT.moveTicksByLevel` / `liftTicksByLevel` から（2 → 5 セル/秒、1.2 → 0.4 秒）
+- double: 標準の棚ロボは上のビンを隣へ退避してから目的のビンを取り出す。ダブルデッカーは 2 段持ちで退避なし
+- amr: 搬送ロボ 3 レーン（積載 1 / 4 / 8（上限突破）、速度 Lv1 / Lv3 / Lv4）。入荷口側の 8 ビンをステーション側へ運び、空になったら持ち帰る
+- drone: 搬送ロボは南の通路を回って届ける（ステーション前に順番待ちの飾り）。ドローンは棚の上をまっすぐ飛ぶ（速度 +1 Lv）。棚ロボが飾りで行き来
+- LP（Webflow）にセクション「ロボの紹介」を流れのデモの直後に追加（4 つの iframe）。公開はユーザー。headless は SwiftShader で遅く、デモ内の時間は壁時計より遅く進む（dt の上限 0.1 秒）
