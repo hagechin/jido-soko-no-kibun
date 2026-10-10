@@ -41,7 +41,7 @@ export interface PhotoAdvance {
 
 export const PHOTO_CHOICES = {
   focalMm: [24, 35, 50, 85, 135] as const,
-  fNumber: [1.4, 2.8, 5.6, 11, 16] as const,
+  fNumber: [1.4, 2.8, 5.6, 11, 16, 32, 64] as const,
   /** 表示名 → tick */
   shutter: [
     { label: '1/250', ticks: 0 },

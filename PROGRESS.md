@@ -1300,3 +1300,11 @@ npm run preview   # http://localhost:4321 で確認
 - 感想: ボケ感は物理的な錯乱円（0c30350）より前の方が良かった → 同梱の BokehShader（ピントからの距離 × aperture、上限 0.012。ミニチュア風）に戻す。物理版は履歴に残す（`photo.ts` のコメントに参照）
 - 「ボケ」の行（オフ＝パンフォーカス／オン）を追加。オフのときは絞りの行を出さず、BokehPass を無効（`bokeh.enabled`）。遠くまでくっきり撮りたいときはオフ、情緒的に撮るときはオン＋絞り。既定はオン（保存済みの設定には `bokeh` が無いので既定で補う）
 - 確認: headless でオフ → 勾配エネルギーが全面鮮明の値（14.4 / 39.6 / 12.0）、オン F16 → 3.2 / 12.8 / 3.5、F1.4 → 2.7 / 8.6 / 3.5（以前の見た目）。行の並びは カメラ・焦点距離・ボケ・（絞り）・シャッター・露出・エフェクト・比率・ロゴ。全 187 件
+
+---
+
+## 絞りに F32・F64、Opus との依頼／報告の自動往復
+
+- 絞りの選択肢に F32・F64 を追加（`PHOTO_CHOICES.fNumber`。ボケ オンのまま弱くしたいとき）
+- テストの依頼と報告を GitHub だけで往復する約束を `ios/test-report/PROTOCOL.md` に: 依頼は `TEST_REQUEST.md`（毎回書き換え。round / status: requested→reported→done / branch）、報告は `TEST_REPORT.md` に追記。両者が定期的に fetch して status を見る。Mac 側は `/loop 15m …` の例文を記載。クラウド側（この会話）は 1 時間ごとの Routine で `feature/photo-mode` の status を見て、reported なら報告を読んで対応し次の依頼を書く
+- 第 24 回の依頼（フォトモード一式: M24〜M25d、自動テスト、回帰 M1/M22/M44、性能）を `TEST_REQUEST.md` に。TESTPLAN M25d の行を 操作／期待 に分け直し

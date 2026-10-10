@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PHOTO, PHOTO_TITLE, apertureForF, aspectRatio, captionLines, captureFov, fovForFocal, photoSize, shutterFrames } from './photo';
+import { DEFAULT_PHOTO, PHOTO_CHOICES, PHOTO_TITLE, apertureForF, aspectRatio, captionLines, captureFov, fovForFocal, photoSize, shutterFrames } from './photo';
 
 describe('フォトモードのパラメータ', () => {
   it('焦点距離 → 縦の画角（35mm 換算、センサー縦 24mm）', () => {
@@ -10,6 +10,7 @@ describe('フォトモードのパラメータ', () => {
   it('F 値が小さいほど絞り（ボケ）が強い。既定はボケあり', () => {
     expect(apertureForF(1.4)).toBeGreaterThan(apertureForF(16));
     expect(apertureForF(16)).toBeLessThan(0.005);
+    expect(PHOTO_CHOICES.fNumber).toEqual([1.4, 2.8, 5.6, 11, 16, 32, 64]);
     expect(DEFAULT_PHOTO.bokeh).toBe(true);
   });
   it('縦横比と出力サイズ（長辺を揃える）', () => {
