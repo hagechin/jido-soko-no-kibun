@@ -169,7 +169,7 @@ export class PhotoMode {
     this.mask.hidden = false;
     this.renderPanel();
     this.updateMask();
-    showToast('フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、Esc で戻る', 4000, 'camera', true);
+    showToast('フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、Esc で眺めモードに戻る', 4000, 'camera', true);
   }
 
   exit(): void {
@@ -372,7 +372,7 @@ export class PhotoMode {
       this.host?.togglePause();
       this.renderPanel();
     });
-    const close = el('button', { class: 'btn', type: 'button', title: 'Esc' }, iconText('x', '終了', 14));
+    const close = el('button', { class: 'btn', type: 'button', title: '眺めモードに戻る（Esc）' }, iconText('x', '終了', 14));
     close.addEventListener('click', () => this.exit());
     this.panel.classList.toggle('is-min', this.minimal);
     if (this.minimal) {

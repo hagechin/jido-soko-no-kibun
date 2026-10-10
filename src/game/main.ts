@@ -261,6 +261,7 @@ class Game {
       applyCalmCamera();
     };
     this.calm.onExit = () => {
+      if (this.photo.active) this.photo.exit(); // フォトモードは眺めモードの中の機能。眺めモードを出るなら先に閉じる
       const c = this.renderer.controls;
       c.enabled = true;
       this.keyCam.enabled = false;
@@ -273,9 +274,12 @@ class Game {
       }
       cameraBeforeCalm = null;
     };
+    // フォトモードは眺めモードの中の機能: ミニ HUD の「フォト」か P で開き、Esc で眺めモードに戻る
+    this.calm.onPhoto = () => this.openPhoto();
+    this.calm.isPhotoActive = () => this.photo.active;
     this.photo.attach({
       onEnter: () => {
-        if (this.calm.active) this.calm.exit();
+        if (!this.calm.active) this.calm.enter(true);
         this.bar.close();
         this.popup.hide();
         // 撮影中はゲームのトーストとモーダル（成績表など）を前に出さない。終わったら順番に見せる
@@ -306,6 +310,7 @@ class Game {
           c.update();
           this.cameraBeforePhoto = null;
         }
+        if (this.calm.active) applyCalmCamera(); // 眺めモードへ戻る（AUTO なら自動カメラを再開）
         this.renderer.resize();
       },
       apply: (p) => this.renderer.setPhotoParams(p),
@@ -345,7 +350,7 @@ class Game {
     };
     this.renderer.controls.onInteract = () => {
       this.cameraTouched = true;
-      if (this.calm.active && this.calm.settings.camera === 'auto') this.calm.exit();
+      if (this.calm.active && !this.photo.active && this.calm.settings.camera === 'auto') this.calm.exit();
     };
     this.hud = new Hud((s) => this.setSpeed(s));
     this.bar = new BottomBar();
@@ -538,10 +543,6 @@ class Game {
             st.textContent = `BGM の状態: ${this.sound.status()}`;
           }, 1000);
           this.calm.renderSettings(body);
-          body.append(el('h4', { text: 'フォトモード' }));
-          const ph = el('button', { class: 'btn', type: 'button', title: 'P' }, iconText('camera', 'フォトモードを開く', 14), el('kbd', { class: 'key', text: 'P' }));
-          ph.addEventListener('click', () => this.photo.enter());
-          body.append(el('div', { class: 'settings-row' }, ph, el('span', { class: 'muted small', text: 'カメラを自由に置いて、焦点距離・絞り・シャッター・エフェクトを決めて撮る。撮った写真は起動画面にできる' })));
         },
         saveNow: () => this.save(),
         newGame: () => this.newGame(),
@@ -615,6 +616,12 @@ class Game {
     }
   }
 
+  /** フォトモードを開く（眺めモードの中の機能。眺めモードでなければ入ってから） */
+  openPhoto(): void {
+    if (this.editor.open || this.photo.active) return;
+    this.photo.enter();
+  }
+
   /** 操作方法のモーダル */
   openHelp(): void {
     this.modal.show('操作方法', helpNode());
@@ -653,7 +660,7 @@ class Game {
       this.calm.enter();
       e.preventDefault();
     } else if (code === 'KeyP') {
-      this.photo.enter();
+      this.openPhoto(); // 眺めモードをフォトモードで起動
       e.preventDefault();
     } else if (code === 'KeyF') {
       this.renderer.controls.reset();

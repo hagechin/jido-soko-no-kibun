@@ -1379,6 +1379,13 @@ body.is-calm .mini-hud {
   display: flex;
   pointer-events: none;
 }
+/* フォトモード中（眺めモードの中）はミニ HUD を隠し、フォトモード自身のトーストは見せる */
+body.is-photo .mini-hud {
+  display: none;
+}
+body.is-calm.is-photo .toasts {
+  display: flex !important;
+}
 .mini-hud .mini-text {
   display: inline-flex;
   align-items: center;

@@ -50,9 +50,14 @@ export class CalmMode {
   private wakeLock: WakeLockSentinelLike | null = null;
   private miniText = el('span', { class: 'mini-text' });
   private miniMode = el('button', { class: 'btn mini-btn', type: 'button', title: 'カメラ: AUTO（自動）／ MANUAL（WASD・矢印キー・ドラッグ）。M キーでも切替' });
+  private miniPhoto = el('button', { class: 'btn mini-btn', type: 'button', title: 'フォトモード: 倉庫の中を歩いて、焦点距離・絞り・シャッターを決めて撮る（P）' }, icon('camera', 14), document.createTextNode(' フォト'));
   private miniExit = el('button', { class: 'btn mini-btn', type: 'button', title: '眺めモードを終了（Esc）' }, icon('x', 14));
   onEnter: (() => void) | null = null;
   onExit: (() => void) | null = null;
+  /** ミニ HUD の「フォト」（P）: フォトモードを開く（眺めモードの中の機能） */
+  onPhoto: (() => void) | null = null;
+  /** フォトモード中は眺めモードのキー（Esc・M）を使わない（フォトモードが自前で処理する） */
+  isPhotoActive: (() => boolean) | null = null;
   /** カメラモードが変わったとき */
   onCameraChange: ((mode: CalmCamera) => void) | null = null;
 
@@ -66,7 +71,11 @@ export class CalmMode {
       this.suggest.hidden = true;
     };
     for (const t of ['pointerdown', 'keydown', 'wheel'] as const) document.addEventListener(t, touch, { passive: true });
-    this.mini.replaceChildren(this.miniText, this.miniMode, this.miniExit);
+    this.mini.replaceChildren(this.miniText, this.miniMode, this.miniPhoto, this.miniExit);
+    this.miniPhoto.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onPhoto?.();
+    });
     this.miniMode.addEventListener('click', (e) => {
       e.stopPropagation();
       this.setCamera(this.settings.camera === 'auto' ? 'manual' : 'auto');
@@ -76,9 +85,14 @@ export class CalmMode {
       this.exit();
     });
     document.addEventListener('keydown', (e) => {
-      if (!this.active) return;
+      if (!this.active || this.isPhotoActive?.()) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.code === 'Escape') this.exit();
-      else if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) this.setCamera(this.settings.camera === 'auto' ? 'manual' : 'auto');
+      else if (e.code === 'KeyM') this.setCamera(this.settings.camera === 'auto' ? 'manual' : 'auto');
+      else if (e.code === 'KeyP') {
+        this.onPhoto?.();
+        e.preventDefault();
+      }
     });
     this.renderMiniMode();
     // 画面の点けっぱなしは眺めモードに限らず、設定がオンならいつでも（ページが見えている間）
@@ -108,14 +122,15 @@ export class CalmMode {
     this.miniMode.replaceChildren(icon(this.settings.camera === 'auto' ? 'refresh-cw' : 'move', 14), document.createTextNode(this.settings.camera === 'auto' ? ' AUTO' : ' MANUAL'));
   }
 
-  enter(): void {
+  /** quiet: 案内のトーストを出さない（P でフォトモードへ直行するとき） */
+  enter(quiet = false): void {
     if (this.active) return;
     this.active = true;
     document.body.classList.add('is-calm');
     this.suggest.hidden = true;
     this.applyWakeLock();
     this.onEnter?.();
-    showToast(this.settings.camera === 'manual' ? '眺めモード（MANUAL）。WASD・矢印で視点移動、Esc か右下の × で戻ります' : '眺めモード。画面をタップで戻ります', 3000);
+    if (!quiet) showToast(this.settings.camera === 'manual' ? '眺めモード（MANUAL）。WASD・矢印で視点移動、Esc か右下の × で戻ります。カメラの「フォト」で撮影' : '眺めモード。画面をタップで戻ります。下の「フォト」で撮影', 3000);
   }
 
   exit(): void {
@@ -202,6 +217,7 @@ export class CalmMode {
     box.append(cam);
     if (this.settings.camera === 'manual') box.append(el('p', { class: 'muted small', text: 'MANUAL: W/A/S/D・矢印キーで移動、Q/E で回転、R/F で見下ろし角、Z/X でズーム。ドラッグ・ホイールも使えます。眺めモード中は M キーで AUTO/MANUAL 切替、Esc で終了' }));
     box.append(el('p', { class: 'muted small', text: '眺めモード中は描画を落として省電力にします。90 秒操作が無いと提案が出ます。' }));
+    box.append(el('p', { class: 'muted small' }, iconText('camera', 'フォトモードは眺めモードの中にあります', 14), el('span', { text: '（ミニ HUD の「フォト」、または P）: 倉庫の中を歩いたり飛んだりして、焦点距離・絞り（ボケ）・シャッター・露出・エフェクトを決めて撮る。撮った写真は保存・共有でき、起動画面にもできる' })));
 
     box.append(el('h4', { text: '画面' }));
     const supported = 'wakeLock' in navigator || native.available;
