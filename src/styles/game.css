@@ -1668,3 +1668,91 @@ kbd.key {
 .order-more {
   display: none;
 }
+
+/* ---------- フォトモード: シャッター ● と連写、設定を隠した画面、現像 ---------- */
+.photo-shutter {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  flex: none;
+}
+.photo-shutter::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.12s;
+}
+.photo-shutter:active::after,
+.photo-shutter.is-hold::after {
+  transform: scale(0.82);
+  background: #e04b4b;
+}
+.photo-shutter-count {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  z-index: 1;
+  pointer-events: none;
+}
+.photo-panel.is-min {
+  background: transparent;
+  padding: 0 10px calc(14px + var(--sa-bottom));
+  pointer-events: none;
+  max-height: none;
+  overflow: visible;
+}
+.photo-min {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.photo-min > * {
+  pointer-events: auto;
+}
+.photo-min .photo-shutter {
+  width: 72px;
+  height: 72px;
+  border-width: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+.photo-min .btn {
+  background: rgba(20, 28, 38, 0.75);
+}
+.photo-min-hint {
+  text-align: center;
+  min-height: 1.2em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+.photo-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.photo-thumb {
+  height: 72px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  flex: none;
+  cursor: pointer;
+}
+.photo-thumb.is-active {
+  border-color: var(--accent, #ffd400);
+}

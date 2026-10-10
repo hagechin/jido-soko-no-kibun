@@ -1,7 +1,8 @@
 /**
- * フォトモード（★）: 倉庫の好きな場所にカメラを置き、焦点距離・絞り・シャッター・エフェクトを決めて撮る。
+ * フォトモード（★）: 倉庫の好きな場所にカメラを置き、焦点距離・絞り・シャッター・露出・エフェクトを決めて撮る。
  * 撮った写真は保存／共有でき、「起動画面にする」でアプリの起動画面（スプラッシュ）に使われる。
- * カメラは眺めモード MANUAL と同じ操作（ドラッグ・ピンチ、WASD / Q E / R F / Z X）。画面をタップするとそこにピント
+ * カメラは眺めモード MANUAL と同じ操作（ドラッグ・ピンチ、WASD / Q E / R F / Z X）。画面をタップするとそこにピント。
+ * 第 24 回: 設定パネルを隠してシャッターだけの画面（画面中央下の ●）にでき、● を長押しすると最大 5 秒ぶん（0.25 秒ごと）の瞬間を記録して、あとから 1 枚選んで現像できる
  */
 import { icon, iconText } from './icon';
 import { DEFAULT_PHOTO, PHOTO_CHOICES, PHOTO_SHARE_TEXT, type PhotoParams } from '../render/photo';
@@ -9,11 +10,24 @@ import { native, nativeTry } from '../platform/native';
 import { $, el, showToast } from './layout';
 
 const KEY = 'jido-soko-no-kibun:photo';
+const UI_KEY = 'jido-soko-no-kibun:photo-ui';
 export const STARTUP_PHOTO_KEY = 'jido-soko-no-kibun:startup-photo';
 /** 起動画面に使う画像の長辺（localStorage に入れるので抑えめ） */
 const STARTUP_LONG_EDGE = 1600;
 /** 保存／共有する写真の長辺 */
 const PHOTO_LONG_EDGE = 2400;
+/** 現像のサムネイルの長辺 */
+const THUMB_LONG_EDGE = 480;
+/** 長押し: この時間を超えたら連写（瞬間の記録）を始める */
+const HOLD_MS = 350;
+/** 連写の間隔と上限（0.25 秒 × 20 = 5 秒） */
+const BURST_INTERVAL_MS = 250;
+const BURST_MAX = 20;
+
+/** ある瞬間の記録（世界と予約表の写し、カメラの位置、補間位置）。中身は main が作る */
+export interface PhotoSnapshot {
+  at: number;
+}
 
 export interface PhotoHost {
   /** 開始／終了（カメラ操作の切替、HUD の非表示、描画の後処理） */
@@ -26,6 +40,9 @@ export interface PhotoHost {
   focusAtStart?: () => number | null;
   /** 撮影 → JPEG データ URL */
   capture: (longEdge: number) => string;
+  /** いまの瞬間を記録する／記録した瞬間を撮影する（連写 → 現像） */
+  snapshot: () => PhotoSnapshot;
+  captureFrom: (snap: PhotoSnapshot, longEdge: number) => string;
   /** 一時停止／再開（撮影中に止めたいとき） */
   isPaused: () => boolean;
   togglePause: () => void;
@@ -82,13 +99,31 @@ export async function downscaleDataUrl(dataUrl: string, max: number, quality = 0
   return c.toDataURL('image/jpeg', quality);
 }
 
+const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+
 export class PhotoMode {
   active = false;
   params: PhotoParams = loadPhotoParams();
+  /** 設定パネルを隠してシャッターだけにする */
+  minimal = false;
   private panel = $('photo-panel');
   private mask = $('photo-mask');
   private host: PhotoHost | null = null;
   private focusHint = el('span', { class: 'photo-focus muted small', text: '' });
+  private busy = false;
+  /** 長押しの連写 */
+  private holdTimer = 0;
+  private burstTimer = 0;
+  private burst: PhotoSnapshot[] | null = null;
+  private shutterBtn: HTMLButtonElement | null = null;
+
+  constructor() {
+    try {
+      this.minimal = localStorage.getItem(UI_KEY) === 'min';
+    } catch {
+      /* ignore */
+    }
+  }
 
   attach(host: PhotoHost): void {
     this.host = host;
@@ -103,6 +138,9 @@ export class PhotoMode {
         e.preventDefault();
       } else if (e.code === 'Enter') {
         void this.shoot();
+        e.preventDefault();
+      } else if (e.code === 'KeyH') {
+        this.setMinimal(!this.minimal);
         e.preventDefault();
       }
     });
@@ -122,11 +160,12 @@ export class PhotoMode {
     this.mask.hidden = false;
     this.renderPanel();
     this.updateMask();
-    showToast('フォトモード: 画面をタップでピント、Enter で撮影、Esc で戻る', 3500, 'camera');
+    showToast('フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、Esc で戻る', 4000, 'camera');
   }
 
   exit(): void {
     if (!this.active || !this.host) return;
+    this.cancelHold();
     this.active = false;
     document.body.classList.remove('is-photo');
     this.panel.hidden = true;
@@ -141,6 +180,17 @@ export class PhotoMode {
     if (d === null) return;
     this.set({ focusDistance: Math.max(1, d) });
     this.focusHint.textContent = `ピント: ${d.toFixed(1)} m`;
+  }
+
+  setMinimal(on: boolean): void {
+    this.minimal = on;
+    try {
+      localStorage.setItem(UI_KEY, on ? 'min' : 'full');
+    } catch {
+      /* ignore */
+    }
+    this.renderPanel();
+    this.updateMask();
   }
 
   private set(patch: Partial<PhotoParams>): void {
@@ -178,6 +228,117 @@ export class PhotoMode {
     }
   }
 
+  /** シャッター ●: タップで 1 枚、長押しで連写（瞬間の記録） */
+  private makeShutter(): HTMLButtonElement {
+    const b = el('button', { class: 'photo-shutter', type: 'button', title: '撮影（Enter）。長押しで連写して後から 1 枚選ぶ', 'aria-label': '撮影' }) as HTMLButtonElement;
+    b.append(el('span', { class: 'photo-shutter-count', text: '' }));
+    b.addEventListener('pointerdown', (e) => {
+      if (this.busy) return;
+      e.preventDefault();
+      b.setPointerCapture(e.pointerId);
+      this.cancelHold();
+      this.holdTimer = window.setTimeout(() => this.beginBurst(), HOLD_MS);
+    });
+    const release = () => {
+      if (this.holdTimer) {
+        // 長押しになる前に離した → 1 枚
+        window.clearTimeout(this.holdTimer);
+        this.holdTimer = 0;
+        void this.shoot();
+        return;
+      }
+      if (this.burst) void this.endBurst();
+    };
+    b.addEventListener('pointerup', release);
+    b.addEventListener('pointercancel', () => {
+      this.cancelHold();
+      if (this.burst) void this.endBurst();
+    });
+    this.shutterBtn = b;
+    return b;
+  }
+
+  private cancelHold(): void {
+    if (this.holdTimer) window.clearTimeout(this.holdTimer);
+    if (this.burstTimer) window.clearInterval(this.burstTimer);
+    this.holdTimer = 0;
+    this.burstTimer = 0;
+  }
+
+  private beginBurst(): void {
+    if (!this.host) return;
+    this.holdTimer = 0;
+    this.burst = [this.host.snapshot()];
+    this.shutterBtn?.classList.add('is-hold');
+    this.updateBurstCount();
+    this.burstTimer = window.setInterval(() => {
+      if (!this.host || !this.burst) return;
+      if (this.burst.length >= BURST_MAX) {
+        window.clearInterval(this.burstTimer);
+        this.burstTimer = 0;
+        return;
+      }
+      this.burst.push(this.host.snapshot());
+      this.updateBurstCount();
+    }, BURST_INTERVAL_MS);
+  }
+
+  private updateBurstCount(): void {
+    const c = this.shutterBtn?.querySelector('.photo-shutter-count');
+    if (c) c.textContent = this.burst ? String(this.burst.length) : '';
+  }
+
+  /** 連写を終えて現像（1 枚選ぶ）へ */
+  private async endBurst(): Promise<void> {
+    this.cancelHold();
+    const snaps = this.burst;
+    this.burst = null;
+    this.shutterBtn?.classList.remove('is-hold');
+    this.updateBurstCount();
+    if (!snaps || !this.host) return;
+    if (snaps.length < 2) {
+      await this.shoot(snaps[0]);
+      return;
+    }
+    this.busy = true;
+    this.panel.classList.add('is-busy');
+    const host = this.host;
+    const big = el('img', { class: 'photo-preview', alt: '選んでいる瞬間' }) as HTMLImageElement;
+    const strip = el('div', { class: 'photo-strip' });
+    const note = el('p', { class: 'muted small', text: `${snaps.length} 枚の瞬間（${((snaps.length - 1) * BURST_INTERVAL_MS) / 1000} 秒ぶん）。タップして選び、「この 1 枚を現像」` });
+    let selected = 0;
+    const thumbs: HTMLImageElement[] = [];
+    const pick = (i: number) => {
+      selected = i;
+      thumbs.forEach((t, k) => t.classList.toggle('is-active', k === i));
+      big.src = thumbs[i].src;
+    };
+    const develop = el('button', { class: 'btn primary', type: 'button' }, iconText('camera', 'この 1 枚を現像', 14));
+    develop.addEventListener('click', () => {
+      host.hideModal();
+      void this.shoot(snaps[selected]);
+    });
+    const cancel = el('button', { class: 'btn', type: 'button', text: 'やめる' });
+    cancel.addEventListener('click', () => host.hideModal());
+    host.showModal('現像', big, strip, note, el('div', { class: 'settings-row' }, develop, cancel));
+    // サムネイルは 1 枚ずつ描く（描画の合間に画面を返す）
+    for (let i = 0; i < snaps.length; i++) {
+      const t = el('img', { class: 'photo-thumb', alt: `${i + 1} 枚目` }) as HTMLImageElement;
+      t.addEventListener('click', () => pick(i));
+      thumbs.push(t);
+      strip.append(t);
+      await nextFrame();
+      try {
+        t.src = host.captureFrom(snaps[i], THUMB_LONG_EDGE);
+      } catch {
+        t.remove();
+      }
+      if (i === 0) pick(0);
+    }
+    this.busy = false;
+    this.panel.classList.remove('is-busy');
+  }
+
   private renderPanel(): void {
     const p = this.params;
     const row = (label: string, items: { key: string; text: string; on: boolean; pick: () => void }[]) => {
@@ -189,8 +350,6 @@ export class PhotoMode {
       }
       return r;
     };
-    const shoot = el('button', { class: 'btn primary photo-shoot', type: 'button', title: '撮影（Enter）' }, iconText('camera', '撮影', 16));
-    shoot.addEventListener('click', () => void this.shoot());
     const pause = el('button', { class: 'btn', type: 'button', title: 'Space' }, this.host?.isPaused() ? iconText('play', '再開', 14) : iconText('pause', '一時停止', 14));
     pause.addEventListener('click', () => {
       this.host?.togglePause();
@@ -198,8 +357,18 @@ export class PhotoMode {
     });
     const close = el('button', { class: 'btn', type: 'button', title: 'Esc' }, iconText('x', '終了', 14));
     close.addEventListener('click', () => this.exit());
+    this.panel.classList.toggle('is-min', this.minimal);
+    if (this.minimal) {
+      // シャッターだけの画面: 左に設定、中央に ●、右に終了
+      const settings = el('button', { class: 'btn photo-min-btn', type: 'button', title: '設定を出す（H）' }, iconText('settings', '設定', 14));
+      settings.addEventListener('click', () => this.setMinimal(false));
+      this.panel.replaceChildren(el('div', { class: 'photo-min' }, settings, this.makeShutter(), close), el('div', { class: 'photo-min-hint' }, this.focusHint));
+      return;
+    }
+    const hide = el('button', { class: 'btn', type: 'button', title: '設定を隠してシャッターだけにする（H）' }, iconText('image', '設定を隠す', 14));
+    hide.addEventListener('click', () => this.setMinimal(true));
     this.panel.replaceChildren(
-      el('div', { class: 'photo-head' }, el('span', { class: 'photo-title' }, icon('camera', 16), el('span', { text: ' フォトモード' })), this.focusHint, el('span', { class: 'photo-actions' }, pause, shoot, close)),
+      el('div', { class: 'photo-head' }, el('span', { class: 'photo-title' }, icon('camera', 16), el('span', { text: ' フォトモード' })), this.focusHint, el('span', { class: 'photo-actions' }, pause, hide, this.makeShutter(), close)),
       row(
         '焦点距離',
         PHOTO_CHOICES.focalMm.map((f) => ({ key: String(f), text: `${f}mm`, on: p.focalMm === f, pick: () => this.set({ focalMm: f }) })),
@@ -231,19 +400,22 @@ export class PhotoMode {
     );
   }
 
-  /** 撮影 → 確認モーダル（保存／共有、起動画面にする） */
-  async shoot(): Promise<void> {
-    if (!this.host) return;
+  /** 撮影 → 確認モーダル（保存／共有、起動画面にする）。snap があればその瞬間を撮る */
+  async shoot(snap?: PhotoSnapshot): Promise<void> {
+    if (!this.host || this.busy) return;
+    this.busy = true;
     this.panel.classList.add('is-busy');
-    await new Promise((r) => requestAnimationFrame(r));
+    await nextFrame();
     let url = '';
     try {
-      url = this.host.capture(PHOTO_LONG_EDGE);
+      url = snap ? this.host.captureFrom(snap, PHOTO_LONG_EDGE) : this.host.capture(PHOTO_LONG_EDGE);
     } catch (e) {
       showToast(`撮影できませんでした: ${e instanceof Error ? e.message : String(e)}`);
+      this.busy = false;
       this.panel.classList.remove('is-busy');
       return;
     }
+    this.busy = false;
     this.panel.classList.remove('is-busy');
     const img = el('img', { class: 'photo-preview', alt: '撮った写真' }) as HTMLImageElement;
     img.src = url;

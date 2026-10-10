@@ -167,15 +167,19 @@ export class WarehouseRenderer {
     const adv = frames > 1 && advance ? advance() : null;
     const src = adv?.world ?? w;
     let stepped = 0;
+    this.drawBins(src); // 記録した瞬間（写し）の棚を描く
     for (let i = 0; i < frames; i++) {
       // コマ i の時刻（tick 単位、今の補間位置から数える）。整数部ぶん写しを進め、小数部を補間に使う
       const t = frames === 1 ? alpha : alpha + (span * i) / (frames - 1);
       let a = t;
       if (adv) {
         const whole = Math.floor(t);
-        while (stepped < whole) {
-          adv.step();
-          stepped++;
+        if (stepped < whole) {
+          while (stepped < whole) {
+            adv.step();
+            stepped++;
+          }
+          this.drawBins(src);
         }
         a = t - whole;
       } else a = Math.min(1, t);

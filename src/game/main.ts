@@ -58,7 +58,16 @@ import { cloudAvailable, cloudEnabled, cloudLoad, onCloudChanged, setCloudEnable
 import { deserialize, type LoadResult } from './sim/save';
 import { formatDate } from './sim/calendar';
 import { installDemoSave, isDemoRequested } from './ui/demo';
-import { PhotoMode } from './ui/photoMode';
+import { PhotoMode, type PhotoSnapshot } from './ui/photoMode';
+
+type CameraPose = { target: Vector3; azimuth: number; polar: number; distance: number };
+/** 連写で記録した瞬間 */
+interface PhotoSnap extends PhotoSnapshot {
+  world: WorldState;
+  rt: Runtime;
+  alpha: number;
+  cam: CameraPose;
+}
 import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
@@ -130,6 +139,21 @@ class Game {
   /** フォトモード（★）: カメラを置いて撮る。撮った写真は起動画面に使える */
   photo = new PhotoMode();
   private cameraBeforePhoto: { target: Vector3; azimuth: number; polar: number; distance: number } | null = null;
+
+  /** いまのカメラの位置（フォトモードの連写で、記録した瞬間と同じ構図で撮り直すため） */
+  private cameraPose(): CameraPose {
+    const c = this.renderer.controls;
+    return { target: c.target.clone(), azimuth: c.azimuth, polar: c.polar, distance: c.distance };
+  }
+
+  private setCameraPose(p: CameraPose): void {
+    const c = this.renderer.controls;
+    c.target.copy(p.target);
+    c.azimuth = p.azimuth;
+    c.polar = p.polar;
+    c.distance = p.distance;
+    c.update();
+  }
   private stationPanelId: number | null = null;
   private portPanelId: number | null = null;
 
@@ -242,6 +266,22 @@ class Game {
           const rc = cloneRuntime(this.rt);
           return { world: wc, step: () => stepSim(wc, rc) };
         }),
+      // 連写: いまの瞬間（世界・予約表・カメラ・補間位置）を記録しておき、あとから選んだ 1 枚だけ本番の大きさで撮る
+      snapshot: (): PhotoSnap => ({ at: performance.now(), world: structuredClone(this.world), rt: cloneRuntime(this.rt), alpha: this.alpha, cam: this.cameraPose() }),
+      captureFrom: (snap, longEdge) => {
+        const s = snap as PhotoSnap;
+        const cur = this.cameraPose();
+        this.setCameraPose(s.cam);
+        try {
+          return this.renderer.capturePhoto(s.world, s.alpha, longEdge, () => {
+            const wc = structuredClone(s.world);
+            const rc = cloneRuntime(s.rt);
+            return { world: wc, step: () => stepSim(wc, rc) };
+          });
+        } finally {
+          this.setCameraPose(cur);
+        }
+      },
       isPaused: () => this.world.speed === 0,
       togglePause: () => this.setSpeed(this.world.speed === 0 ? this.lastSpeed : 0),
       showModal: (title, ...content) => this.modal.show(title, ...content),
