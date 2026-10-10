@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 24
-- status: requested
+- status: reported
 - branch: feature/photo-mode
 - commit: この依頼を含むコミット以降の `feature/photo-mode` の先端（`git pull` して HEAD を報告に書く）
 - requested-at: 2026-10-10
