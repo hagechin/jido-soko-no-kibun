@@ -18,7 +18,9 @@ export type PhotoLogo = 'none' | 'logo' | 'logoInfo';
 export interface PhotoParams {
   /** 焦点距離（35mm 換算 mm） */
   focalMm: number;
-  /** 絞り F 値 */
+  /** ボケ（被写界深度）を付ける。オフはパンフォーカス（絞りの設定も出さない） */
+  bokeh: boolean;
+  /** 絞り F 値（ボケがオンのとき） */
   fNumber: number;
   /** ピント位置（カメラからの距離、ワールド単位） */
   focusDistance: number;
@@ -72,7 +74,7 @@ export const PHOTO_CHOICES = {
   ] as { id: PhotoLogo; name: string }[],
 };
 
-export const DEFAULT_PHOTO: PhotoParams = { focalMm: 50, fNumber: 2.8, focusDistance: 12, shutterTicks: 0, exposure: 0, effect: 'film', aspect: 'screen', logo: 'logo' };
+export const DEFAULT_PHOTO: PhotoParams = { focalMm: 50, bokeh: true, fNumber: 2.8, focusDistance: 12, shutterTicks: 0, exposure: 0, effect: 'film', aspect: 'screen', logo: 'logo' };
 
 export const PHOTO_TITLE = '箱庭！ディストリビューション';
 /** 共有シートに添える文（iOS） */
@@ -125,25 +127,16 @@ export function fovForFocal(focalMm: number): number {
   return (2 * Math.atan(12 / focalMm) * 180) / Math.PI;
 }
 
-/** 錯乱円（ボケ）の上限: 画像の高さに対する半径の比率。これより大きなボケはここで頭打ち（サンプル数の都合） */
-export const MAX_COC_RADIUS = 0.025;
-/** センサーの縦（35mm 判）mm。ワールド 1 単位 = 1 m とみなす */
-const SENSOR_H_MM = 24;
-
 /**
- * 物理的な被写界深度の係数 K（薄肉レンズ）: 距離 d の点の錯乱円の直径は、画像の高さに対する比率で K × |d − s| / d。
- *  K = f² / (N × (s − f)) / センサー縦。f: 焦点距離 mm、N: F 値、s: ピント距離（m → mm）
- * 例: 50mm F16 でピント 12 m → 24 m 先は 0.03%（鮮明）。135mm F1.4 でピント 5 m → 8 m 先は 4%（大きくボケる）
+ * F 値 → BokehPass の aperture。F1.4 で強く、F16 で弱い。
+ * 同梱の BokehShader は「ピントからの距離 × aperture」（上限 maxblur）のシンプルな式で、物理的な被写界深度ではないが
+ * 情緒的なミニチュア風のボケになる（物理的な錯乱円の版も試したが、こちらの見た目のほうが好評。0c30350 参照）。
+ * 遠景までくっきり撮りたいときは「ボケ」をオフ（パンフォーカス）
  */
-export function cocScale(focalMm: number, fNumber: number, focusDistance: number): number {
-  const sMm = Math.max(focusDistance, 0.1) * 1000;
-  return (focalMm * focalMm) / (fNumber * Math.max(sMm - focalMm, 1)) / SENSOR_H_MM;
+export function apertureForF(fNumber: number): number {
+  return 0.06 / fNumber;
 }
-
-/** 距離 d にある点の錯乱円の直径（画像の高さに対する比率）。シェーダーと同じ式 */
-export function cocAt(focalMm: number, fNumber: number, focusDistance: number, distance: number): number {
-  return (cocScale(focalMm, fNumber, focusDistance) * Math.abs(distance - focusDistance)) / Math.max(distance, 0.001);
-}
+export const BOKEH_MAX_BLUR = 0.012;
 
 /** 写真の縦横比（幅/高さ）。screen は画面のまま */
 export function aspectRatio(a: PhotoAspect, screenRatio: number): number {
@@ -207,77 +200,6 @@ export function gradeFor(effect: PhotoEffect): Grade {
   return GRADES[effect];
 }
 
-/**
- * 被写界深度のフラグメントシェーダー（BokehPass の差し替え）。
- * 同梱の BokehShader は「ピントからの距離 × aperture」の一次式で、F16 でもすぐに上限までボケ、遠くにピントを合わせても背景がボケていた。
- * ここでは薄肉レンズの錯乱円 coc = K × |d − s| / d（画像の高さに対する直径の比率）で半径を決め、
- * 48 点の渦巻き（Vogel）サンプルを画素ごとに回して集める。奥の物は手前の鮮明な物の縁ににじまないよう、
- * 自分より奥のサンプルは自分の錯乱円まで、手前のサンプルはそのサンプルの錯乱円まで届くときだけ数える
- */
-const PhysicalBokehFragment = /* glsl */ `
-  #include <common>
-  varying vec2 vUv;
-  uniform sampler2D tColor;
-  uniform sampler2D tDepth;
-  uniform float maxblur;   // 錯乱円の半径の上限（画像の高さに対する比率）
-  uniform float aperture;  // 未使用（BokehPass との互換）
-  uniform float cocScale;  // K
-  uniform float nearClip;
-  uniform float farClip;
-  uniform float focus;     // ピント距離（ワールド単位）
-  uniform float aspect;    // 幅 / 高さ
-  #include <packing>
-
-  float getDepth( const in vec2 screenPosition ) {
-    #if DEPTH_PACKING == 1
-    return unpackRGBAToDepth( texture2D( tDepth, screenPosition ) );
-    #else
-    return texture2D( tDepth, screenPosition ).x;
-    #endif
-  }
-  float getViewZ( const in float depth ) {
-    #if PERSPECTIVE_CAMERA == 1
-    return perspectiveDepthToViewZ( depth, nearClip, farClip );
-    #else
-    return orthographicDepthToViewZ( depth, nearClip, farClip );
-    #endif
-  }
-  float distAt( const in vec2 uv ) { return max( -getViewZ( getDepth( uv ) ), 0.001 ); }
-  // 錯乱円の半径（画像の高さに対する比率）
-  float cocRadius( const in float d ) { return min( 0.5 * cocScale * abs( d - focus ) / d, maxblur ); }
-
-  const int SAMPLES = 48;
-  const float GOLDEN = 2.39996323;
-
-  void main() {
-    float d0 = distAt( vUv );
-    float r0 = cocRadius( d0 );
-    vec4 col = texture2D( tColor, vUv );
-    float wsum = 1.0;
-    // 画素ごとに回転させて帯状のムラを散らす（interleaved gradient noise）
-    float rot = 6.2831853 * fract( 52.9829189 * fract( dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
-    vec2 fix = vec2( 1.0 / aspect, 1.0 );
-    // 集める範囲: 自分の錯乱円。手前のボケた物がかぶさってくる分として最低でも上限の 4 割
-    float reach = max( r0, maxblur * 0.4 );
-    for ( int i = 0; i < SAMPLES; i++ ) {
-      float u = ( float( i ) + 0.5 ) / float( SAMPLES );
-      // 半径は中心寄りに密（線形）。面積ぶんの重み u で均す
-      float len = reach * u;
-      float th = ( float( i ) + 0.5 ) * GOLDEN + rot;
-      vec2 uv = vUv + vec2( cos( th ), sin( th ) ) * len * fix;
-      float d = distAt( uv );
-      float r = cocRadius( d );
-      // 奥のサンプルは自分の錯乱円まで、手前のサンプルはそのサンプルの錯乱円まで
-      float rr = d > d0 ? min( r, r0 ) : r;
-      float w = u * clamp( ( rr - len ) / max( rr * 0.3, 0.0003 ) + 1.0, 0.0, 1.0 );
-      col += texture2D( tColor, uv ) * w;
-      wsum += w;
-    }
-    gl_FragColor = col / wsum;
-    gl_FragColor.a = 1.0;
-  }
-`;
-
 const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
@@ -328,11 +250,7 @@ export class PhotoRig {
   ) {
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(scene, camera));
-    this.bokeh = new BokehPass(scene, camera, { focus: 12, aperture: 0, maxblur: MAX_COC_RADIUS });
-    // 被写界深度の式を物理的な錯乱円に差し替える（uniform は BokehPass と共有。K を足す）
-    (this.bokeh.uniforms as Record<string, { value: unknown }>).cocScale = { value: 0 };
-    this.bokeh.materialBokeh.fragmentShader = PhysicalBokehFragment;
-    this.bokeh.materialBokeh.needsUpdate = true;
+    this.bokeh = new BokehPass(scene, camera, { focus: 12, aperture: 0.02, maxblur: BOKEH_MAX_BLUR });
     this.composer.addPass(this.bokeh);
     this.grade = new ShaderPass(GradeShader);
     this.composer.addPass(this.grade);
@@ -347,9 +265,10 @@ export class PhotoRig {
   apply(): void {
     const p = this.params;
     const u = this.bokeh.uniforms as Record<string, { value: number }>;
+    this.bokeh.enabled = p.bokeh !== false;
     u.focus.value = p.focusDistance;
-    u.cocScale.value = cocScale(p.focalMm, p.fNumber, p.focusDistance);
-    u.maxblur.value = MAX_COC_RADIUS;
+    u.aperture.value = apertureForF(p.fNumber);
+    u.maxblur.value = BOKEH_MAX_BLUR;
     const g = gradeFor(p.effect);
     const gu = this.grade.uniforms as Record<string, { value: number }>;
     gu.saturation.value = g.saturation;

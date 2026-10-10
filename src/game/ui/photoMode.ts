@@ -396,10 +396,19 @@ export class PhotoMode {
         '焦点距離',
         PHOTO_CHOICES.focalMm.map((f) => ({ key: String(f), text: `${f}mm`, on: p.focalMm === f, pick: () => this.set({ focalMm: f }) })),
       ),
-      row(
-        '絞り',
-        PHOTO_CHOICES.fNumber.map((f) => ({ key: String(f), text: `F${f}`, on: p.fNumber === f, pick: () => this.set({ fNumber: f }) })),
-      ),
+      row('ボケ', [
+        { key: 'off', text: 'オフ（パンフォーカス）', on: !p.bokeh, pick: () => this.set({ bokeh: false }) },
+        { key: 'on', text: 'オン', on: p.bokeh, pick: () => this.set({ bokeh: true }) },
+      ]),
+      // 絞りはボケがオンのときだけ
+      ...(p.bokeh
+        ? [
+            row(
+              '絞り',
+              PHOTO_CHOICES.fNumber.map((f) => ({ key: String(f), text: `F${f}`, on: p.fNumber === f, pick: () => this.set({ fNumber: f }) })),
+            ),
+          ]
+        : []),
       row(
         'シャッター',
         PHOTO_CHOICES.shutter.map((s) => ({ key: s.label, text: s.label, on: p.shutterTicks === s.ticks, pick: () => this.set({ shutterTicks: s.ticks }) })),
