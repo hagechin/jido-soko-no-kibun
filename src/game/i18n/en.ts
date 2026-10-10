@@ -963,4 +963,6 @@ export const EN: Record<string, string> = {
   'ドローン（棚の上を飛ぶ・速度 +1）｜ 届けた {0}': 'Drone (flies over the shelves, speed +1) | Delivered {0}',
   'お留守番（アプリを閉じている間の進行）は、直近 10 分のペースでまとめて計算し、戻ったときにレポートで反映。ただし次のサイバーウィークの直前で止まる（本番の週は自分で遊ぶ。ゲーム内の 1 年は実時間 72 分なので、最長でも 1 時間ちょっと）。サイバーウィーク中に閉じると進まない。上限は 8 時間ぶん。自動化が無いと出荷は 0 で、オーダーが溜まるぶん評判が下がる': 'Away progress (while the app is closed) is computed in bulk from the pace of the last 10 minutes and applied as a report when you return. It always stops right before the next Cyber Week (you play the big week yourself; an in-game year is 72 real minutes, so at most an hour or so passes). Nothing progresses if you close the app during Cyber Week. The cap is 8 hours. Without automation nothing ships, and reputation drops for the orders that piled up',
   'サイバーウィークの直前で止めました（本番の週は自分で遊ぶ週です。留守番はここまで）。えらい目に遭う準備はいいですか？': 'Stopped right before Cyber Week (the big week is yours to play; away progress ends here). Ready for a rough ride?',
+  '[!] どこにも無いビンが {0} 個（{1}）。次の整合性チェックで棚に戻します': '[!] {0} bin(s) are nowhere to be found ({1}). The next integrity check returns them to the shelves',
+  '行方不明だったビン {0} 個を棚に戻しました': 'Returned {0} missing bin(s) to the shelves',
 };
