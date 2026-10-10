@@ -27,6 +27,7 @@ import {
   wait,
 } from './engine';
 import type { Object3D } from 'three';
+import { tr } from '../i18n';
 
 export type RobotDemo = 'shelf' | 'double' | 'amr' | 'drone';
 
@@ -56,8 +57,8 @@ function shelfDemo(stage: Stage): void {
   const W = 10;
   const H = 6;
   const ROWS = [
-    { z: 1, speed: 0, lift: 0, label: '速度 Lv1・リフト Lv1' },
-    { z: 4, speed: 3, lift: 3, label: '速度 Lv4・リフト Lv4（最大強化）' },
+    { z: 1, speed: 0, lift: 0, label: tr('速度 Lv1・リフト Lv1') },
+    { z: 4, speed: 3, lift: 3, label: tr('速度 Lv4・リフト Lv4（最大強化）') },
   ];
   const PORT_X = 1;
   const STACK_XS = [3, 4, 5, 6, 7, 8];
@@ -92,7 +93,7 @@ function shelfDemo(stage: Stage): void {
     robot.position.x = PORT_X + 0.5;
     robot.position.z = r.z + 0.5;
     stage.scene.add(robot);
-    const label = new Label(`${r.label} ｜ 運んだ 0`, 4.2);
+    const label = new Label(tr('{0} ｜ 運んだ 0', r.label), 4.2);
     label.position.set(ri === 0 ? 3.5 : 6.5, railH + 1.2 + ri * 1.0, r.z + 0.5);
     stage.scene.add(label);
     let carried = 0;
@@ -110,7 +111,7 @@ function shelfDemo(stage: Stage): void {
         await drive(robot, PORT_X, s.z, speed);
         await shelfLower(stage.scene, robot, bin, 0, lift, PORT_X, s.z);
         carried++;
-        label.setText(`${r.label} ｜ 運んだ ${carried}`);
+        label.setText(tr('{0} ｜ 運んだ {1}', r.label, carried));
         await wait(0.5);
         await shelfLift(robot, bin, 0, lift);
         await drive(robot, s.x, s.z, speed);
@@ -127,8 +128,8 @@ function doubleDemo(stage: Stage): void {
   const W = 9;
   const H = 6;
   const ROWS = [
-    { z: 1, double: false, label: '標準の棚ロボ（上のビンを隣へ退避してから）' },
-    { z: 4, double: true, label: 'ダブルデッカー（2 段持ち。退避なし）' },
+    { z: 1, double: false, label: tr('標準の棚ロボ（上のビンを隣へ退避してから）') },
+    { z: 4, double: true, label: tr('ダブルデッカー（2 段持ち。退避なし）') },
   ];
   const PORT_X = 1;
   const STACK_XS = [3, 4, 5, 6];
@@ -166,7 +167,7 @@ function doubleDemo(stage: Stage): void {
     robot.position.x = PORT_X + 0.5;
     robot.position.z = r.z + 0.5;
     stage.scene.add(robot);
-    const label = new Label(`${r.label} ｜ 取り出した 0`, 4.6);
+    const label = new Label(tr('{0} ｜ 取り出した 0', r.label), 4.6);
     label.position.set(ri === 0 ? 3 : 5.5, railH + 1.2 + ri * 1.0, r.z + 0.5);
     stage.scene.add(label);
     const speed = cellsPerSec(1);
@@ -192,7 +193,7 @@ function doubleDemo(stage: Stage): void {
           await drive(robot, PORT_X, z, speed);
           await shelfLower(stage.scene, robot, target, 0, lift, PORT_X, z);
           n++;
-          label.setText(`${r.label} ｜ 取り出した ${n}`);
+          label.setText(tr('{0} ｜ 取り出した {1}', r.label, n));
           await wait(0.6);
           // 戻す: 目的のビンを戻し、退避したビンを上に
           await shelfLift(robot, target, 0, lift);
@@ -213,7 +214,7 @@ function doubleDemo(stage: Stage): void {
           await drive(robot, PORT_X, z, speed);
           await shelfLower(stage.scene, robot, target, 0, lift, PORT_X, z);
           n++;
-          label.setText(`${r.label} ｜ 取り出した ${n}`);
+          label.setText(tr('{0} ｜ 取り出した {1}', r.label, n));
           await wait(0.6);
           await shelfLift(robot, target, 1, lift);
           await drive(robot, s5.x, z, speed);
@@ -232,9 +233,9 @@ function amrDemo(stage: Stage): void {
   const W = 11;
   const H = 7;
   const LANES = [
-    { z: 1, speed: 0, cargo: 0, label: '積載 Lv1（1 ビン）・速度 Lv1', lx: 2.5, ly: 2.0 },
-    { z: 3, speed: 2, cargo: 2, label: '積載 Lv3（4 ビン）・速度 Lv3', lx: 5.5, ly: 2.8 },
-    { z: 5, speed: 3, cargo: 3, label: '積載 Lv4（8 ビン・上限突破）・速度 Lv4', lx: 8.5, ly: 4.4 },
+    { z: 1, speed: 0, cargo: 0, label: tr('積載 Lv1（1 ビン）・速度 Lv1'), lx: 2.5, ly: 2.0 },
+    { z: 3, speed: 2, cargo: 2, label: tr('積載 Lv3（4 ビン）・速度 Lv3'), lx: 5.5, ly: 2.8 },
+    { z: 5, speed: 3, cargo: 3, label: tr('積載 Lv4（8 ビン・上限突破）・速度 Lv4'), lx: 8.5, ly: 4.4 },
   ];
   const PILE_XS = [0, 1, 2, 3];
   const STOP_X = 8;
@@ -265,7 +266,7 @@ function amrDemo(stage: Stage): void {
     const robot = makeAmr();
     robot.position.set(4.5, 0, l.z + 0.5);
     stage.scene.add(robot);
-    const label = new Label(`${l.label} ｜ 届けた 0`, 4.2);
+    const label = new Label(tr('{0} ｜ 届けた 0', l.label), 4.2);
     label.position.set(l.lx, l.ly, l.z + 0.5);
     stage.scene.add(label);
     const speed = cellsPerSec(l.speed);
@@ -303,7 +304,7 @@ function amrDemo(stage: Stage): void {
         }
         if (count) {
           delivered += n;
-          label.setText(`${l.label} ｜ 届けた ${delivered}`);
+          label.setText(tr('{0} ｜ 届けた {1}', l.label, delivered));
         }
         await wait(0.4);
       }
@@ -376,7 +377,7 @@ function droneDemo(stage: Stage): void {
   const amrBin = new Bin('apple');
   amrBin.position.set(PORT.x + 0.5, 0, PORT.z + 0.5);
   stage.scene.add(amrBin);
-  const amrLabel = new Label('搬送ロボ（床を走る）｜ 届けた 0', 4);
+  const amrLabel = new Label(tr('搬送ロボ（床を走る）｜ 届けた 0'), 4);
   amrLabel.position.set(PORT.x + 0.5, 2.0, LANE_Z - 0.5);
   stage.scene.add(amrLabel);
 
@@ -387,7 +388,7 @@ function droneDemo(stage: Stage): void {
   const droneBin = new Bin('book');
   droneBin.position.set(PORT.x + 0.5, 0, PORT.z - 0.5);
   stage.scene.add(droneBin);
-  const droneLabel = new Label('ドローン（棚の上を飛ぶ・速度 +1）｜ 届けた 0', 4.6);
+  const droneLabel = new Label(tr('ドローン（棚の上を飛ぶ・速度 +1）｜ 届けた 0'), 4.6);
   droneLabel.position.set(5.5, droneY + 1.0, 0.5);
   stage.scene.add(droneLabel);
   stage.onFrame((dt) => {
@@ -409,7 +410,7 @@ function droneDemo(stage: Stage): void {
     await moveTo(amrBin, 0.9, 0, 0, loadSec);
     stage.scene.attach(amrBin);
     amrN++;
-    amrLabel.setText(`搬送ロボ（床を走る）｜ 届けた ${amrN}`);
+    amrLabel.setText(tr('搬送ロボ（床を走る）｜ 届けた {0}', amrN));
     await wait(0.8);
     amr.attach(amrBin);
     await moveTo(amrBin, 0, 0.4, 0, loadSec);
@@ -429,7 +430,7 @@ function droneDemo(stage: Stage): void {
     await moveTo(droneBin, 0, -droneY, 0, 0.8);
     stage.scene.attach(droneBin);
     droneN++;
-    droneLabel.setText(`ドローン（棚の上を飛ぶ・速度 +1）｜ 届けた ${droneN}`);
+    droneLabel.setText(tr('ドローン（棚の上を飛ぶ・速度 +1）｜ 届けた {0}', droneN));
     await wait(0.8);
     drone.attach(droneBin);
     await moveTo(droneBin, 0, hang, 0, 0.8);
