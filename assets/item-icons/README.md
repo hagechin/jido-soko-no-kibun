@@ -32,3 +32,11 @@
 | scissors | ハサミ |
 | battery | 電池 |
 | fish | 魚 |
+
+## 3D レンダリング（ビン + ボクセル）
+
+`node scripts/export-icons-3d.mjs <outDir> <size> <res>` で、ゲーム内と同じ three.js でビンの上にアイコンを押し出した状態を斜め上から描いたもの（1024×1024、透過、床の影つき）。
+
+- `render-3d/` ゲーム内と同じ 8×8 ボクセル（16×16 を 2×2 で多数決）
+- `render-3d-hd/` 16×16 をそのまま押し出した高精細版（LP 向け）
+- 各フォルダの `sheet.png` は 24 種の一覧（256px 格子）
