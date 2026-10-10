@@ -1172,3 +1172,4 @@ npm run preview   # http://localhost:4321 で確認
 
 - 商品アイコンは外部素材ではなく、このプロジェクト用に `src/game/data/icons.ts` に文字で描いた 16×16 のドット絵（M2 で作成、canvas で data URL にして表示）。権利上の問題なし
 - `scripts/export-icons.mjs` で PNG（16 / 128 / 512 px、透過、最近傍拡大）・SVG・スプライト（`sheet-128.png`）に書き出し → `assets/item-icons/`（zip も同梱）
+- 3D 版: `scripts/export-icons-3d.mjs`（headless Chromium + ゲームと同じ three.js、擬似 http オリジンで配信）で、ビンの上にボクセルを押し出した状態を斜め上から透過 PNG に。ゲーム準拠の 8×8（`render-3d/`）と 16×16 の高精細版（`render-3d-hd/`）、各 1024px と一覧 `sheet.png`
