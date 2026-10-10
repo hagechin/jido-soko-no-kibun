@@ -36,11 +36,22 @@ function beginAction(r: Robot, phase: Robot['phase'], ticks: number, step: numbe
 }
 
 export function finishJob(w: WorldState, rt: Runtime, r: Robot): void {
-  r.job = r.queue.shift() ?? null;
   r.step = 0;
   r.digging = null;
   setGoal(rt, r, null);
   r.phase = 'idle';
+  // ★ ビンを持ったまま仕事が終わったとき（掘り出しの途中で目的のビンが他のロボに取られた等）は、置きに行く仕事に切り替える。
+  // 以前はそのまま次の仕事に進み、次の仕事が carrying を上書きしてビンが行方不明になっていた（在庫がどこにも無いのに出荷できない）
+  if (r.carrying.length) {
+    if (r.kind === 'shelf') {
+      r.job = { type: 'store', portId: nearestPort(w, r.pose.x, r.pose.z)?.id ?? -1, binId: null, stackId: null, manual: false };
+      r.step = 2; // 持っているので、ポートから持ち上げる段は飛ばして置き場へ
+    } else {
+      r.job = { type: 'return', portId: null, manual: false };
+    }
+    return;
+  }
+  r.job = r.queue.shift() ?? null;
 }
 
 /** 条件に合う一番近いポート。既定では使用停止中のポートを除く（片付け目的なら includeClosed = true） */
@@ -396,6 +407,7 @@ function shelfRetrieve(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
   switch (r.step) {
     case 0: {
       if (!stack.bins.includes(job.binId)) return finishJob(w, rt, r); // ビンがもう無い
+      if (r.carrying.length && !r.digging) return finishJob(w, rt, r); // 他の仕事のビンを持ったままでは始めない（置きに行く）
       setGoal(rt, r, { type: 'cell', x: stack.x, z: stack.z });
       if (!atGoal(w, r)) return;
       const top = stack.bins[stack.bins.length - 1];
@@ -529,17 +541,20 @@ function shelfRelocate(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJ
   const lt = liftTicks(r);
   switch (r.step) {
     case 0: {
+      if (r.carrying.length) return finishJob(w, rt, r); // 持ったままでは始めない（置きに行く）
       if (stack.bins[stack.bins.length - 1] === job.binId) return finishJob(w, rt, r);
       setGoal(rt, r, { type: 'cell', x: stack.x, z: stack.z });
       if (!atGoal(w, r)) return;
-      const temp = pickStackWithRoom(w, stack, stack.id, ROBOT.digLevelWeight, stack.bins[stack.bins.length - 1]);
+      // 退避先は配置時に人気度を見て選んだもの（job.tempStackId）。埋まっていたらその場で選び直す
+      const chosen = job.tempStackId !== undefined ? w.stacks.find((s) => s.id === job.tempStackId) : undefined;
+      const temp = chosen && chosen.bins.length < w.levels && !lockedStacks(w).has(chosen.id) ? chosen : pickStackWithRoom(w, stack, stack.id, ROBOT.digLevelWeight, stack.bins[stack.bins.length - 1]);
       if (!temp) return finishJob(w, rt, r);
       r.digging = { targetStackId: stack.id, movedBins: r.digging?.movedBins ?? [], tempStackId: temp.id };
       beginAction(r, 'lifting', lt, 11);
       return;
     }
     case 11: {
-      r.carrying = [stack.bins.pop()!];
+      r.carrying.push(stack.bins.pop()!);
       r.phase = 'idle';
       r.step = 12;
       const temp = w.stacks.find((s) => s.id === r.digging!.tempStackId)!;
@@ -585,6 +600,7 @@ function shelfMerge(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob,
   const lt = liftTicks(r);
   switch (r.step) {
     case 0: {
+      if (r.carrying.length) return finishJob(w, rt, r); // 持ったままでは始めない（置きに行く）
       if (!from || from.bins[from.bins.length - 1] !== job.binId) return finishJob(w, rt, r);
       setGoal(rt, r, { type: 'cell', x: from.x, z: from.z });
       if (!atGoal(w, r)) return;
@@ -593,7 +609,7 @@ function shelfMerge(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob,
     }
     case 1: {
       if (!from || from.bins[from.bins.length - 1] !== job.binId) return finishJob(w, rt, r);
-      r.carrying = [from.bins.pop()!];
+      r.carrying.push(from.bins.pop()!);
       r.phase = 'idle';
       r.step = 2;
       setGoal(rt, r, null);
@@ -670,20 +686,22 @@ function shelfMerge(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob,
  */
 function shelfStore(w: WorldState, rt: Runtime, r: Robot, job: Extract<ShelfJob, { type: 'store' }>): void {
   const port = w.ports.find((p) => p.id === job.portId);
-  if (!port) return finishJob(w, rt, r);
   const lt = liftTicks(r);
+  // すでに持っている（仕事の切り替えで置きに来た）なら、ポートから持ち上げる段は飛ばす
+  if (r.step < 2 && r.carrying.length) r.step = 2;
+  if (!port && r.step < 2) return finishJob(w, rt, r);
   switch (r.step) {
     case 0: {
-      setGoal(rt, r, { type: 'cell', x: port.x, z: port.z });
+      setGoal(rt, r, { type: 'cell', x: port!.x, z: port!.z });
       if (!atGoal(w, r)) return;
-      if (!port.returns.length) return finishJob(w, rt, r);
+      if (!port!.returns.length) return finishJob(w, rt, r);
       beginAction(r, 'lifting', lt, 1);
       return;
     }
     case 1: {
-      const idx = job.binId !== null ? port.returns.indexOf(job.binId) : -1;
-      const bin = idx >= 0 ? port.returns.splice(idx, 1)[0] : port.returns.shift()!;
-      r.carrying = [bin];
+      const idx = job.binId !== null ? port!.returns.indexOf(job.binId) : -1;
+      const bin = idx >= 0 ? port!.returns.splice(idx, 1)[0] : port!.returns.shift()!;
+      r.carrying.push(bin);
       w.bins[bin].purpose = null;
       r.phase = 'idle';
       r.step = 2;

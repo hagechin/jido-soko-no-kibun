@@ -4,6 +4,7 @@
  */
 import { SAVE } from '../data/balance';
 import { createWorld } from './world';
+import { rehomeOrphans } from './integrity';
 import { initAchievementsSilently } from './achievements';
 import type { WorldState } from './types';
 
@@ -43,6 +44,7 @@ export function deserialize(text: string): LoadResult {
   // 実行時に作り直すもの
   world.events = [];
   world.flags = { ...createWorld().flags, ...world.flags };
+  rehomeOrphans(world); // 行方不明のビンがあれば棚に戻す（読み込み直後にお知らせが出る）
   return { ok: true, world, savedAt: file.savedAt ?? Date.now(), migrated };
 }
 
