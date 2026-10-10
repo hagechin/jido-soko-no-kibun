@@ -6,7 +6,7 @@ import { INBOUND_FREQ, SPEED_OPTIONS, TICKS_PER_SECOND } from './data/balance';
 import { inboundSettings, restockStockCap, setInbound } from './sim/inbound';
 import { itemDef } from './data/items';
 import { createWorld } from './sim/world';
-import { createRuntime, stepSim, type Runtime } from './sim/sim';
+import { cloneRuntime, createRuntime, stepSim, type Runtime } from './sim/sim';
 import { adviseNext, createAdvisorStats, sampleAdvisor, type AdvisorStats, type Hint } from './sim/advisor';
 import { ADVISOR } from './data/balance';
 import { iconText, type IconName } from './ui/icon';
@@ -235,7 +235,13 @@ class Game {
       apply: (p) => this.renderer.setPhotoParams(p),
       distanceAt: (x, y) => this.renderer.distanceAt(this.world, x, y, this.alpha),
       focusAtStart: () => this.renderer.controls.distance,
-      capture: (longEdge) => this.renderer.capturePhoto(this.world, this.alpha, longEdge),
+      capture: (longEdge) =>
+        this.renderer.capturePhoto(this.world, this.alpha, longEdge, () => {
+          // シャッター: 本物は動かさず、世界と予約表の写しを進める
+          const wc = structuredClone(this.world);
+          const rc = cloneRuntime(this.rt);
+          return { world: wc, step: () => stepSim(wc, rc) };
+        }),
       isPaused: () => this.world.speed === 0,
       togglePause: () => this.setSpeed(this.world.speed === 0 ? this.lastSpeed : 0),
       showModal: (title, ...content) => this.modal.show(title, ...content),

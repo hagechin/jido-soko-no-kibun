@@ -24,3 +24,19 @@ export interface Runtime {
 export function createRuntime(): Runtime {
   return { floor: new ReservationTable(), rail: new ReservationTable(), air: new ReservationTable(), plans: new Map(), lastPlanTick: -1, dirty: true, needsPlan: new Set(), known: new Set(), overlapTicks: new Map(), planTick: new Map() };
 }
+
+/** 写し（フォトモードのシャッター: 本物を動かさずに数 tick 先まで描くため） */
+export function cloneRuntime(rt: Runtime): Runtime {
+  return {
+    floor: rt.floor.clone(),
+    rail: rt.rail.clone(),
+    air: rt.air.clone(),
+    plans: new Map([...rt.plans].map(([k, v]) => [k, v.map((s) => structuredClone(s))])),
+    lastPlanTick: rt.lastPlanTick,
+    dirty: rt.dirty,
+    needsPlan: new Set(rt.needsPlan),
+    known: new Set(rt.known),
+    overlapTicks: new Map(rt.overlapTicks),
+    planTick: new Map(rt.planTick),
+  };
+}

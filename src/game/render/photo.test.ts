@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PHOTO_TITLE, apertureForF, aspectRatio, captionLines, fovForFocal, photoSize, shutterFrames } from './photo';
+import { PHOTO_TITLE, apertureForF, aspectRatio, captionLines, captureFov, fovForFocal, photoSize, shutterFrames } from './photo';
 
 describe('フォトモードのパラメータ', () => {
   it('焦点距離 → 縦の画角（35mm 換算、センサー縦 24mm）', () => {
@@ -18,11 +18,19 @@ describe('フォトモードのパラメータ', () => {
     expect(photoSize('1:1', 1, 1500)).toEqual({ width: 1500, height: 1500 });
     expect(photoSize('screen', 390 / 844, 2000)).toEqual({ width: 924, height: 2000 });
   });
-  it('シャッターの合成コマ数', () => {
+  it('シャッターの合成コマ数（1 tick あたり 3 コマ、4〜24）', () => {
     expect(shutterFrames(0)).toBe(1);
-    expect(shutterFrames(0.6)).toBe(4);
+    expect(shutterFrames(0.33)).toBe(4);
     expect(shutterFrames(5)).toBe(15);
-    expect(shutterFrames(100)).toBe(16);
+    expect(shutterFrames(100)).toBe(24);
+  });
+  it('撮影の画角はプレビューの枠と同じ範囲（横長の出力は横の画角を合わせる）', () => {
+    expect(captureFov(27, 0.46, 0.46)).toBeCloseTo(27);
+    expect(captureFov(27, 0.46, 0.4)).toBeCloseTo(27); // 縦長 → 縦の画角そのまま
+    const wide = captureFov(27, 0.46, 1.5); // スマホ縦で 3:2 → 縦の画角はぐっと狭くなる
+    expect(wide).toBeLessThan(10);
+    expect(wide).toBeGreaterThan(5);
+    expect(captureFov(27, 1.78, 1.78)).toBeCloseTo(27);
   });
   it('ロゴの行: なし／ロゴ／ロゴ＋倉庫情報', () => {
     const info = { rank: 'メガDC', year: 3, month: 5, shipped: 12345 };

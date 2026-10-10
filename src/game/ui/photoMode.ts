@@ -213,6 +213,10 @@ export class PhotoMode {
         PHOTO_CHOICES.shutter.map((s) => ({ key: s.label, text: s.label, on: p.shutterTicks === s.ticks, pick: () => this.set({ shutterTicks: s.ticks }) })),
       ),
       row(
+        '露出',
+        PHOTO_CHOICES.exposure.map((e) => ({ key: String(e), text: e === 0 ? '±0' : `${e > 0 ? '+' : ''}${e}`, on: p.exposure === e, pick: () => this.set({ exposure: e }) })),
+      ),
+      row(
         'エフェクト',
         PHOTO_CHOICES.effect.map((e) => ({ key: e.id, text: e.name, on: p.effect === e.id, pick: () => this.set({ effect: e.id }) })),
       ),

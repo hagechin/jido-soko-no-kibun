@@ -8,6 +8,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass.js';
 import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 export type PhotoEffect = 'none' | 'film' | 'mono' | 'sepia' | 'vivid' | 'dusk';
 export type PhotoAspect = 'screen' | '3:2' | '16:9' | '4:5' | '1:1';
@@ -21,11 +22,19 @@ export interface PhotoParams {
   fNumber: number;
   /** ピント位置（カメラからの距離、ワールド単位） */
   focusDistance: number;
-  /** シャッター（ゲーム内 tick。0 = ブラーなし。1 tick = ロボの 1 マス移動の 1/5〜1/2） */
+  /** シャッター（ゲーム内 tick。0 = ブラーなし。10 tick = ゲーム内 1 秒。撮影中はシミュレーションの写しをこの分だけ進めてコマを重ねる） */
   shutterTicks: number;
+  /** 露出補正（EV。+1 で 2 倍の明るさ） */
+  exposure: number;
   effect: PhotoEffect;
   aspect: PhotoAspect;
   logo: PhotoLogo;
+}
+
+/** シャッター中にシミュレーションの写しを進める手段（main が用意する） */
+export interface PhotoAdvance {
+  world: import('../sim/types').WorldState;
+  step: () => void;
 }
 
 export const PHOTO_CHOICES = {
@@ -34,11 +43,13 @@ export const PHOTO_CHOICES = {
   /** 表示名 → tick */
   shutter: [
     { label: '1/250', ticks: 0 },
-    { label: '1/60', ticks: 0.6 },
-    { label: '1/30', ticks: 1.2 },
-    { label: '1/15', ticks: 2.5 },
-    { label: '1/8', ticks: 5 },
+    { label: '1/30', ticks: 0.33 },
+    { label: '1/8', ticks: 1.25 },
+    { label: '1/2', ticks: 5 },
+    { label: '1 秒', ticks: 10 },
+    { label: '2 秒', ticks: 20 },
   ] as const,
+  exposure: [-1, -0.5, 0, 0.5, 1, 1.5, 2] as const,
   effect: [
     { id: 'none', name: 'なし' },
     { id: 'film', name: 'フィルム' },
@@ -61,7 +72,7 @@ export const PHOTO_CHOICES = {
   ] as { id: PhotoLogo; name: string }[],
 };
 
-export const DEFAULT_PHOTO: PhotoParams = { focalMm: 50, fNumber: 2.8, focusDistance: 12, shutterTicks: 0, effect: 'film', aspect: 'screen', logo: 'logo' };
+export const DEFAULT_PHOTO: PhotoParams = { focalMm: 50, fNumber: 2.8, focusDistance: 12, shutterTicks: 0, exposure: 0, effect: 'film', aspect: 'screen', logo: 'logo' };
 
 export const PHOTO_TITLE = '箱庭！ディストリビューション';
 /** 共有シートに添える文（iOS） */
@@ -141,9 +152,20 @@ export function photoSize(a: PhotoAspect, screenRatio: number, longEdge: number)
   return r >= 1 ? { width: longEdge, height: Math.round(longEdge / r) } : { width: Math.round(longEdge * r), height: longEdge };
 }
 
-/** シャッターの合成コマ数（ブラーが長いほど多く） */
+/** シャッターの合成コマ数（ブラーが長いほど多く。1 tick あたり 3 コマ、4〜24） */
 export function shutterFrames(ticks: number): number {
-  return ticks <= 0 ? 1 : Math.min(16, Math.max(4, Math.round(ticks * 3)));
+  return ticks <= 0 ? 1 : Math.min(24, Math.max(4, Math.round(ticks * 3)));
+}
+
+/**
+ * 撮影する写真の縦の画角（度）: プレビューの枠（黒帯の内側）と同じ範囲が写るようにする。
+ * 出力が画面より横長なら横の画角を合わせ（縦は狭くなる）、縦長なら縦の画角をそのまま使う
+ */
+export function captureFov(previewFovDeg: number, previewRatio: number, outputRatio: number): number {
+  if (outputRatio <= previewRatio) return previewFovDeg;
+  const v = (previewFovDeg * Math.PI) / 180;
+  const h = 2 * Math.atan(Math.tan(v / 2) * previewRatio);
+  return (2 * Math.atan(Math.tan(h / 2) / outputRatio) * 180) / Math.PI;
 }
 
 interface Grade {
@@ -226,6 +248,8 @@ export class PhotoRig {
     this.composer.addPass(this.grade);
     this.film = new FilmPass(0.25, false);
     this.composer.addPass(this.film);
+    // 色空間の変換（sRGB）。これが無いと後処理の出力がリニアのまま表示されて暗くなる
+    this.composer.addPass(new OutputPass());
     this.apply();
   }
 
@@ -240,7 +264,7 @@ export class PhotoRig {
     const gu = this.grade.uniforms as Record<string, { value: number }>;
     gu.saturation.value = g.saturation;
     gu.contrast.value = g.contrast;
-    gu.brightness.value = g.brightness;
+    gu.brightness.value = g.brightness * Math.pow(2, p.exposure ?? 0);
     gu.sepia.value = g.sepia;
     gu.vignette.value = g.vignette;
     gu.warm.value = g.warm;
