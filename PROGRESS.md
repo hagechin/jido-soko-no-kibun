@@ -1205,3 +1205,10 @@ npm run preview   # http://localhost:4321 で確認
 - amr: 搬送ロボ 3 レーン（積載 1 / 4 / 8（上限突破）、速度 Lv1 / Lv3 / Lv4）。入荷口側の 8 ビンをステーション側へ運び、空になったら持ち帰る
 - drone: 搬送ロボは南の通路を回って届ける（ステーション前に順番待ちの飾り）。ドローンは棚の上をまっすぐ飛ぶ（速度 +1 Lv）。棚ロボが飾りで行き来
 - LP（Webflow）にセクション「ロボの紹介」を流れのデモの直後に追加（4 つの iframe）。公開はユーザー。headless は SwiftShader で遅く、デモ内の時間は壁時計より遅く進む（dt の上限 0.1 秒）
+
+---
+
+## LP: 「こんなゲームです」に立体アイコン
+
+- 3D レンダリング（16×16 版）を 256px で書き出し（`assets/item-icons/render-3d-hd-256/`）、12 種を Webflow のアセットに上げた（Data API の create_asset → S3 の署名付きフォームに curl で POST）。名前は `hk-bin-<item>.png`
+- 見出しの下に 12 個のビンを並べる帯（`.hk-bins` / `.hk-bin-img` 84px）、5 枚のカードの先頭に 1 個ずつ（`.hk-card-icon` 72px）。公開はユーザー
