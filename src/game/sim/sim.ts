@@ -11,6 +11,8 @@ import { updateOrders } from './orders';
 import { updateStations } from './pickers';
 import { updatePlanning } from './planner';
 import { updateAchievements } from './achievements';
+import { rehomeOrphans } from './integrity';
+import { sec } from '../data/balance';
 import { executeMovement, updateJob, updateStuck } from './robots';
 import { createRuntime, type Runtime } from './runtime';
 import type { WorldState } from './types';
@@ -35,7 +37,11 @@ export function stepSim(w: WorldState, rt: Runtime): void {
   checkRankUp(w);
   updatePlanning(w, rt);
   if (w.tick % 10 === 0) updateAchievements(w);
+  if (w.tick % INTEGRITY_INTERVAL === 0) rehomeOrphans(w);
 }
+
+/** ビンの整合性チェックの間隔 */
+const INTEGRITY_INTERVAL = sec(30);
 
 /** n tick 進める（テスト・追いつき計算用） */
 export function stepMany(w: WorldState, rt: Runtime, n: number): void {
