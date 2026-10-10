@@ -38,10 +38,20 @@
 - 報告には必ず「対象コミット」「実行環境」「設定の『セーブ』の下の同梱 Web の commit」を書く（古い Web を同梱したまま試験するのを防ぐ）
 - 「できなかった」も報告（シミュレータでは確認できない、ビルドが通らない等）。黙って飛ばさない
 - 画像はスクリーンショットは PNG、フォトモードで撮った写真は JPEG のまま（容量のため 1 枚 2 MB 以下）
-- 見張りの間隔: テスト側は 10〜15 分、開発側は 1 時間（クラウド側の最短）。どちらも「変化が無ければ何もしない」
+- 見張りの間隔: 開発側は 1 時間ごとの定期実行（クラウド側の最短）で、変化が無ければ何もしない。テスト側は人の合図（下記）か、CLI なら 15 分おき
 - 人への連絡は、依頼／報告のコミットメッセージと `PROGRESS.md` で足りるようにする（チャットで聞かれたら要約する）
 
-## Mac 側の自動化の例（Claude Code の /loop）
+## Mac 側の動かし方
+
+Opus は Xcode の中のチャット（エージェント）として動いている。チャットは自分では時計を持たないので、「15 分おきに見張る」という指示は 1 回の返事で終わってしまう（`/loop` のようなスラッシュコマンドも Claude Code CLI のもので、Xcode のチャットには無い）。そこで Mac 側は**ラウンドごとに 1 回、人が合図を貼る**のを基本にする。合図は毎回同じ文でよい:
+
+```
+ios/test-report/TEST_REQUEST.md に新しい依頼があります。ios/test-report/PROTOCOL.md の「流れ」2 のとおりに実施して、報告を TEST_REPORT.md に追記し、status を reported にして、依頼と同じ branch に push してください。
+```
+
+開発側は依頼を push したら、チャットの返事（と `test-request: round N` のコミット）で人に知らせる。人はその文を Xcode のチャットに貼るだけ。
+
+完全に自動にしたい場合は、Mac の Terminal で Claude Code CLI をリポジトリで起動し、次を貼る（ビルド・自動テスト・`simctl` での起動とスクリーンショットは CLI でもできる。画面を指で操作する項目は Xcode のチャットのほうが得意なので、依頼にその旨を書く）:
 
 ```
 /loop 15m リポジトリ jido-soko-no-kibun で git fetch origin を実行し、ios/test-report/TEST_REQUEST.md に書かれた branch の先端の同ファイルを読む。status が requested で、round が ios/test-report/TEST_REPORT.md の最後の「第N回」より大きければ、ios/test-report/PROTOCOL.md の「流れ」2 のとおりにテストを実施して報告を追記し、status を reported にして push する。それ以外は何もしない。
