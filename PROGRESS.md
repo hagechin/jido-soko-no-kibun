@@ -1263,3 +1263,12 @@ npm run preview   # http://localhost:4321 で確認
 - ピントのタップは物に当たらなければ床（y=0）との交点まで（ウォークスルーで床を見ているときに効く）
 - ★ 眺めモードにもウォークスルーを足せる作り（`WalkCamera` は独立）。1.1 で検討
 - 確認: headless で V → 視点が飛ばない、W 2.5 秒で前進、ドラッグで yaw、Q で下降、床タップで「ピント: 47.2 m」、V で戻しても位置そのまま、Esc で復帰。全 187 件。SPEC-iOS §1.5・TESTPLAN M24b〜M24e・ヘルプを更新
+
+---
+
+## フォトモード: 実機の感想への対応（4）カメラロール保存・撮影中は静かに
+
+- **カメラロールに保存**: iOS の「撮れました」に「カメラロールに保存」（主ボタン）と「共有」。ブリッジ `savePhoto` は `PHPhotoLibrary.requestAuthorization(for: .addOnly)`（追加のみの権限。初回に OS のダイアログ）→ `creationRequestForAsset`。`NSPhotoLibraryAddUsageDescription` を `project.yml` に追加。断られたら「設定を開く」（`openSettings`）付きの案内。Web は従来どおりダウンロード
+- **撮影中にトーストや成績表が前に出る**: フォトモード中はゲームのトーストを出さず（`setToastsSuppressed`。フォトモード自身の案内は `force`）、モーダルは順番待ち（`Modal.suspend`）にして Esc で出てから順に見せる。フォトモード自身のモーダル（撮れました・現像）は `showUrgent`。更新バナー・追いつき表示も隠す
+- 確認: headless でフォトモード中に `modal.show('サイバーウィーク成績表')` → 出ない、撮影のモーダルは出る、Esc 後に成績表が出る。Swift はこの環境で compile できないので実機で（TESTPLAN M25・M25c）
+- 感想メモ: ブラーとタイミング（連写→現像）は好評。カメラ設定の UI はグラフィカルに攻めたい → Figma で検討（いまはこのまま）

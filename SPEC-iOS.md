@@ -64,7 +64,8 @@ Web 版（[SPEC.md](./SPEC.md)）を WKWebView で包み、iOS 版だけの機�
 - シャッターだけの画面（H、「設定を隠す」）: パネルを消して画面中央下に ●、左に設定・カメラ切替、右に終了。選択は次回も覚えている
 - 連写 → 現像: ● の長押しで 0.25 秒ごとに瞬間（世界と予約表の写し `structuredClone` / `cloneRuntime`、カメラ位置、補間位置）を記録（最大 20 枚 = 5 秒、● に枚数）。離すと「現像」モーダルにサムネイル（長辺 480px）、タップで選んで「この 1 枚を現像」で本番の大きさで撮る。ゲームは長押し中も止めない
 - パラメータ（`render/photo.ts`、localStorage に保存）: 焦点距離 24/35/50/85/135mm（35mm 換算、縦の画角に変換）、絞り F1.4〜F16（BokehPass の被写界深度）、シャッター 1/250・1/30・1/8・1/2・1 秒・2 秒（ゲーム内時間。撮影中は世界と予約表の写しを tick 単位で進めながら 4〜24 コマを重ねるモーションブラー。本物は動かさない）、露出 -1〜+2 EV（後処理の最後に `OutputPass` で sRGB にする。これが無いと暗かった）、エフェクト なし／フィルム／モノクロ／セピア／ビビッド／夕暮れ（色調シェーダ＋ FilmPass の粒子）、比率 画面／3:2／16:9／4:5／1:1（プレビューは黒帯、撮影は実寸）、ロゴ なし／ロゴ／ロゴ＋倉庫情報（右下に「箱庭！ディストリビューション」、＋ランク・暦・出荷数。`captionLines` / `drawCaption`）
-- 撮影: 長辺 2400px の JPEG。画角はプレビューの枠（黒帯の内側）と同じ範囲（`captureFov`: 出力が画面より横長なら横の画角を合わせる）。モーダルで「保存／共有」（iOS は `sharePhoto` → 共有シート。写真に加えて `text`（`PHOTO_SHARE_TEXT`、ハッシュタグ付き）を activity item に添える。「写真に保存」には影響しない。Web はダウンロード）、「起動画面にする」（長辺 1600px に縮めて localStorage `jido-soko-no-kibun:startup-photo` と、iOS では `save` で Documents にも）
+- 撮影: 長辺 2400px の JPEG。画角はプレビューの枠（黒帯の内側）と同じ範囲（`captureFov`: 出力が画面より横長なら横の画角を合わせる）。モーダルで「カメラロールに保存」（iOS: `savePhoto` → `PHPhotoLibrary.requestAuthorization(for: .addOnly)` → `creationRequestForAsset`。`NSPhotoLibraryAddUsageDescription` を Info.plist に。断られたら「設定を開く」（`openSettings`）の案内）と「共有」（`sharePhoto` → 共有シート。写真に加えて `text`（`PHOTO_SHARE_TEXT`、ハッシュタグ付き）を activity item に添える。「写真に保存」には影響しない。Web はダウンロード）、「起動画面にする」（長辺 1600px に縮めて localStorage `jido-soko-no-kibun:startup-photo` と、iOS では `save` で Documents にも）
+- 撮影中はゲームのトースト（`setToastsSuppressed`）とモーダル（`Modal.suspend`: 成績表・ランクアップなどは順番待ちにして、フォトモードを出てから見せる）を前に出さない。フォトモード自身の案内とモーダルは出す
 - 起動画面: index.astro のインラインスクリプトが localStorage の写真を `--startup-photo` に入れ、HTML のスプラッシュの背景にする。iOS は `ContentView` が Documents の同じ写真を WebView の上に重ね、JS の `ready`（最初の描画後）で消す。これで起動直後から写真が出る
 - 後処理は three の examples/jsm（同梱）だけで、CDN や追加依存は無し
 

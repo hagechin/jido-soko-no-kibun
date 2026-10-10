@@ -1,4 +1,5 @@
 import Foundation
+import Photos
 import UIKit
 import WebKit
 
@@ -71,6 +72,23 @@ final class Bridge {
         case "ready":
             // Web 側の最初の描画が済んだ → 起動画像のオーバーレイを消してよい
             NotificationCenter.default.post(name: .hakoniwaWebReady, object: nil)
+            return true
+        case "savePhoto":
+            // フォトモードの写真をカメラロールへ（「追加のみ」の権限。初回に OS のダイアログが出る）
+            guard let dataUrl = p["data"] as? String, let image = Bridge.decodeDataUrl(dataUrl) else { throw BridgeError.badParams }
+            let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+            guard status == .authorized || status == .limited else { return ["saved": false, "denied": true] }
+            do {
+                try await PHPhotoLibrary.shared().performChanges {
+                    PHAssetChangeRequest.creationRequestForAsset(from: image)
+                }
+                return ["saved": true]
+            } catch {
+                return ["saved": false, "error": error.localizedDescription]
+            }
+        case "openSettings":
+            // 権限を断ったあとに設定アプリへ
+            if let url = URL(string: UIApplication.openSettingsURLString) { await UIApplication.shared.open(url) }
             return true
         case "sharePhoto":
             // フォトモードの写真を共有シートへ（写真に保存・AirDrop・メールなど）

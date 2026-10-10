@@ -70,9 +70,17 @@ function placeToasts(host: HTMLElement): void {
   while (host.children.length > 2) host.firstElementChild?.remove();
 }
 
-export function showToast(text: string, ms = 2200, iconName?: IconName): void {
+let toastsSuppressed = false;
+/** フォトモード中はゲームのトーストを出さない（フォトモード自身の案内は force で出す） */
+export function setToastsSuppressed(on: boolean): void {
+  toastsSuppressed = on;
+  if (on) document.getElementById('toasts')?.replaceChildren();
+}
+
+export function showToast(text: string, ms = 2200, iconName?: IconName, force = false): void {
   const host = document.getElementById('toasts');
   if (!host) return;
+  if (toastsSuppressed && !force) return;
   // 同じ文のトーストが出ている間は重ねない（追いつき計算などで同じイベントが続けて起きる）
   for (const c of Array.from(host.children)) if ((c as HTMLElement).dataset.text === text) return;
   const t = el('div', { class: 'toast' }, iconName ? icon(iconName, 16) : null, el('span', { text }));

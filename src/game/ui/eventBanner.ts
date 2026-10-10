@@ -39,13 +39,32 @@ export class Modal {
   }
 
   private queue: { title: string; content: Node[] }[] = [];
+  /** フォトモード中: ゲームのモーダル（成績表・ランクアップなど）は出さずに順番待ちにし、終わってから見せる */
+  private suspended = false;
+
+  suspend(on: boolean): void {
+    this.suspended = on;
+    if (!on && !this.visible) {
+      const next = this.queue.shift();
+      if (next) this.show(next.title, ...next.content);
+    }
+  }
 
   /** 表示中なら順番待ちにする（お留守番レポート → ランクアップ の順で見せる） */
   show(title: string, ...content: Node[]): void {
-    if (this.visible) {
+    if (this.visible || this.suspended) {
       this.queue.push({ title, content });
       return;
     }
+    this.present(title, content);
+  }
+
+  /** 順番待ちを無視して今出す（フォトモード自身のモーダル） */
+  showUrgent(title: string, ...content: Node[]): void {
+    this.present(title, content);
+  }
+
+  private present(title: string, content: Node[]): void {
     this.title.textContent = title;
     this.body.replaceChildren(...content);
     this.root.hidden = false;
@@ -56,6 +75,7 @@ export class Modal {
     this.root.hidden = true;
     document.body.classList.remove('has-modal');
     this.onClose?.();
+    if (this.suspended) return;
     const next = this.queue.shift();
     if (next) this.show(next.title, ...next.content);
   }

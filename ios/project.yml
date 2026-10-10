@@ -47,6 +47,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
+        NSPhotoLibraryAddUsageDescription: フォトモードで撮った写真をカメラロールに保存するために使います
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:

@@ -169,7 +169,7 @@ export class PhotoMode {
     this.mask.hidden = false;
     this.renderPanel();
     this.updateMask();
-    showToast('フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、Esc で戻る', 4000, 'camera');
+    showToast('フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、Esc で戻る', 4000, 'camera', true);
   }
 
   exit(): void {
@@ -196,7 +196,7 @@ export class PhotoMode {
     this.cameraMode = mode;
     this.host.setCameraMode(mode);
     this.renderPanel();
-    if (mode === 'walk') showToast('ウォークスルー: 左半分をドラッグで移動、右半分で見回す、2 本指の上下で上昇・下降（WASD・Q/E・Shift）', 4500, 'camera');
+    if (mode === 'walk') showToast('ウォークスルー: 左半分をドラッグで移動、右半分で見回す、2 本指の上下で上昇・下降（WASD・Q/E・Shift）', 4500, 'camera', true);
   }
 
   setMinimal(on: boolean): void {
@@ -442,8 +442,10 @@ export class PhotoMode {
     this.panel.classList.remove('is-busy');
     const img = el('img', { class: 'photo-preview', alt: '撮った写真' }) as HTMLImageElement;
     img.src = url;
-    const save = el('button', { class: 'btn primary', type: 'button' }, iconText(native.available ? 'upload' : 'download', native.available ? '保存／共有' : 'ダウンロード', 14));
-    save.addEventListener('click', () => this.savePhoto(url));
+    const save = el('button', { class: 'btn primary', type: 'button' }, iconText(native.available ? 'image' : 'download', native.available ? 'カメラロールに保存' : 'ダウンロード', 14));
+    save.addEventListener('click', () => void this.savePhoto(url, save));
+    const share = native.available ? el('button', { class: 'btn', type: 'button' }, iconText('upload', '共有', 14)) : null;
+    share?.addEventListener('click', () => this.sharePhoto(url));
     const startup = el('button', { class: 'btn', type: 'button' }, iconText('image', '起動画面にする', 14));
     startup.addEventListener('click', async () => {
       startup.setAttribute('disabled', 'true');
@@ -454,15 +456,46 @@ export class PhotoMode {
     });
     const again = el('button', { class: 'btn', type: 'button', text: '撮り直す' });
     again.addEventListener('click', () => this.host?.hideModal());
-    this.host.showModal('撮れました', img, el('div', { class: 'settings-row' }, save, startup, again));
+    this.host.showModal('撮れました', img, el('div', { class: 'settings-row' }, save, share, startup, again));
   }
 
-  private savePhoto(url: string): void {
-    const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+  private stamp(): string {
+    return new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+  }
+
+  /** iOS: 共有シート（写真 + ハッシュタグの文） */
+  private sharePhoto(url: string): void {
+    native.call('sharePhoto', { data: url, name: `hakoniwa-${this.stamp()}.jpg`, text: PHOTO_SHARE_TEXT }, 120_000).catch(() => showToast('共有できませんでした', 2200, undefined, true));
+  }
+
+  /** iOS: カメラロールへ保存（「追加のみ」の権限）。Web: ダウンロード */
+  private async savePhoto(url: string, button?: HTMLButtonElement): Promise<void> {
     if (native.available) {
-      native.call('sharePhoto', { data: url, name: `hakoniwa-${stamp}.jpg`, text: PHOTO_SHARE_TEXT }, 120_000).catch(() => showToast('共有できませんでした'));
+      button?.setAttribute('disabled', 'true');
+      try {
+        const r = (await native.call('savePhoto', { data: url, name: `hakoniwa-${this.stamp()}.jpg` }, 60_000)) as { saved?: boolean; denied?: boolean; error?: string } | null;
+        if (r?.saved) {
+          showToast('カメラロールに保存しました', 2200, 'check', true);
+          button?.replaceChildren(iconText('check', '保存しました', 14));
+          return;
+        }
+        button?.removeAttribute('disabled');
+        if (r?.denied) {
+          const open = el('button', { class: 'btn primary', type: 'button', text: '設定を開く' });
+          open.addEventListener('click', () => nativeTry('openSettings'));
+          const back = el('button', { class: 'btn', type: 'button', text: '閉じる' });
+          back.addEventListener('click', () => this.host?.hideModal());
+          this.host?.showModal('写真への保存が許可されていません', el('p', { text: '設定 → 箱庭！DS → 写真 で「追加のみ」を許可すると、カメラロールに保存できます。共有シートからの「画像を保存」も使えます。' }), el('div', { class: 'settings-row' }, open, back));
+          return;
+        }
+        showToast(`保存できませんでした${r?.error ? `: ${r.error}` : ''}`, 3000, 'triangle-alert', true);
+      } catch {
+        button?.removeAttribute('disabled');
+        showToast('保存できませんでした', 2200, 'triangle-alert', true);
+      }
       return;
     }
+    const stamp = this.stamp();
     const a = document.createElement('a');
     a.href = url;
     a.download = `hakoniwa-${stamp}.jpg`;

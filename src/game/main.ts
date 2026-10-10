@@ -24,7 +24,7 @@ import { OrderSheet } from './ui/orderSheet';
 import { Popup } from './ui/popup';
 import { binLabel, selectedInfoNode } from './ui/selection';
 import { iconImg } from './ui/icons';
-import { $, el, showToast } from './ui/layout';
+import { $, el, showToast, setToastsSuppressed } from './ui/layout';
 import { renderUpgrades } from './ui/upgrades';
 import { renderAchievements } from './ui/achievements';
 import { ACHIEVEMENT_BY_ID, mergeProfile, type AchievementProfile } from './sim/achievements';
@@ -278,6 +278,9 @@ class Game {
         if (this.calm.active) this.calm.exit();
         this.bar.close();
         this.popup.hide();
+        // 撮影中はゲームのトーストとモーダル（成績表など）を前に出さない。終わったら順番に見せる
+        setToastsSuppressed(true);
+        this.modal.suspend(true);
         const c = this.renderer.controls;
         this.cameraBeforePhoto = { target: c.target.clone(), azimuth: c.azimuth, polar: c.polar, distance: c.distance };
         c.enabled = true;
@@ -287,6 +290,8 @@ class Game {
         this.renderer.resize();
       },
       onExit: () => {
+        setToastsSuppressed(false);
+        this.modal.suspend(false);
         this.keyCam.enabled = false;
         this.walk.enabled = false;
         this.photoCamera = 'orbit';
@@ -332,7 +337,7 @@ class Game {
       },
       isPaused: () => this.world.speed === 0,
       togglePause: () => this.setSpeed(this.world.speed === 0 ? this.lastSpeed : 0),
-      showModal: (title, ...content) => this.modal.show(title, ...content),
+      showModal: (title, ...content) => this.modal.showUrgent(title, ...content),
       hideModal: () => this.modal.hide(),
     });
     this.calm.onCameraChange = () => {

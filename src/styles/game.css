@@ -1760,3 +1760,7 @@ kbd.key {
   display: inline-flex;
   gap: 6px;
 }
+body.is-photo .update-banner,
+body.is-photo .catchup {
+  display: none !important;
+}
