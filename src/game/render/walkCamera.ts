@@ -107,6 +107,13 @@ export class WalkCamera {
     this.apply();
   }
 
+  /** 倉庫の正面（南側の外、目の高さ）から中心を見る位置へ戻る（迷子になったとき） */
+  home(width: number, height: number): void {
+    this.setPose({ x: width / 2, y: 1.6, z: height + Math.max(4, height * 0.25), yaw: 0, pitch: -0.12 });
+    this.stick = { x: 0, z: 0 };
+    this.wheelMove = 0;
+  }
+
   get pose(): WalkPose {
     return { x: this.position.x, y: this.position.y, z: this.position.z, yaw: this.yaw, pitch: this.pitch };
   }

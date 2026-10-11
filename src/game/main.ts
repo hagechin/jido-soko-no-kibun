@@ -143,6 +143,8 @@ class Game {
   /** フォトモード（★）: カメラを置いて撮る。撮った写真は起動画面に使える */
   photo = new PhotoMode();
   private cameraBeforePhoto: { target: Vector3; azimuth: number; polar: number; distance: number } | null = null;
+  /** ウォークスルーのままフォトモードを出たときの視点（次に入るとき、ここから始める） */
+  private lastWalkPose: WalkPose | null = null;
 
   /** いまのカメラの位置（フォトモードの連写で、記録した瞬間と同じ構図で撮り直すため） */
   private cameraPose(): CameraPose {
@@ -165,11 +167,13 @@ class Game {
   }
 
   /** フォトモードのカメラ: オービット（回す）⇄ ウォークスルー（歩く・飛ぶ）。切り替えで視点は飛ばない */
-  private setPhotoCamera(mode: PhotoCameraMode): void {
+  private setPhotoCamera(mode: PhotoCameraMode, resume = false): void {
     const c = this.renderer.controls;
     if (mode === 'walk') {
       this.walk.setWarehouse(this.world.width, this.world.height);
-      this.walk.enterFrom(this.renderer.camera);
+      // 前回ウォークスルーで出たなら、その視点から（眺めモードの自動カメラが動いた後の視点を引き継ぐと飛んで見える。第 26 回）
+      if (resume && this.lastWalkPose) this.walk.setPose(this.lastWalkPose);
+      else this.walk.enterFrom(this.renderer.camera);
       this.walk.enabled = true;
       c.enabled = false;
       this.keyCam.enabled = false;
@@ -298,6 +302,7 @@ class Game {
         this.modal.suspend(false);
         this.keyCam.enabled = false;
         this.walk.enabled = false;
+        this.lastWalkPose = this.photoCamera === 'walk' ? this.walk.pose : null;
         this.photoCamera = 'orbit';
         this.renderer.controls.enabled = true;
         this.renderer.setPhotoMode(false);
@@ -314,7 +319,8 @@ class Game {
         this.renderer.resize();
       },
       apply: (p) => this.renderer.setPhotoParams(p),
-      setCameraMode: (mode) => this.setPhotoCamera(mode),
+      setCameraMode: (mode, resume) => this.setPhotoCamera(mode, resume),
+      walkHome: () => this.walk.home(this.world.width, this.world.height),
       distanceAt: (x, y) => this.renderer.distanceAt(this.world, x, y, this.alpha),
       focusAtStart: () => (this.photoCamera === 'walk' ? this.walk.suggestedDistance() : this.renderer.controls.distance),
       capture: (longEdge) =>

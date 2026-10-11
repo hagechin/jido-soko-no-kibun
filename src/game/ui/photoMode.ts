@@ -13,6 +13,11 @@ const KEY = 'jido-soko-no-kibun:photo';
 const UI_KEY = 'jido-soko-no-kibun:photo-ui';
 /** 前回のカメラ（オービット／ウォークスルー）を覚える */
 const CAM_KEY = 'jido-soko-no-kibun:photo-camera';
+
+/** タッチ端末（説明文からキーボードの話を省く） */
+function isTouch(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+}
 export const STARTUP_PHOTO_KEY = 'jido-soko-no-kibun:startup-photo';
 /** 起動画面に使う画像の長辺（localStorage に入れるので抑えめ） */
 const STARTUP_LONG_EDGE = 1600;
@@ -39,7 +44,10 @@ export interface PhotoHost {
   onExit: () => void;
   apply: (p: PhotoParams) => void;
   /** カメラ: オービット（回す）／ウォークスルー（歩く・飛ぶ） */
-  setCameraMode: (mode: PhotoCameraMode) => void;
+  /** resume: 前回ウォークスルーで出たときの視点から始める */
+  setCameraMode: (mode: PhotoCameraMode, resume?: boolean) => void;
+  /** ウォークスルーで倉庫の正面へ戻る（迷子になったとき） */
+  walkHome: () => void;
   /** 画面の点までの距離（ピント） */
   distanceAt: (clientX: number, clientY: number) => number | null;
   /** 開始時のピント: いま見ている場所（カメラの注視点）までの距離 */
@@ -171,15 +179,15 @@ export class PhotoMode {
     this.mask.hidden = false;
     this.renderPanel();
     this.updateMask();
-    showToast('フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、Esc で眺めモードに戻る', 4000, 'camera', true);
-    // 前回ウォークスルーで出たなら、今回もウォークスルーから（視点は今のカメラから引き継ぐ）
+    // 前回ウォークスルーで出たなら、今回もウォークスルーから（出たときの視点から）
     let remembered: string | null = null;
     try {
       remembered = localStorage.getItem(CAM_KEY);
     } catch {
       /* ignore */
     }
-    if (remembered === 'walk') this.setCameraMode('walk');
+    if (remembered === 'walk') this.setCameraMode('walk', { resume: true, quiet: true });
+    showToast(`フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、${isTouch() ? '×' : 'Esc'} で眺めモードに戻る`, 4000, 'camera', true);
   }
 
   exit(): void {
@@ -202,20 +210,26 @@ export class PhotoMode {
     this.focusHint.textContent = `ピント: ${d.toFixed(1)} m`;
   }
 
-  setCameraMode(mode: PhotoCameraMode): void {
+  setCameraMode(mode: PhotoCameraMode, opts: { resume?: boolean; quiet?: boolean } = {}): void {
     if (!this.host || mode === this.cameraMode) return;
     this.cameraMode = mode;
-    this.host.setCameraMode(mode);
+    this.host.setCameraMode(mode, opts.resume);
     this.renderPanel();
     try {
       localStorage.setItem(CAM_KEY, mode);
     } catch {
       /* ignore */
     }
-    if (mode === 'walk') {
-      const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
-      showToast(touch ? 'ウォークスルー: 左半分をドラッグで移動（遠くへ引くほど速く）、右半分で見回す、2 本指の上下で上昇・下降' : 'ウォークスルー: ドラッグで見回す、WASD で移動、Q/E で下降・上昇、Shift で速く、ホイールで前後', 4500, 'camera', true);
+    if (mode === 'walk' && !opts.quiet) {
+      showToast(isTouch() ? 'ウォークスルー: 左半分をドラッグで移動（遠くへ引くほど速く）、右半分で見回す、2 本指の上下で上昇・下降' : 'ウォークスルー: ドラッグで見回す、WASD で移動、Q/E で下降・上昇、Shift で速く、ホイールで前後', 4500, 'camera', true);
     }
+  }
+
+  /** ウォークスルーで倉庫の正面へ戻る */
+  private walkHome(): void {
+    if (!this.host || this.cameraMode !== 'walk') return;
+    this.host.walkHome();
+    showToast('倉庫の正面へ戻りました', 1800, 'camera', true);
   }
 
   setMinimal(on: boolean): void {
@@ -414,7 +428,14 @@ export class PhotoMode {
       }
       const exit = el('button', { class: 'btn photo-min-btn', type: 'button', title: '眺めモードに戻る（Esc）', 'aria-label': '終了' }, icon('x', 16));
       exit.addEventListener('click', () => this.exit());
-      this.panel.replaceChildren(el('div', { class: 'photo-min' }, el('span', { class: 'photo-min-group' }, settings, seg), this.makeShutter(), exit), el('div', { class: 'photo-min-hint' }, this.focusHint));
+      const right = el('span', { class: 'photo-min-group' });
+      if (this.cameraMode === 'walk') {
+        const home = el('button', { class: 'btn photo-min-btn', type: 'button', title: '倉庫の正面へ戻る', 'aria-label': '倉庫の正面へ' }, icon('house', 16));
+        home.addEventListener('click', () => this.walkHome());
+        right.append(home);
+      }
+      right.append(exit);
+      this.panel.replaceChildren(el('div', { class: 'photo-min' }, el('span', { class: 'photo-min-group' }, settings, seg), this.makeShutter(), right), el('div', { class: 'photo-min-hint' }, this.focusHint));
       this.updatePanelHeight();
       return;
     }
@@ -425,6 +446,7 @@ export class PhotoMode {
       row('カメラ', [
         { key: 'orbit', text: 'オービット（回す）', on: this.cameraMode === 'orbit', pick: () => this.setCameraMode('orbit') },
         { key: 'walk', text: 'ウォークスルー（歩く・飛ぶ）', on: this.cameraMode === 'walk', pick: () => this.setCameraMode('walk') },
+        ...(this.cameraMode === 'walk' ? [{ key: 'home', text: '倉庫の正面へ戻る', on: false, pick: () => this.walkHome() }] : []),
       ]),
       row(
         '焦点距離',
