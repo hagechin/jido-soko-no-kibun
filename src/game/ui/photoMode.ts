@@ -11,6 +11,8 @@ import { $, el, showToast } from './layout';
 
 const KEY = 'jido-soko-no-kibun:photo';
 const UI_KEY = 'jido-soko-no-kibun:photo-ui';
+/** 前回のカメラ（オービット／ウォークスルー）を覚える */
+const CAM_KEY = 'jido-soko-no-kibun:photo-camera';
 export const STARTUP_PHOTO_KEY = 'jido-soko-no-kibun:startup-photo';
 /** 起動画面に使う画像の長辺（localStorage に入れるので抑えめ） */
 const STARTUP_LONG_EDGE = 1600;
@@ -170,6 +172,14 @@ export class PhotoMode {
     this.renderPanel();
     this.updateMask();
     showToast('フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、Esc で眺めモードに戻る', 4000, 'camera', true);
+    // 前回ウォークスルーで出たなら、今回もウォークスルーから（視点は今のカメラから引き継ぐ）
+    let remembered: string | null = null;
+    try {
+      remembered = localStorage.getItem(CAM_KEY);
+    } catch {
+      /* ignore */
+    }
+    if (remembered === 'walk') this.setCameraMode('walk');
   }
 
   exit(): void {
@@ -197,7 +207,15 @@ export class PhotoMode {
     this.cameraMode = mode;
     this.host.setCameraMode(mode);
     this.renderPanel();
-    if (mode === 'walk') showToast('ウォークスルー: 左半分をドラッグで移動、右半分で見回す、2 本指の上下で上昇・下降（WASD・Q/E・Shift）', 4500, 'camera', true);
+    try {
+      localStorage.setItem(CAM_KEY, mode);
+    } catch {
+      /* ignore */
+    }
+    if (mode === 'walk') {
+      const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+      showToast(touch ? 'ウォークスルー: 左半分をドラッグで移動（遠くへ引くほど速く）、右半分で見回す、2 本指の上下で上昇・下降' : 'ウォークスルー: ドラッグで見回す、WASD で移動、Q/E で下降・上昇、Shift で速く、ホイールで前後', 4500, 'camera', true);
+    }
   }
 
   setMinimal(on: boolean): void {

@@ -28,9 +28,12 @@ const MOVE_KEYS: Record<string, [number, number]> = {
 };
 /** 目の高さの下限（床面から） */
 const MIN_Y = 0.35;
-/** 歩く速さ（ワールド単位/秒） */
-const WALK_SPEED = 3.5;
+/** 歩く速さ（ワールド単位/秒）。Shift で FAST 倍、タッチは始点から遠くへ引くほど速く（最大 STICK_MAX 倍） */
+const WALK_SPEED = 5;
 const FAST = 3;
+const STICK_MAX = 2;
+/** 2 本指の上下: 1px あたりの上昇・下降（ワールド単位） */
+const LIFT_PER_PX = 0.008;
 /** 見回す感度: 画面の高さいっぱいのドラッグで縦の画角 × LOOK_GAIN だけ回る（指の下の景色がついてくる感じ。望遠ほど細かく） */
 const LOOK_GAIN = 1.2;
 /** タッチの移動: ドラッグ量（px）→ 速さの倍率（画面の 1/4 で最大） */
@@ -154,7 +157,9 @@ export class WalkCamera {
     const fz = -Math.cos(this.yaw);
     const rx = Math.cos(this.yaw);
     const rz = -Math.sin(this.yaw);
-    const len = Math.max(1, Math.hypot(mx, mz));
+    // 方向は正規化し、タッチの引き具合（最大 STICK_MAX）だけ速くする
+    const mag = Math.hypot(mx, mz);
+    const len = mag > 0 ? mag / Math.min(STICK_MAX, Math.max(1, mag)) : 1;
     this.position.x += ((fx * mz + rx * mx) / len) * speed;
     this.position.z += ((fz * mz + rz * mx) / len) * speed;
     // 上を向いて前進すると上がる（飛ぶ感じ）
@@ -220,19 +225,20 @@ export class WalkCamera {
     if (this.pointers.size === 2) {
       const [a, b] = [...this.pointers.values()];
       const cy = (a.y + b.y) / 2;
-      this.position.y -= (cy - this.lastTwoY) * 0.02;
+      this.position.y -= (cy - this.lastTwoY) * LIFT_PER_PX;
       this.lastTwoY = cy;
       this.apply();
       return;
     }
     if (p.side === 'move') {
       // 仮想スティック: 始点からのずれで速さ（上下 = 前後、左右 = 横）
-      this.stick.x = Math.max(-1, Math.min(1, (p.x - p.startX) / STICK_PX));
-      this.stick.z = Math.max(-1, Math.min(1, -(p.y - p.startY) / STICK_PX));
+      this.stick.x = Math.max(-STICK_MAX, Math.min(STICK_MAX, (p.x - p.startX) / STICK_PX));
+      this.stick.z = Math.max(-STICK_MAX, Math.min(STICK_MAX, -(p.y - p.startY) / STICK_PX));
     } else {
+      // 指の下の景色がついてくる向き（オービットのドラッグと同じ。指を右へ → 景色も右へ）
       const k = this.lookSpeed();
-      this.yaw -= dx * k;
-      this.pitch -= dy * k;
+      this.yaw += dx * k;
+      this.pitch += dy * k;
       this.apply();
     }
   }

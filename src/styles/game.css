@@ -247,6 +247,9 @@ button {
   left: 50%;
   bottom: 12px;
   transform: translateX(-50%);
+  /* left: 50% の絶対配置は幅が右半分ぶんに縮むので、中身の幅で広げる（長い案内が 5 行に折れていた） */
+  width: max-content;
+  max-width: calc(100% - 24px);
   z-index: 12; /* シート（5〜7）より手前、モーダル（20）より奥 */
   pointer-events: none;
   display: flex;
@@ -1139,6 +1142,13 @@ body.is-photo .app {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  /* パネルをスクロールしても先頭の行（一時停止・設定を隠す・●・終了）は残す */
+  position: sticky;
+  top: -6px;
+  z-index: 1;
+  margin: -6px -10px 0;
+  padding: 6px 10px 4px;
+  background: rgba(20, 28, 38, 0.95);
 }
 .photo-title {
   display: inline-flex;
