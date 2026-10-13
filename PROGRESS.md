@@ -1352,3 +1352,10 @@ npm run preview   # http://localhost:4321 で確認
   - タッチ端末では入るときのトーストを「× で眺めモードに戻る」に（`isTouch()`）
 - 確認: headless（390×844）で walk の pose を設定 → Esc → 2.5 秒（AUTO）→ P → 同じ pose（3.2, 1.1, 7.7）・トースト 1 つ・● だけの画面に「倉庫の正面へ」・正面へで (20, 1.6, 30)・head の背景 rgb(21,29,39)・title の文字 display none。全 187 件
 - 第 27 回の依頼: 上の確認 4 件、実機 3 件（まだ未実施）、自動テスト
+## 1.0 リリース → 1.0.1 の準備（release/1.0）
+
+- 1.0 が App Store で公開された（2026-10-13）
+- 1.0.1 の中身: ビンが行方不明になる不具合の修正と整合性チェック（`0af4da4`、第 24 回のロボ全停止）、並べ替えの往復の修正、トーストの幅（`.toasts` が右半分の幅に縮んで長い案内が 5 行に折れていた CSS。フォトモードの第 25 回で見つけたものを移植）
+- `project.yml`: `MARKETING_VERSION 1.0.1` / `CURRENT_PROJECT_VERSION 2`。`STORE.md` に「このバージョンの新機能」の文面と「アップデートの手順」、`TESTPLAN.md` に M51（`fixtures/orphan-tshirt-save.json` を読み込むと「行方不明だったビン 2 個を棚に戻しました」が出て出荷が再開）
+- Opus の回帰: 第 24〜26 回（feature/photo-mode）のビルドは同じ修正を含み M1・M22・M44 が通っている。1.0.1 単独のラウンドは組まず、提出前に実機で M1・M3・M51 を見る
+- 次: ユーザーが `./ios/sync-web.sh` → `xcodegen generate` → 実機確認 → Archive → App Store Connect で 1.0.1 を作って提出。通ったら `v1.0.1` のタグ
