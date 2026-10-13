@@ -8,7 +8,7 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 |---|---|
 | Bundle ID | `jp.hatte.hakoniwa.ds`（`project.yml`。変えるなら StoreKit の商品 ID と `Products.storekit` も合わせる） |
 | 表示名 | 箱庭！DS（ホーム画面）。App Store 上の名前は「箱庭！ディストリビューション」 |
-| バージョン / ビルド | `MARKETING_VERSION 1.0.0` / `CURRENT_PROJECT_VERSION 1`（`project.yml`） |
+| バージョン / ビルド | `MARKETING_VERSION 1.0.1` / `CURRENT_PROJECT_VERSION 2`（`project.yml`。アップデートのたびに両方上げる） |
 | チーム | `project.yml` の `DEVELOPMENT_TEAM` にチーム ID を入れる（iCloud の KVS 識別子にチーム接頭辞が付く） |
 | 対応 OS | iOS 26 以降、iPhone / iPad |
 | 向き | iPhone: 縦・横、iPad: 全部 |
@@ -61,6 +61,13 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 - **キーワード**（100 文字以内、カンマ区切り）: `倉庫,物流,シミュレーション,放置,自動化,ロボット,箱庭,経営,ピッキング,AMR`
 - **プロモーションテキスト**（170 文字以内）: 棚ロボと搬送ロボで回る自動倉庫を育てて、眺める。通信なし・広告なしの買い切り型シミュレーション。
 - **新機能（1.0.0）**: 初回リリース
+- **新機能（1.0.1）**（App Store Connect の「このバージョンの新機能」に貼る）:
+
+```
+・まれに在庫のビンが行方不明になり、出荷が止まることがある不具合を修正しました。すでに起きている倉庫も、起動時に自動で元に戻します
+・並べ替えAIが 2 つの棚の間で同じビンを動かし続けることがある不具合を修正しました
+・長いお知らせが読みやすくなりました
+```
 
 ## 3. アプリ内課金（App Store Connect → 機能 → App 内課金）
 
@@ -140,6 +147,16 @@ xcrun simctl io booted screenshot ios/screenshots/01-main.png
 - 文字入りの加工（タイトル帯）は任意。無加工でも審査は通る
 
 ## 7. 提出チェックリスト
+
+### アップデート（1.0.1 以降）の手順
+
+1. `release/1.0` を `git pull`。`project.yml` のバージョンとビルド番号が上がっていることを確認（1.0.1 / 2）
+2. `./ios/sync-web.sh` → `ios/Web/BUILD_INFO` の commit が `release/1.0` の先端 → `cd ios && xcodegen generate`
+3. 実機で: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.0.1 (2)」、M51（行方不明のビンの回復）
+4. Product → Archive → Distribute → App Store Connect にアップロード
+5. App Store Connect → アプリ → 「＋」で新しいバージョン 1.0.1 → ビルドを選ぶ → 「このバージョンの新機能」に上の文面 → 審査に提出（課金・スクリーンショット・説明はそのまま。変更なしなら触らない）
+6. 審査が通ったら `release/1.0` に `v1.0.1` のタグを打ち、`PROGRESS.md` に記録
+
 
 - [ ] `DEVELOPMENT_TEAM` を設定し、実機で起動・課金（Sandbox）・iCloud を確認（`TESTPLAN.md` の D1〜D8）
 - [ ] `./ios/sync-web.sh` → `BUILD_INFO` が最新コミット

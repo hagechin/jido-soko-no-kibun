@@ -247,6 +247,9 @@ button {
   left: 50%;
   bottom: 12px;
   transform: translateX(-50%);
+  /* left: 50% の絶対配置は幅が右半分ぶんに縮むので、中身の幅で広げる（長い案内が 5 行に折れていた。1.0.1） */
+  width: max-content;
+  max-width: calc(100% - 24px);
   z-index: 12; /* シート（5〜7）より手前、モーダル（20）より奥 */
   pointer-events: none;
   display: flex;
