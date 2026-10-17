@@ -69,6 +69,8 @@ interface PhotoSnap extends PhotoSnapshot {
   alpha: number;
   cam: CameraPose;
 }
+import { applyTextSize, loadTextSize, loadTextSizeChoice, saveTextSize, TEXT_SIZES, type TextSize } from './ui/textSize';
+import { loadTutorialStep, shouldAutoStart, Tutorial, type TutorialSnapshot } from './ui/tutorial';
 import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
@@ -99,6 +101,10 @@ class Game {
   private selectedRobotId: number | null = null;
   /** オーダーの商品タップで選ばれた商品（スタックタップ時に直接そのビンを選ぶ） */
   private focusItem: string | null = null;
+  /** 文字の大きさ（1.0.2） */
+  private textSize: TextSize = loadTextSize();
+  /** チュートリアル（1.0.2）。構築は DOM が要るので constructor で */
+  private tutorial!: Tutorial;
   private highlightTimer = 0;
   private infoSig = '';
   private lastStockoutHint = 0;
@@ -202,6 +208,7 @@ class Game {
   private portPanelId: number | null = null;
 
   constructor() {
+    applyTextSize(this.textSize);
     const loaded = loadFromStorage();
     let offlineReport: ReturnType<typeof applyOffline> | null = null;
     if (loaded?.ok) {
@@ -456,6 +463,18 @@ class Game {
     });
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {
+        textSize: {
+          current: this.textSize,
+          set: (s) => {
+            this.setTextSize(s);
+            this.bar.refresh();
+          },
+        },
+        restartTutorial: () => {
+          this.bar.close();
+          this.tutorial.start(this.tutorialSnapshot(), 'pickOrder');
+          showToast('チュートリアルを最初から始めます', 2500, 'lightbulb');
+        },
         openHelp: () => this.openHelp(),
         background: this.backgroundMode,
         // iOS アプリでは OS に止められるので「バックグラウンド動作」は出さない（常にオフ: 戻ったときに追いつき／お留守番）
@@ -620,6 +639,50 @@ class Game {
       this.modal.show('サイバーウィーク成績表', cyberReportNode(rec, this.world.stats.cyberWeekRecords));
       this.world.season.pendingReport = null;
     }
+    this.tutorial = new Tutorial();
+    this.startOnboarding(!!loaded?.ok);
+  }
+
+  /** 1.0.2: 初回は文字の大きさを選んでもらい、続けてチュートリアル（既存のセーブは出荷が少ないときだけ） */
+  private startOnboarding(saveExisted: boolean): void {
+    const begin = () => {
+      if (shouldAutoStart(saveExisted, this.world.stats.totalShipped, loadTutorialStep())) this.tutorial.start(this.tutorialSnapshot());
+    };
+    if (loadTextSizeChoice() !== null || !$('modal').hidden) return begin();
+    const row = el('div', { class: 'settings-row text-size-pick' });
+    for (const t of TEXT_SIZES) {
+      const b = el('button', { class: `btn${t.id === 'normal' ? ' primary' : ''}`, type: 'button', text: t.name });
+      b.addEventListener('click', () => {
+        this.setTextSize(t.id);
+        this.modal.hide();
+        begin();
+      });
+      row.append(b);
+    }
+    this.modal.show('文字の大きさ', el('p', { text: '読みやすい大きさを選んでください。あとから設定（下のバーの「設定」）でいつでも変えられます。' }), row);
+  }
+
+  setTextSize(s: TextSize): void {
+    this.textSize = s;
+    saveTextSize(s);
+    applyTextSize(s);
+    this.renderer.resize();
+  }
+
+  /** チュートリアルの達成判定に渡す、いまの様子 */
+  private tutorialSnapshot(): TutorialSnapshot {
+    const w = this.world;
+    const r = this.selectedRobot;
+    const isManual = (j: { type: string; manual?: boolean } | null | undefined, types: string[]) => !!j && types.includes(j.type) && j.manual === true;
+    return {
+      selectedKind: r ? (r.kind === 'shelf' ? 'shelf' : 'amr') : null,
+      focusItem: this.focusItem !== null,
+      shelfManualJob: w.robots.some((x) => x.kind === 'shelf' && (isManual(x.job, ['retrieve']) || x.queue.some((j) => isManual(j, ['retrieve'])))),
+      amrManualJob: w.robots.some((x) => x.kind === 'amr' && (isManual(x.job, ['fetch', 'deliver']) || x.queue.some((j) => isManual(j, ['fetch', 'deliver'])))),
+      totalShipped: w.stats.totalShipped,
+      dispatch: w.automation.dispatch,
+      stacks: w.stacks.length,
+    };
   }
 
   /** フォトモードを開く（眺めモードの中の機能。眺めモードでなければ入ってから） */
@@ -740,6 +803,7 @@ class Game {
 
   /** アドバイザー（★）: 30 秒ごとに提案を確認し、新しい提案（または 3 分ぶり）ならトーストで知らせる */
   private checkAdvisor(now: number): void {
+    if (this.tutorial.active) return; // チュートリアル中はヒントを重ねない（終わったら「おすすめ」が引き継ぐ）
     if (now - this.lastHintCheck < ADVISOR.checkMs || this.world.speed === 0 || this.world.flags.buildMode) return;
     this.lastHintCheck = now;
     const hint = adviseNext(this.world, this.advisor, { drones: !native.available ? 'none' : hasFeature('specialRobots') ? 'available' : 'locked' });
@@ -954,6 +1018,7 @@ class Game {
     this.bar.close();
     this.save();
     showToast('新しい倉庫を始めました');
+    this.tutorial.start(this.tutorialSnapshot(), 'pickOrder');
   }
 
   setSpeed(s: number): void {
@@ -1300,6 +1365,7 @@ class Game {
         return;
       }
       this.lastRender = now;
+      this.tutorial.update(this.tutorialSnapshot());
       this.checkStockoutHint(now);
       this.checkAdvisor(now);
       this.hud.update(this.world);

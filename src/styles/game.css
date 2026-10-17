@@ -11,6 +11,8 @@
   --danger: #ff6b6b;
   --ok: #7bd389;
   --tap: 44px;
+  /* 文字の大きさ（ui/textSize.ts が html に付ける）。UI の各部分を zoom で拡大し、グリッドの高さもこの倍率で広げる */
+  --ui-scale: 1;
   --hud-h: 52px;
   --bar-h: 64px;
   --orders-w: 260px;
@@ -114,8 +116,8 @@ button {
   position: fixed;
   inset: 0;
   display: grid;
-  grid-template-columns: 1fr var(--orders-w);
-  grid-template-rows: calc(var(--hud-h) + var(--sa-top)) 1fr calc(var(--bar-h) + var(--sa-bottom));
+  grid-template-columns: 1fr calc(var(--orders-w) * var(--ui-scale));
+  grid-template-rows: calc(var(--hud-h) * var(--ui-scale) + var(--sa-top)) 1fr calc(var(--bar-h) * var(--ui-scale) + var(--sa-bottom));
   grid-template-areas:
     'hud orders'
     'view orders'
@@ -320,8 +322,8 @@ button {
 .sheet {
   position: absolute;
   right: 0;
-  bottom: calc(var(--bar-h) + var(--sa-bottom));
-  width: min(420px, 100%);
+  bottom: calc(var(--bar-h) * var(--ui-scale) + var(--sa-bottom));
+  width: min(calc(420px * var(--ui-scale)), 100%);
   max-height: 60%;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -373,7 +375,8 @@ button {
   }
   .app {
     grid-template-columns: 1fr;
-    grid-template-rows: calc(var(--hud-h) + var(--sa-top)) var(--orders-h) 1fr calc(var(--bar-h) + var(--sa-bottom));
+    /* 下のバーは 7 つのボタンが横に並ぶので、狭い画面では拡大を 1.2 倍までに抑える（1.4 だと両端が切れる） */
+    grid-template-rows: calc(var(--hud-h) * var(--ui-scale) + var(--sa-top)) calc(var(--orders-h) * var(--ui-scale)) 1fr calc(var(--bar-h) * min(var(--ui-scale), 1.2) + var(--sa-bottom));
     grid-template-areas:
       'hud'
       'orders'
@@ -655,7 +658,7 @@ button {
     position: fixed;
     left: calc(8px + var(--sa-left));
     right: calc(8px + var(--sa-right));
-    top: calc(var(--hud-h) + var(--sa-top) + 100px);
+    top: calc(var(--hud-h) * var(--ui-scale) + var(--sa-top) + 100px);
     width: auto;
     max-height: 60vh;
     overflow: auto;
@@ -1817,4 +1820,102 @@ kbd.key {
 body.is-photo .update-banner,
 body.is-photo .catchup {
   display: none !important;
+}
+/* ---------- 文字の大きさ（1.0.2） ---------- */
+/* 3D のビュー以外を zoom で拡大する。位置を px で計算している .popup は font-size だけ */
+.hud,
+.orders,
+.bottombar,
+.sheet-head,
+.sheet-body,
+.modal-card,
+.toasts,
+.mini-hud,
+.banner,
+.calm-suggest,
+.update-banner,
+.catchup,
+.view-overlay,
+.tutorial {
+  zoom: var(--ui-scale);
+}
+.popup {
+  font-size: calc(12px * var(--ui-scale));
+}
+.popup .btn {
+  font-size: calc(13px * var(--ui-scale));
+}
+
+/* ---------- チュートリアル（1.0.2） ---------- */
+.tutorial {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  width: min(460px, calc(100% - 20px));
+  background: rgba(20, 28, 38, 0.94);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 10px 12px 12px;
+  z-index: 9;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+.tutorial[hidden] {
+  display: none;
+}
+.tut-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+.tut-close {
+  margin-left: auto;
+}
+.tut-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 4px 0 2px;
+}
+.tut-body {
+  font-size: 14px;
+  line-height: 1.55;
+}
+.tut-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+/* 光らせる対象（下のバーのボタン、オーダー欄） */
+.tut-target {
+  animation: tut-pulse 1.2s ease-in-out infinite alternate;
+  border-radius: var(--radius);
+}
+@keyframes tut-pulse {
+  from {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  to {
+    box-shadow: 0 0 0 7px rgba(242, 201, 76, 0.15);
+  }
+}
+body.is-calm .tutorial,
+body.is-editing .tutorial,
+body.has-modal .tutorial {
+  display: none !important;
+}
+/* チュートリアルの間は季節の帯（同じ位置）を出さない */
+body.has-tutorial .banner {
+  display: none;
+}
+@media (max-width: 899px) {
+  .bottombar {
+    zoom: min(var(--ui-scale), 1.2);
+  }
+  .sheet {
+    bottom: calc(var(--bar-h) * min(var(--ui-scale), 1.2) + var(--sa-bottom));
+  }
 }

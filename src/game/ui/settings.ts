@@ -4,6 +4,7 @@ import { saveQuality, settingsFor, type QualityLevel } from '../render/quality';
 import { DIFFICULTY, DIFFICULTY_ORDER, ECONOMY_MODES, ECONOMY_ORDER, INBOUND_FREQ, INBOUND_FREQ_ORDER, INBOUND_LOAD, INBOUND_LOAD_ORDER, type DifficultyId, type EconomyId, type InboundFreqId, type InboundLoadId } from '../data/balance';
 import { el, showToast } from './layout';
 import { THEMES, type Skin, type Theme } from './cosmetics';
+import { TEXT_SIZES, type TextSize } from './textSize';
 
 /** 「最終セーブ」の表示（セーブのたびに main が更新する） */
 export function lastSavedText(at: number | null): string {
@@ -12,6 +13,10 @@ export function lastSavedText(at: number | null): string {
 
 export interface SettingsContext {
   quality: QualityLevel;
+  /** 文字の大きさ（1.0.2） */
+  textSize?: { current: TextSize; set: (s: TextSize) => void };
+  /** チュートリアルをもう一度 */
+  restartTutorial?: () => void;
   /** 追加セクション（眺めモードなど） */
   extra?: (body: HTMLElement) => void;
   saveNow: () => boolean;
@@ -51,10 +56,31 @@ export interface SettingsContext {
 }
 
 export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
-  if (ctx.openHelp) {
-    const help = el('button', { class: 'btn', type: 'button' }, iconText('info', '操作方法とショートカット（H）'));
-    help.addEventListener('click', () => ctx.openHelp!());
-    body.append(el('div', { class: 'settings-row' }, help));
+  if (ctx.textSize) {
+    const ts = ctx.textSize;
+    body.append(el('h4', { text: '文字の大きさ' }));
+    const row = el('div', { class: 'settings-row' });
+    for (const t of TEXT_SIZES) {
+      const b = el('button', { class: `btn${ts.current === t.id ? ' is-active' : ''}`, type: 'button', text: t.name, title: t.desc });
+      b.addEventListener('click', () => ts.set(t.id));
+      row.append(b);
+    }
+    body.append(row);
+    body.append(el('p', { class: 'muted small', text: '画面の文字とボタンをまとめて拡大します（3D の倉庫はそのまま）。' + (TEXT_SIZES.find((t) => t.id === ts.current)?.desc ?? '') }));
+  }
+  if (ctx.openHelp || ctx.restartTutorial) {
+    const row = el('div', { class: 'settings-row' });
+    if (ctx.openHelp) {
+      const help = el('button', { class: 'btn', type: 'button' }, iconText('info', '操作方法とショートカット（H）'));
+      help.addEventListener('click', () => ctx.openHelp!());
+      row.append(help);
+    }
+    if (ctx.restartTutorial) {
+      const tut = el('button', { class: 'btn', type: 'button' }, iconText('lightbulb', 'チュートリアルをもう一度'));
+      tut.addEventListener('click', () => ctx.restartTutorial!());
+      row.append(tut);
+    }
+    body.append(row);
   }
   if (ctx.setBackground) {
     body.append(el('h4', { text: 'バックグラウンド動作' }));
