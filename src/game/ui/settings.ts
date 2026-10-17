@@ -66,7 +66,7 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
       row.append(b);
     }
     body.append(row);
-    body.append(el('p', { class: 'muted small', text: '画面の文字とボタンをまとめて拡大します（3D の倉庫はそのまま）。' + (TEXT_SIZES.find((t) => t.id === ts.current)?.desc ?? '') }));
+    body.append(el('p', { class: 'muted small', text: '画面の文字とボタンの大きさ（3D の倉庫はそのまま）。いま: ' + (TEXT_SIZES.find((t) => t.id === ts.current)?.desc ?? '') }));
   }
   if (ctx.openHelp || ctx.restartTutorial) {
     const row = el('div', { class: 'settings-row' });
