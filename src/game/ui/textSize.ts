@@ -7,7 +7,7 @@ export type TextSize = 'small' | 'normal' | 'large' | 'xlarge';
 
 export const TEXT_SIZES: { id: TextSize; name: string; scale: number; desc: string }[] = [
   { id: 'small', name: '小', scale: 0.9, desc: '画面を広く使いたいとき' },
-  { id: 'normal', name: '標準', scale: 1, desc: '' },
+  { id: 'normal', name: '標準', scale: 1, desc: '標準の大きさ' },
   { id: 'large', name: '大', scale: 1.2, desc: '文字が約 1.2 倍' },
   { id: 'xlarge', name: '特大', scale: 1.4, desc: '文字が約 1.4 倍。パネルは縦に長くなります' },
 ];

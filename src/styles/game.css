@@ -346,6 +346,7 @@ button {
 }
 .sheet-body {
   overflow: auto;
+  min-height: 0; /* flex の子が縮めず、中身がシートの下端を越えて下のバーの裏に出ていた（第 28 回: 隠れたボタンのタップがバーに抜ける） */
   padding: 10px;
   -webkit-overflow-scrolling: touch;
 }
@@ -1906,6 +1907,69 @@ body.is-calm .tutorial,
 body.is-editing .tutorial,
 body.has-modal .tutorial {
   display: none !important;
+}
+/* カードが出ている間はカメラのリセットのボタン（右上）が裏に隠れるので消す。1 行に縮めている間は出す */
+body.has-tutorial .view-overlay {
+  display: none;
+}
+body.has-tutorial .tutorial.is-compact ~ .view-overlay,
+body.has-tutorial:has(.tutorial.is-compact) .view-overlay {
+  display: flex;
+}
+/* パネル・建設・拡大した注文票の間: 左上に 1 行だけ（操作を覆わない） */
+.tutorial.is-compact {
+  left: 10px;
+  top: auto;
+  bottom: 12px; /* 拡大した注文票（上寄り）と重ならないよう、縮めている間は左下に */
+  transform: none;
+  width: auto;
+  max-width: calc(100% - 80px);
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tutorial.is-compact .tut-body,
+.tutorial.is-compact .tut-actions,
+.tutorial.is-compact .tut-count {
+  display: none;
+}
+.tutorial.is-compact .tut-title {
+  order: 1;
+  font-size: 13px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tutorial.is-compact .tut-head {
+  order: 2;
+}
+.tutorial.is-compact .tut-close {
+  min-width: 32px;
+  min-height: 32px;
+}
+body:has(.tutorial.is-compact) .toasts {
+  bottom: 64px; /* 左下の 1 行と重ならないように */
+}
+/* iPad の「大」「特大」: HUD が 1 列に収まらない（評判と日付が重なり 4x が隠れる）ので、スマホと同じく倉庫名を省き速度は 1 ボタンに */
+@media (max-width: 1199px) {
+  :root[data-text-size='large'] .speed-btn[data-speed='1'],
+  :root[data-text-size='large'] .speed-btn[data-speed='2'],
+  :root[data-text-size='large'] .speed-btn[data-speed='4'],
+  :root[data-text-size='xlarge'] .speed-btn[data-speed='1'],
+  :root[data-text-size='xlarge'] .speed-btn[data-speed='2'],
+  :root[data-text-size='xlarge'] .speed-btn[data-speed='4'] {
+    display: none;
+  }
+  :root[data-text-size='large'] #speed-cycle,
+  :root[data-text-size='xlarge'] #speed-cycle {
+    display: inline-flex;
+  }
+  :root[data-text-size='large'] .hud-item.rank-name b,
+  :root[data-text-size='xlarge'] .hud-item.rank-name b {
+    display: none;
+  }
 }
 /* チュートリアルの間は季節の帯（同じ位置）を出さない */
 body.has-tutorial .banner {
