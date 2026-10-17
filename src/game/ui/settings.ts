@@ -212,7 +212,7 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     if (ctx.saveLocal) {
       const loc = el('button', { class: 'btn', type: 'button' }, iconText('save', '本体に保存（ファイル App）'));
       loc.addEventListener('click', () => ctx.saveLocal!());
-      body.append(el('div', { class: 'settings-row' }, loc), el('p', { class: 'muted small', text: 'ファイル App の「このiPhone内 › 箱庭！DS」に jido-soko-save-日時.json を置きます。読み込みは「ファイルから読み込み」でそのファイルを選ぶ' }));
+      body.append(el('div', { class: 'settings-row' }, loc), el('p', { class: 'muted small', text: 'ファイル App の「このiPhone内 › 箱庭！DS」に hako-dis-save-日時.json を置きます。読み込みは「ファイルから読み込み」でそのファイルを選ぶ' }));
     }
     const ex = el('button', { class: 'btn', type: 'button' }, iconText('upload', ctx.saveLocal ? '共有（AirDrop・iCloud など）' : 'ファイルに書き出し'));
     ex.addEventListener('click', () => ctx.exportSave!());

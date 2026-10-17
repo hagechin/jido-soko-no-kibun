@@ -1268,3 +1268,10 @@ npm run preview   # http://localhost:4321 で確認
 - 直したこと: `UIFileSharingEnabled` + `LSSupportsOpeningDocumentsInPlace` でファイル App に「このiPhone内 › 箱庭！DS」を出す。設定の「セーブ」に「本体に保存（ファイル App）」（ブリッジ `saveFileLocal` → Documents 直下に `jido-soko-save-日時.json`）。従来の共有シートは「共有（AirDrop・iCloud など）」に改名
 - 本体のセーブは Documents/saves から **Library/Application Support/saves** へ（ファイル App に見せない。初回起動で移す `migrateFromDocuments`、空になった古いフォルダは消す）
 - TESTPLAN M54、STORE.md の新機能と §1。Swift はこの環境で compile できないので実機で（M3 の「続きから」と M54）
+
+---
+
+## 1.0.1: 書き出すセーブのファイル名を `hako-dis-save-日時.json` に（実機の感想: 開発コード名のままだった）
+
+- `exportFileName()`・設定の説明・TESTPLAN M54/D9 を変更。読み込みはファイル名を見ないので古い名前のファイルも読める
+- ファイル App に「箱庭！DS」フォルダが出ない件: `project.yml` の変更（`UIFileSharingEnabled`）は `xcodegen generate` を通さないと Info.plist に入らない。generate し直して確認を依頼
