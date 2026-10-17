@@ -47,6 +47,9 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
+        # ファイル App の「このiPhone内」に「箱庭！DS」フォルダを出す（書き出したセーブの置き場。本体のセーブは Application Support で見えない）
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:

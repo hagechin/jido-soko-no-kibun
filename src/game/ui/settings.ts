@@ -24,6 +24,8 @@ export interface SettingsContext {
   setQuality: (q: QualityLevel) => void;
   exportSave?: () => void;
   importSave?: (file: File) => void;
+  /** iOS アプリ: 本体（ファイル App の「このiPhone内 › 箱庭！DS」）に保存 */
+  saveLocal?: () => void;
   /** iOS アプリ: クリップボード経由の書き出し／読み込み（共有シートが出ないときの逃げ道） */
   copySave?: () => void;
   pasteSave?: () => void;
@@ -207,7 +209,12 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
   body.append(el('div', { class: 'settings-row' }, saveBtn, el('span', { class: 'muted small', id: 'last-saved', text: lastSavedText(ctx.lastSavedAt) })));
   if (ctx.buildInfo) body.append(el('p', { class: 'muted small', text: ctx.buildInfo }));
   if (ctx.exportSave) {
-    const ex = el('button', { class: 'btn', type: 'button' }, iconText('upload', 'ファイルに書き出し'));
+    if (ctx.saveLocal) {
+      const loc = el('button', { class: 'btn', type: 'button' }, iconText('save', '本体に保存（ファイル App）'));
+      loc.addEventListener('click', () => ctx.saveLocal!());
+      body.append(el('div', { class: 'settings-row' }, loc), el('p', { class: 'muted small', text: 'ファイル App の「このiPhone内 › 箱庭！DS」に jido-soko-save-日時.json を置きます。読み込みは「ファイルから読み込み」でそのファイルを選ぶ' }));
+    }
+    const ex = el('button', { class: 'btn', type: 'button' }, iconText('upload', ctx.saveLocal ? '共有（AirDrop・iCloud など）' : 'ファイルに書き出し'));
     ex.addEventListener('click', () => ctx.exportSave!());
     const im = el('label', { class: 'btn' }, iconText('download', 'ファイルから読み込み'));
     const input = el('input', { type: 'file', accept: 'application/json,.json', hidden: true });

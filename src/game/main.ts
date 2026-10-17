@@ -68,7 +68,7 @@ import { renderDebug } from './ui/debugPanel';
 import { refreshRobotListStatus, renderRobotList } from './ui/robotList';
 import { isCyberWeek } from './sim/events';
 import { visibleOrders } from './sim/orders';
-import { copySaveToClipboard, exportSaveFile, importSaveFile, importSaveFromClipboard } from './ui/storage';
+import { copySaveToClipboard, exportSaveFile, importSaveFile, importSaveFromClipboard, saveSaveFileLocal } from './ui/storage';
 import type { QualityLevel } from './render/quality';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
@@ -387,6 +387,13 @@ class Game {
           : undefined,
         openSandbox: hasFeature('sandbox') ? () => this.bar.show('debug') : undefined,
         featureStatus: () => featureStatusNode(),
+        saveLocal: native.available
+          ? () => {
+              void saveSaveFileLocal(this.world)
+                .then((name) => showToast(`ファイル App の「このiPhone内 › 箱庭！DS」に保存しました: ${name}`, 5000, 'check'))
+                .catch((e) => showToast(`保存できませんでした: ${e instanceof Error ? e.message : String(e)}`, 4000, 'triangle-alert'));
+            }
+          : undefined,
         exportSave: () => {
           void exportSaveFile(this.world).then((err) => {
             if (err) showToast(`書き出せませんでした: ${err}`, 5000, 'triangle-alert');

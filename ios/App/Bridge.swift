@@ -68,6 +68,11 @@ final class Bridge {
         case "haptic":
             Haptics.play(kind: p["kind"] as? String ?? "light")
             return true
+        case "saveFileLocal":
+            // セーブの書き出し（本体へ）: ファイル App の「このiPhone内 › 箱庭！DS」に置く（共有シートの「ファイルに保存」は
+            // 「このiPhone内」の直下に置けず、フォルダが無いと保存できなかった）
+            guard let name = p["name"] as? String, let text = p["text"] as? String else { throw BridgeError.badParams }
+            return ["name": try SaveStore.writeToDocuments(name: name, text: text)]
         case "shareFile":
             // セーブの書き出し: WKWebView は blob: の <a download> を扱えない（遷移をキャンセルしている）ので、
             // 一時ファイルに書いて共有シート（「ファイルに保存」「AirDrop」など）を出す。出した時点で true

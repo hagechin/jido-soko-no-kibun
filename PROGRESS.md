@@ -1259,3 +1259,12 @@ npm run preview   # http://localhost:4321 で確認
   - `.sheet-body { min-height: 0 }`: flex の子が縮まずシートの下端を越えて下のバーの裏に出ていた（隠れたボタンのタップがバーの「眺める」に抜ける。1.0 からあった）
   - 「標準」の説明文。TESTPLAN M51 を 16 個に、M52・M53 を更新
 - 確認: headless 390×844 で注文票を拡大 → カードが 1 行（50px）に → 商品がタップでき 2/6 へ、設定を開いても 1 行。既存セーブ（?demo）はモーダル無しでトースト。1032px 幅の特大で 4x 非表示・速度 1 ボタン・倉庫名なし、HUD の右端 668 に収まる。モーダル中 9 秒待っても「おすすめ」なし。全 190 件
+
+---
+
+## 1.0.1: セーブを本体に保存できない（実機の感想）
+
+- 共有シートの「ファイルに保存」は「このiPhone内」の直下には置けず、アプリのフォルダも無いので保存先が無かった
+- 直したこと: `UIFileSharingEnabled` + `LSSupportsOpeningDocumentsInPlace` でファイル App に「このiPhone内 › 箱庭！DS」を出す。設定の「セーブ」に「本体に保存（ファイル App）」（ブリッジ `saveFileLocal` → Documents 直下に `jido-soko-save-日時.json`）。従来の共有シートは「共有（AirDrop・iCloud など）」に改名
+- 本体のセーブは Documents/saves から **Library/Application Support/saves** へ（ファイル App に見せない。初回起動で移す `migrateFromDocuments`、空になった古いフォルダは消す）
+- TESTPLAN M54、STORE.md の新機能と §1。Swift はこの環境で compile できないので実機で（M3 の「続きから」と M54）

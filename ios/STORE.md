@@ -15,6 +15,7 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 | 暗号化 | `ITSAppUsesNonExemptEncryption = false`（独自の暗号化なし） |
 | プライバシーマニフェスト | `PrivacyInfo.xcprivacy`: トラッキングなし、収集データなし、必須理由 API なし |
 | Capability | iCloud → Key-Value storage（`HakoniwaDS.entitlements`）、In-App Purchase（自動） |
+| ファイル App | `UIFileSharingEnabled` + `LSSupportsOpeningDocumentsInPlace`: 「このiPhone内 › 箱庭！DS」に書き出したセーブを置く（本体のセーブは Application Support） |
 | 同梱 Web | 提出前に `./ios/sync-web.sh`（`ios/Web/BUILD_INFO` のコミットを確認）→ `xcodegen generate` → Archive |
 
 ## 2. App 情報
@@ -68,6 +69,7 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 ・はじめての方向けに、最初の 6 ステップを案内するチュートリアルを追加しました（設定からやり直せます）
 ・まれに在庫のビンが行方不明になり、出荷が止まることがある不具合を修正しました。すでに起きている倉庫も、起動時に自動で元に戻します
 ・並べ替えAIが 2 つの棚の間で同じビンを動かし続けることがある不具合を修正しました
+・セーブデータを本体（ファイル App の「箱庭！DS」フォルダ）に保存できるようになりました
 ・長いお知らせが読みやすくなりました
 ```
 
@@ -154,7 +156,7 @@ xcrun simctl io booted screenshot ios/screenshots/01-main.png
 
 1. `release/1.0` を `git pull`。`project.yml` のバージョンとビルド番号が上がっていることを確認（1.0.1 / 2）
 2. `./ios/sync-web.sh` → `ios/Web/BUILD_INFO` の commit が `release/1.0` の先端 → `cd ios && xcodegen generate`
-3. 実機で: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.0.1 (2)」、M51（行方不明のビンの回復）、M52（文字の大きさ）、M53（チュートリアル。「新しく始める」で出る）
+3. 実機で: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.0.1 (2)」、M51（行方不明のビンの回復）、M52（文字の大きさ）、M53（チュートリアル。「新しく始める」で出る）、M54（本体に保存 → ファイル App に「箱庭！DS」フォルダ）
 4. Product → Archive → Distribute → App Store Connect にアップロード
 5. App Store Connect → アプリ → 「＋」で新しいバージョン 1.0.1 → ビルドを選ぶ → 「このバージョンの新機能」に上の文面 → 審査に提出（課金・スクリーンショット・説明はそのまま。変更なしなら触らない）
 6. 審査が通ったら `release/1.0` に `v1.0.1` のタグを打ち、`PROGRESS.md` に記録
