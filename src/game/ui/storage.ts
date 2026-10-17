@@ -106,6 +106,14 @@ export async function exportSaveFile(w: WorldState): Promise<string | null> {
   return null;
 }
 
+/** iOS: セーブをファイル App の「このiPhone内 › 箱庭！DS」に置く。置いたファイル名を返す。失敗したら Error */
+export async function saveSaveFileLocal(w: WorldState): Promise<string> {
+  const text = serialize(w);
+  const name = exportFileName();
+  const r = (await native.call('saveFileLocal', { name, text }, 10_000)) as { name?: string } | null;
+  return r?.name ?? name;
+}
+
 /** セーブをクリップボードへ（iOS で共有シートが使えないときの逃げ道。メモや「ファイル」に貼り付けて保管できる）。失敗したら理由 */
 export async function copySaveToClipboard(w: WorldState): Promise<string | null> {
   try {
