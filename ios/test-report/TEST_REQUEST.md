@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 29
-- status: requested
+- status: reported
 - branch: release/1.0 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。第 28 回と同じ手順）
 - commit: `release/1.0` の先端（`7f51e8b` 以降）
 - requested-at: 2026-10-17
