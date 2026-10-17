@@ -94,6 +94,8 @@ class Game {
   private textSize: TextSize = loadTextSize();
   /** チュートリアル（1.0.2）。構築は DOM が要るので constructor で */
   private tutorial!: Tutorial;
+  /** 初回の「文字の大きさ」を選んでいる間（「おすすめ」のヒントを出さない） */
+  private onboardingPending = false;
   private highlightTimer = 0;
   private infoSig = '';
   private lastStockoutHint = 0;
@@ -498,11 +500,19 @@ class Game {
       if (shouldAutoStart(saveExisted, this.world.stats.totalShipped, loadTutorialStep())) this.tutorial.start(this.tutorialSnapshot());
     };
     if (loadTextSizeChoice() !== null || !$('modal').hidden) return begin();
+    if (saveExisted) {
+      // 既存のプレイヤーにはモーダルを出さず、設定に増えたことだけ知らせる（選択は「標準」として記録）
+      saveTextSize(this.textSize);
+      setTimeout(() => showToast('設定に「文字の大きさ」を追加しました（下のバーの「設定」の先頭）', 6000, 'info'), 1500);
+      return begin();
+    }
+    this.onboardingPending = true;
     const row = el('div', { class: 'settings-row text-size-pick' });
     for (const t of TEXT_SIZES) {
       const b = el('button', { class: `btn${t.id === 'normal' ? ' primary' : ''}`, type: 'button', text: t.name });
       b.addEventListener('click', () => {
         this.setTextSize(t.id);
+        this.onboardingPending = false;
         this.modal.hide();
         begin();
       });
@@ -531,6 +541,7 @@ class Game {
       totalShipped: w.stats.totalShipped,
       dispatch: w.automation.dispatch,
       stacks: w.stacks.length,
+      uiBusy: this.bar.open !== null || w.flags.buildMode || !!document.querySelector('.order-card.is-expanded'),
     };
   }
 
@@ -642,7 +653,7 @@ class Game {
 
   /** アドバイザー（★）: 30 秒ごとに提案を確認し、新しい提案（または 3 分ぶり）ならトーストで知らせる */
   private checkAdvisor(now: number): void {
-    if (this.tutorial.active) return; // チュートリアル中はヒントを重ねない（終わったら「おすすめ」が引き継ぐ）
+    if (this.tutorial.active || this.onboardingPending) return; // チュートリアル中（と最初の文字の大きさの選択中）はヒントを重ねない
     if (now - this.lastHintCheck < ADVISOR.checkMs || this.world.speed === 0 || this.world.flags.buildMode) return;
     this.lastHintCheck = now;
     const hint = adviseNext(this.world, this.advisor, { drones: !native.available ? 'none' : hasFeature('specialRobots') ? 'available' : 'locked' });
