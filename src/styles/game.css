@@ -1618,6 +1618,34 @@ kbd.key {
 .tutorial[hidden] {
   display: none;
 }
+/* コインのメニュー（縦並び） */
+.popup.is-column {
+  flex-direction: column;
+  align-items: stretch;
+  width: min(360px, calc(100vw - 16px));
+}
+.popup.is-column .popup-item {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  min-height: var(--tap);
+  padding: 8px 10px;
+}
+.popup-menu-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.popup-menu-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.popup-menu-sub {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
 .tut-head {
   display: flex;
   align-items: center;

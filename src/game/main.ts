@@ -9,7 +9,7 @@ import { createWorld } from './sim/world';
 import { createRuntime, stepSim, type Runtime } from './sim/sim';
 import { adviseNext, createAdvisorStats, sampleAdvisor, type AdvisorStats, type Hint } from './sim/advisor';
 import { ADVISOR } from './data/balance';
-import { iconText, type IconName } from './ui/icon';
+import { icon, iconText, type IconName } from './ui/icon';
 import type { NoticeIcon } from './sim/types';
 
 /** sim のお知らせ種別 → アイコン */
@@ -217,7 +217,10 @@ class Game {
       this.cameraTouched = true;
       if (this.calm.active && this.calm.settings.camera === 'auto') this.calm.exit();
     };
-    this.hud = new Hud((s) => this.setSpeed(s));
+    this.hud = new Hud(
+      (s) => this.setSpeed(s),
+      (x, y) => this.openCoinMenu(x, y),
+    );
     this.bar = new BottomBar();
     this.orders = new OrderSheet();
     this.popup = new Popup();
@@ -550,6 +553,19 @@ class Game {
       stacks: w.stacks.length,
       uiBusy: this.bar.open !== null || w.flags.buildMode || !!document.querySelector('.order-card.is-expanded'),
     };
+  }
+
+  /** HUD のコインをタップ → 使い道のメニュー（建設／強化。いまの「おすすめ」があれば先頭に）。1.0.2 */
+  private openCoinMenu(x: number, y: number): void {
+    if (this.calm.active || this.editor.open) return;
+    if (this.popup.visible) return this.popup.hide();
+    const item = (ic: IconName, label: string, sub: string) => el('span', { class: 'popup-menu-item' }, el('span', { class: 'popup-menu-label' }, icon(ic, 16), el('b', { text: ' ' + label })), el('span', { class: 'popup-menu-sub', text: sub }));
+    const items: { node: Node; onPick: () => void }[] = [];
+    const hint = this.currentHint;
+    if (hint) items.push({ node: item('lightbulb', 'おすすめ', hint.text), onPick: () => this.bar.toggle(hint.panel) });
+    items.push({ node: item('hammer', '建設（B）', 'スタック・ポート・ピッカー・入荷ステーションを増やす。倉庫を広げる'), onPick: () => this.bar.toggle('build') });
+    items.push({ node: item('trending-up', '強化（U）', 'ロボを買う・速くする、自動化AI、空ビンの追加'), onPick: () => this.bar.toggle('upgrades') });
+    this.popup.show(x, y, items, `コイン ${Math.floor(this.world.coins).toLocaleString('ja-JP')}: 出荷の報酬。何に使う？`, { column: true });
   }
 
   /** 操作方法のモーダル */
