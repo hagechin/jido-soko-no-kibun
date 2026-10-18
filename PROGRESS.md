@@ -1408,3 +1408,16 @@ npm run preview   # http://localhost:4321 で確認
 
 - `exportFileName()`・設定の説明・TESTPLAN M54/D9 を変更。読み込みはファイル名を見ないので古い名前のファイルも読める
 - ファイル App に「箱庭！DS」フォルダが出ない件: `project.yml` の変更（`UIFileSharingEnabled`）は `xcodegen generate` を通さないと Info.plist に入らない。generate し直して確認を依頼
+
+---
+
+## 1.0.1 を App Store に提出（release/1.0 `0011aa7`、1.0.1 ビルド 2）
+
+- 実機で本体への保存（ファイル App の「箱庭！DS」フォルダ）と続きからの起動を確認 → 提出
+- 審査が通ったら `v1.0.1` のタグ。次は 1.0.2 候補（チュートリアルの軽微な気づき）と 1.1（フォトモード・日英・Steam の枠）
+
+---
+
+## 1.0.1 審査通過（2026-10-18）
+
+- `v1.0.1` のタグを `0011aa7`（提出したビルドのコード）に。Web 版（main）は `feature/photo-mode`（1.0.1 の内容 + フォトモード）を反映
