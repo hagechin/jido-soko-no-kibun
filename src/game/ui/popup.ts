@@ -13,8 +13,9 @@ export class Popup {
     });
   }
 
-  show(clientX: number, clientY: number, items: { node: Node; onPick: () => void }[], title?: string): void {
+  show(clientX: number, clientY: number, items: { node: Node; onPick: () => void }[], title?: string, opts: { column?: boolean } = {}): void {
     this.root.replaceChildren();
+    this.root.classList.toggle('is-column', !!opts.column);
     if (title) this.root.append(el('div', { class: 'popup-title', text: title }));
     for (const it of items) {
       const b = el('button', { class: 'btn popup-item', type: 'button' }, it.node);

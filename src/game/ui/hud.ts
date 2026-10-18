@@ -34,10 +34,16 @@ export class Hud {
   private lastWorld: WorldState | null = null;
   private lastNonZeroSpeed = 1;
 
-  constructor(onSpeed: (speed: number) => void) {
-    // ★ 各アイコンはタップで説明（iOS ではホバーの説明が見えない）
+  constructor(onSpeed: (speed: number) => void, onCoinsTap?: (clientX: number, clientY: number) => void) {
+    // ★ 各アイコンはタップで説明（iOS ではホバーの説明が見えない）。コインは「何に使う？」のメニュー（1.0.2。使い方が分からないという感想）
+    if (onCoinsTap) {
+      const c = $('hud-coins');
+      c.style.cursor = 'pointer';
+      c.title = 'コイン: タップで使い道（建設・強化）';
+      c.addEventListener('click', (e) => onCoinsTap(e.clientX, e.clientY));
+    }
     const explain: [HTMLElement, () => string][] = [
-      [$('hud-coins'), () => 'コイン: 出荷の報酬。ロボ・設備・強化に使います'],
+      ...(onCoinsTap ? [] : ([[$('hud-coins'), () => 'コイン: 出荷の報酬。ロボ・設備・強化に使います']] as [HTMLElement, () => string][])),
       [$('hud-rank'), () => '倉庫ランク: 累計出荷で昇格し、新商品や設備が解放されます（難易度・経済モードも表示）'],
       [$('hud-rep'), () => '評判: 速い出荷で上がり、遅延や溜まりすぎで下がります。高いほど客が増えます'],
       [this.sandbox, () => 'SB: サンドボックスを使ったセーブの印（正規の進行ではありません。新しく始めると消えます）'],
