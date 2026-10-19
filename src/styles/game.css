@@ -694,7 +694,7 @@ button {
 /* ---------- ポップアップ・選択情報 ---------- */
 .popup-title {
   width: 100%;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   color: var(--muted);
   padding: 2px 4px;
 }
@@ -1626,6 +1626,7 @@ kbd.key {
 }
 .popup.is-column .popup-item {
   justify-content: flex-start;
+  align-items: stretch; /* .popup-item は縦並びなので、中身が短い行（強化）だけ中央に寄っていた */
   text-align: left;
   white-space: normal;
   min-height: var(--tap);
@@ -1635,6 +1636,7 @@ kbd.key {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  width: 100%;
 }
 .popup-menu-label {
   display: inline-flex;
@@ -1642,7 +1644,7 @@ kbd.key {
   gap: 4px;
 }
 .popup-menu-sub {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale));
   color: var(--muted);
   line-height: 1.4;
 }

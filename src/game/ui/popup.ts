@@ -13,7 +13,11 @@ export class Popup {
     });
   }
 
-  show(clientX: number, clientY: number, items: { node: Node; onPick: () => void }[], title?: string, opts: { column?: boolean } = {}): void {
+  /**
+   * @param opts.column 縦並びのメニュー（コインの使い道）
+   * @param opts.below タップ位置の下に出す（既定は上）。画面上端の HUD から開くメニュー用
+   */
+  show(clientX: number, clientY: number, items: { node: Node; onPick: () => void }[], title?: string, opts: { column?: boolean; below?: boolean } = {}): void {
     this.root.replaceChildren();
     this.root.classList.toggle('is-column', !!opts.column);
     if (title) this.root.append(el('div', { class: 'popup-title', text: title }));
@@ -26,11 +30,15 @@ export class Popup {
       this.root.append(b);
     }
     this.root.hidden = false;
-    // 画面内に収める
+    // 画面内に収める。上端はセーフエリア（ステータスバー・Dynamic Island）の下から（HUD の padding-top が --sa-top）
     const app = $('app').getBoundingClientRect();
     const r = this.root.getBoundingClientRect();
+    const safeTop = parseFloat(getComputedStyle($('hud')).paddingTop) || 0;
+    const minY = safeTop + 8;
+    const maxY = Math.max(minY, app.height - r.height - 8);
     const x = Math.min(Math.max(8, clientX - r.width / 2), app.width - r.width - 8);
-    const y = Math.min(Math.max(8, clientY - r.height - 12), app.height - r.height - 8);
+    const wantY = opts.below ? clientY + 6 : clientY - r.height - 12;
+    const y = Math.min(Math.max(minY, wantY), maxY);
     this.root.style.left = `${x}px`;
     this.root.style.top = `${y}px`;
   }
