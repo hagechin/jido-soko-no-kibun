@@ -1436,3 +1436,12 @@ npm run preview   # http://localhost:4321 で確認
 - 5/6: 強化パネルを開くと「自動化 AI」の見出しまで自動スクロール（`tutorialAssist`）。6/6: 建設でスタックを選んでいる間、置けるマス（`canPlace` が null。棚かポートの 4 近傍だけ調べる）を緑に光らせ、置いたら消す。6/6 の本文を「置けるマスが緑に光ります」に
 - headless: 5/6 で scrollTop 919（見出しが上に）、6/6 で 14 マスが光り、置くと完了・光が消える
 - `project.yml` 1.0.2 / ビルド 3。`STORE.md` に新機能（1.0.2）2 行と手順、TESTPLAN M56
+
+---
+
+## 第 30 回（1.0.2 の確認、release/1.0 `0405423`）→ 直し
+
+- Opus の報告: 自動テスト 17 件 OK、M56（自動スクロール・緑のマス）OK、M1・M3（1.0.1 のセーブの上に入れる）OK。**NG: コインのメニューの先頭の行がステータスバーに隠れる**（標準・特大とも）。軽微: 「強化（U）」だけ約 8pt 右にずれる、特大で説明文が大きくならない
+- 直し（release/1.0）: `Popup.show` の上端をセーフエリア（`#hud` の padding-top = `--sa-top`）の下に。コインのメニューは `{ below: true }` で **HUD の下端から下に**出す（`openCoinMenu` の y に HUD の bottom を渡す）。`.popup.is-column .popup-item { align-items: stretch }`（`.popup-item` は縦並びの flex なので短い中身が中央に寄っていた）、`.popup-title` と `.popup-menu-sub` の font-size を `--ui-scale` 倍に
+- headless（390×844、`--sa-top: 59px` を模擬）: 標準で top 113（HUD 下端 107）、特大で top 132（HUD 下端 126）、見出し・説明文の左端がそろう（26px）、特大の説明文 15.4px
+- 残り（1.0.2 では見送り）: 6/6 のトーストが緑のマスに一時的にかぶる、建設パネル中の 1 行カードが説明文に重なる、「眺める」と「眺めモード」の呼び方

@@ -371,7 +371,7 @@ class Game {
     };
     this.hud = new Hud(
       (s) => this.setSpeed(s),
-      (x, y) => this.openCoinMenu(x, y),
+      (x) => this.openCoinMenu(x, $('hud').getBoundingClientRect().bottom), // HUD の下端から下に出す（上端はステータスバーに隠れる）
     );
     this.bar = new BottomBar();
     this.orders = new OrderSheet();
@@ -767,7 +767,7 @@ class Game {
     if (hint) items.push({ node: item('lightbulb', 'おすすめ', hint.text), onPick: () => this.bar.toggle(hint.panel) });
     items.push({ node: item('hammer', '建設（B）', 'スタック・ポート・ピッカー・入荷ステーションを増やす。倉庫を広げる'), onPick: () => this.bar.toggle('build') });
     items.push({ node: item('trending-up', '強化（U）', 'ロボを買う・速くする、自動化AI、空ビンの追加'), onPick: () => this.bar.toggle('upgrades') });
-    this.popup.show(x, y, items, `コイン ${Math.floor(this.world.coins).toLocaleString('ja-JP')}: 出荷の報酬。何に使う？`, { column: true });
+    this.popup.show(x, y, items, `コイン ${Math.floor(this.world.coins).toLocaleString('ja-JP')}: 出荷の報酬。何に使う？`, { column: true, below: true });
   }
 
   /** 操作方法のモーダル */
