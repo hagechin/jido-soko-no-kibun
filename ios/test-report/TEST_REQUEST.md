@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 31
-- status: requested
+- status: reported
 - branch: release/1.0 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。第 28・29 回と同じ手順）
 - commit: `release/1.0` の先端 `c01e53a` 以降（1.0.2 / ビルド 3 のまま。第 30 回の NG の直し）
 - requested-at: 2026-10-19（第 31 回）
