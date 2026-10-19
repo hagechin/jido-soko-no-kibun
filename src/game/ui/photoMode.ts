@@ -35,6 +35,9 @@ const BURST_MAX = 20;
 export type PhotoCameraMode = 'orbit' | 'walk';
 
 /** ある瞬間の記録（世界と予約表の写し、カメラの位置、補間位置）。中身は main が作る */
+/** 設定パネルの項目（チップ） */
+type PhotoDial = 'focal' | 'bokeh' | 'shutter' | 'exposure' | 'effect' | 'aspect' | 'logo';
+
 export interface PhotoSnapshot {
   at: number;
 }
@@ -205,6 +208,7 @@ export class PhotoMode {
   /** 3D ビューのタップ: ピント合わせ */
   onTap(clientX: number, clientY: number): void {
     if (!this.host) return;
+    this.closeDial();
     const d = this.host.distanceAt(clientX, clientY);
     if (d === null) return;
     this.set({ focusDistance: Math.max(1, d) });
@@ -235,7 +239,7 @@ export class PhotoMode {
 
   setMinimal(on: boolean): void {
     this.minimal = on;
-    this.panel.scrollTop = 0;
+    this.openDial = null;
     try {
       localStorage.setItem(UI_KEY, on ? 'min' : 'full');
     } catch {
@@ -397,96 +401,107 @@ export class PhotoMode {
     document.body.style.setProperty('--photo-panel-h', `${h}px`);
   }
 
+  /** 設定の項目（チップ）。タップでその項目の選択肢だけを横一列に出す（カメラアプリ風。1.1） */
+  private openDial: PhotoDial | null = null;
+
+  private toggleDial(id: PhotoDial): void {
+    this.openDial = this.openDial === id ? null : id;
+    this.renderPanel();
+  }
+
+  /** 3D ビューをタップしたとき: 開いている選択肢を閉じる */
+  private closeDial(): void {
+    if (!this.openDial) return;
+    this.openDial = null;
+    this.renderPanel();
+  }
+
   private renderPanel(): void {
     const p = this.params;
-    const row = (label: string, items: { key: string; text: string; on: boolean; pick: () => void }[]) => {
-      const r = el('div', { class: 'photo-row' }, el('span', { class: 'photo-label', text: label }));
-      for (const it of items) {
-        const b = el('button', { class: `btn photo-opt${it.on ? ' is-active' : ''}`, type: 'button', text: it.text });
-        b.addEventListener('click', it.pick);
-        r.append(b);
+    type Opt = { key: string; text: string; on: boolean; pick: () => void };
+    const sh = PHOTO_CHOICES.shutter.find((s) => s.ticks === p.shutterTicks);
+    const fmtExp = (e: number) => (e === 0 ? '±0' : `${e > 0 ? '+' : ''}${e}`);
+    const dials: { id: PhotoDial; label: string; value: string; opts: Opt[] }[] = [
+      { id: 'focal', label: tr('焦点距離'), value: `${p.focalMm}mm`, opts: PHOTO_CHOICES.focalMm.map((f) => ({ key: String(f), text: `${f}mm`, on: p.focalMm === f, pick: () => this.set({ focalMm: f }) })) },
+      {
+        // ボケと絞りは 1 つの項目: オフ（パンフォーカス）か、オンのときの F 値
+        id: 'bokeh',
+        label: tr('ボケ'),
+        value: p.bokeh ? `F${p.fNumber}` : tr('オフ'),
+        opts: [
+          { key: 'off', text: tr('オフ（パンフォーカス）'), on: !p.bokeh, pick: () => this.set({ bokeh: false }) },
+          ...PHOTO_CHOICES.fNumber.map((f) => ({ key: String(f), text: `F${f}`, on: p.bokeh && p.fNumber === f, pick: () => this.set({ bokeh: true, fNumber: f }) })),
+        ],
+      },
+      { id: 'shutter', label: tr('シャッター'), value: sh?.label ?? '1/250', opts: PHOTO_CHOICES.shutter.map((s) => ({ key: s.label, text: s.label, on: p.shutterTicks === s.ticks, pick: () => this.set({ shutterTicks: s.ticks }) })) },
+      { id: 'exposure', label: tr('露出'), value: fmtExp(p.exposure), opts: PHOTO_CHOICES.exposure.map((e) => ({ key: String(e), text: fmtExp(e), on: p.exposure === e, pick: () => this.set({ exposure: e }) })) },
+      { id: 'effect', label: tr('エフェクト'), value: PHOTO_CHOICES.effect.find((e) => e.id === p.effect)?.name ?? '', opts: PHOTO_CHOICES.effect.map((e) => ({ key: e.id, text: e.name, on: p.effect === e.id, pick: () => this.set({ effect: e.id }) })) },
+      { id: 'aspect', label: tr('比率'), value: PHOTO_CHOICES.aspect.find((a) => a.id === p.aspect)?.name ?? '', opts: PHOTO_CHOICES.aspect.map((a) => ({ key: a.id, text: a.name, on: p.aspect === a.id, pick: () => this.set({ aspect: a.id }) })) },
+      { id: 'logo', label: tr('ロゴ'), value: PHOTO_CHOICES.logo.find((l) => l.id === p.logo)?.name ?? '', opts: PHOTO_CHOICES.logo.map((l) => ({ key: l.id, text: l.name, on: p.logo === l.id, pick: () => this.set({ logo: l.id }) })) },
+    ];
+    const children: Node[] = [el('div', { class: 'photo-min-hint' }, this.focusHint)];
+    let afterMount: (() => void) | null = null;
+    if (!this.minimal) {
+      // 開いている項目の選択肢（横一列。今の値が見える位置へスクロール）
+      const open = dials.find((d) => d.id === this.openDial);
+      if (open) {
+        const inner = el('span', { class: 'photo-dial-in' }, el('span', { class: 'photo-label', text: open.label }));
+        let active: HTMLElement | null = null;
+        for (const it of open.opts) {
+          const b = el('button', { class: `btn photo-opt${it.on ? ' is-active' : ''}`, type: 'button', text: it.text });
+          b.addEventListener('click', it.pick);
+          if (it.on) active = b;
+          inner.append(b);
+        }
+        const dial = el('div', { class: 'photo-dial' }, inner);
+        children.push(dial);
+        if (active) {
+          // 今の値が右に隠れているときだけ、その値が中央に来るようにスクロール（左から見えるなら先頭のまま）。DOM に入れた後に実行
+          const a = active;
+          afterMount = () => {
+            const rel = a.offsetLeft - dial.offsetLeft;
+            if (rel + a.offsetWidth > dial.clientWidth - 8) dial.scrollLeft = rel - (dial.clientWidth - a.offsetWidth) / 2;
+          };
+        }
       }
-      return r;
-    };
-    const pause = el('button', { class: 'btn', type: 'button', title: 'Space' }, this.host?.isPaused() ? iconText('play', tr('再開'), 14) : iconText('pause', tr('一時停止'), 14));
-    pause.addEventListener('click', () => {
-      this.host?.togglePause();
-      this.renderPanel();
-    });
-    const close = el('button', { class: 'btn', type: 'button', title: tr('眺めモードに戻る（Esc）') }, iconText('x', tr('終了'), 14));
-    close.addEventListener('click', () => this.exit());
-    this.panel.classList.toggle('is-min', this.minimal);
-    if (this.minimal) {
-      // シャッターだけの画面: 左に設定、中央に ●、右に終了
-      const settings = el('button', { class: 'btn photo-min-btn', type: 'button', title: tr('設定を出す（H）'), 'aria-label': tr('設定') }, icon('settings', 16));
-      settings.addEventListener('click', () => this.setMinimal(false));
-      // カメラの切り替えは「回す｜歩く」の 2 つで、今のほうを点灯（片方だけだと今どちらか分からなかった。第 24 回）
-      const seg = el('span', { class: 'photo-seg', title: tr('カメラの切り替え（V）') });
-      for (const [mode, label] of [['orbit', tr('回す')], ['walk', tr('歩く')]] as [PhotoCameraMode, string][]) {
-        const b = el('button', { class: `btn photo-min-btn${this.cameraMode === mode ? ' is-active' : ''}`, type: 'button', text: label });
-        b.addEventListener('click', () => this.setCameraMode(mode));
-        seg.append(b);
+      // チップ: 項目名と今の値。タップで選択肢を出す
+      const chips = el('span', { class: 'photo-chips-in' });
+      for (const d of dials) {
+        const c = el('button', { class: `photo-chip${this.openDial === d.id ? ' is-open' : ''}`, type: 'button' }, el('span', { class: 'photo-chip-k', text: d.label }), el('span', { class: 'photo-chip-v', text: d.value }));
+        c.addEventListener('click', () => this.toggleDial(d.id));
+        chips.append(c);
       }
-      const exit = el('button', { class: 'btn photo-min-btn', type: 'button', title: tr('眺めモードに戻る（Esc）'), 'aria-label': tr('終了') }, icon('x', 16));
-      exit.addEventListener('click', () => this.exit());
-      const right = el('span', { class: 'photo-min-group' });
-      if (this.cameraMode === 'walk') {
-        const home = el('button', { class: 'btn photo-min-btn', type: 'button', title: tr('倉庫の正面へ戻る'), 'aria-label': tr('倉庫の正面へ') }, icon('house', 16));
-        home.addEventListener('click', () => this.walkHome());
-        right.append(home);
-      }
-      right.append(exit);
-      this.panel.replaceChildren(el('div', { class: 'photo-min' }, el('span', { class: 'photo-min-group' }, settings, seg), this.makeShutter(), right), el('div', { class: 'photo-min-hint' }, this.focusHint));
-      this.updatePanelHeight();
-      return;
+      const paused = !!this.host?.isPaused();
+      const pause = el('button', { class: `photo-chip${paused ? ' is-on' : ''}`, type: 'button', title: 'Space' }, el('span', { class: 'photo-chip-k', text: tr('倉庫') }), el('span', { class: 'photo-chip-v' }, icon(paused ? 'play' : 'pause', 12), el('span', { text: ' ' + (paused ? tr('再開') : tr('一時停止')) })));
+      pause.addEventListener('click', () => {
+        this.host?.togglePause();
+        this.renderPanel();
+      });
+      chips.append(pause);
+      children.push(el('div', { class: 'photo-chips' }, chips));
     }
-    const hide = el('button', { class: 'btn', type: 'button', title: tr('設定を隠してシャッターだけにする（H）') }, iconText('image', tr('設定を隠す'), 14));
-    hide.addEventListener('click', () => this.setMinimal(true));
-    this.panel.replaceChildren(
-      el('div', { class: 'photo-head' }, el('span', { class: 'photo-title' }, icon('camera', 16), el('span', { text: tr(' フォトモード') })), this.focusHint, el('span', { class: 'photo-actions' }, pause, hide, this.makeShutter(), close)),
-      row(tr('カメラ'), [
-        { key: 'orbit', text: tr('オービット（回す）'), on: this.cameraMode === 'orbit', pick: () => this.setCameraMode('orbit') },
-        { key: 'walk', text: tr('ウォークスルー（歩く・飛ぶ）'), on: this.cameraMode === 'walk', pick: () => this.setCameraMode('walk') },
-        ...(this.cameraMode === 'walk' ? [{ key: 'home', text: tr('倉庫の正面へ戻る'), on: false, pick: () => this.walkHome() }] : []),
-      ]),
-      row(
-        tr('焦点距離'),
-        PHOTO_CHOICES.focalMm.map((f) => ({ key: String(f), text: `${f}mm`, on: p.focalMm === f, pick: () => this.set({ focalMm: f }) })),
-      ),
-      row(tr('ボケ'), [
-        { key: 'off', text: tr('オフ（パンフォーカス）'), on: !p.bokeh, pick: () => this.set({ bokeh: false }) },
-        { key: 'on', text: tr('オン'), on: p.bokeh, pick: () => this.set({ bokeh: true }) },
-      ]),
-      // 絞りはボケがオンのときだけ
-      ...(p.bokeh
-        ? [
-            row(
-              tr('絞り'),
-              PHOTO_CHOICES.fNumber.map((f) => ({ key: String(f), text: `F${f}`, on: p.fNumber === f, pick: () => this.set({ fNumber: f }) })),
-            ),
-          ]
-        : []),
-      row(
-        tr('シャッター'),
-        PHOTO_CHOICES.shutter.map((s) => ({ key: s.label, text: s.label, on: p.shutterTicks === s.ticks, pick: () => this.set({ shutterTicks: s.ticks }) })),
-      ),
-      row(
-        tr('露出'),
-        PHOTO_CHOICES.exposure.map((e) => ({ key: String(e), text: e === 0 ? '±0' : `${e > 0 ? '+' : ''}${e}`, on: p.exposure === e, pick: () => this.set({ exposure: e }) })),
-      ),
-      row(
-        tr('エフェクト'),
-        PHOTO_CHOICES.effect.map((e) => ({ key: e.id, text: e.name, on: p.effect === e.id, pick: () => this.set({ effect: e.id }) })),
-      ),
-      row(
-        tr('比率'),
-        PHOTO_CHOICES.aspect.map((a) => ({ key: a.id, text: a.name, on: p.aspect === a.id, pick: () => this.set({ aspect: a.id }) })),
-      ),
-      row(
-        tr('ロゴ'),
-        PHOTO_CHOICES.logo.map((l) => ({ key: l.id, text: l.name, on: p.logo === l.id, pick: () => this.set({ logo: l.id }) })),
-      ),
-    );
+    // いちばん下: 左に設定の表示／非表示とカメラの切り替え、中央に ●、右に（歩くなら正面へ）と終了
+    const settings = el('button', { class: `btn photo-min-btn${this.minimal ? '' : ' is-active'}`, type: 'button', title: this.minimal ? tr('設定を出す（H）') : tr('設定を隠してシャッターだけにする（H）'), 'aria-label': tr('設定') }, icon('settings', 16));
+    settings.addEventListener('click', () => this.setMinimal(!this.minimal));
+    // カメラの切り替えは「回す｜歩く」の 2 つで、今のほうを点灯（片方だけだと今どちらか分からなかった。第 24 回）
+    const seg = el('span', { class: 'photo-seg', title: tr('カメラの切り替え（V）') });
+    for (const [mode, label] of [['orbit', tr('回す')], ['walk', tr('歩く')]] as [PhotoCameraMode, string][]) {
+      const b = el('button', { class: `btn photo-min-btn${this.cameraMode === mode ? ' is-active' : ''}`, type: 'button', text: label });
+      b.addEventListener('click', () => this.setCameraMode(mode));
+      seg.append(b);
+    }
+    const exit = el('button', { class: 'btn photo-min-btn', type: 'button', title: tr('眺めモードに戻る（Esc）'), 'aria-label': tr('終了') }, icon('x', 16));
+    exit.addEventListener('click', () => this.exit());
+    const right = el('span', { class: 'photo-min-group' });
+    if (this.cameraMode === 'walk') {
+      const home = el('button', { class: 'btn photo-min-btn', type: 'button', title: tr('倉庫の正面へ戻る'), 'aria-label': tr('倉庫の正面へ') }, icon('house', 16));
+      home.addEventListener('click', () => this.walkHome());
+      right.append(home);
+    }
+    right.append(exit);
+    children.push(el('div', { class: 'photo-min' }, el('span', { class: 'photo-min-group' }, settings, seg), this.makeShutter(), right));
+    this.panel.replaceChildren(...children);
+    afterMount?.();
     this.updatePanelHeight();
   }
 

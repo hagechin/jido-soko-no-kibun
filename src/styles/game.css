@@ -1124,15 +1124,15 @@ body.is-photo .app {
   right: var(--sa-right);
   bottom: 0;
   z-index: 35;
-  padding: 6px 10px calc(8px + var(--sa-bottom));
-  background: rgba(20, 28, 38, 0.9);
+  padding: 0 10px calc(14px + var(--sa-bottom));
   color: var(--text);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   font-size: 12px;
-  max-height: 60vh;
-  overflow: auto;
+  /* 透明。UI の部品だけがタップを受け、すき間は 3D ビューに通す（ピント合わせ） */
+  background: transparent;
+  pointer-events: none;
 }
 .photo-panel[hidden] {
   display: none;
@@ -1141,53 +1141,19 @@ body.is-photo .app {
   opacity: 0.6;
   pointer-events: none;
 }
-.photo-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  /* パネルをスクロールしても先頭の行（一時停止・設定を隠す・●・終了）は残す */
-  position: sticky;
-  top: -6px;
-  z-index: 1;
-  margin: -6px -10px 0;
-  padding: 6px 10px 4px;
-  background: #151d27; /* 不透明。下を流れる行が透けないように（第 26 回） */
-}
-@media (max-width: 480px) {
-  .photo-title span {
-    display: none; /* 狭い画面では「フォトモード」の文字を省いて 1 行に */
-  }
-}
-.photo-title {
-  display: inline-flex;
-  align-items: center;
-  font-weight: 700;
-}
-.photo-actions {
-  margin-left: auto;
-  display: inline-flex;
-  gap: 6px;
-}
-.photo-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
 .photo-label {
-  width: 64px;
   color: var(--muted);
   flex: none;
+  padding: 0 4px;
+  align-self: center;
+  white-space: nowrap;
 }
 .btn.photo-opt {
   min-height: 34px;
   min-width: 44px;
   padding: 2px 8px;
   font-size: 12px;
-}
-.photo-shoot {
-  min-width: 84px;
+  white-space: nowrap;
 }
 .photo-preview {
   display: block;
@@ -1742,13 +1708,6 @@ kbd.key {
   z-index: 1;
   pointer-events: none;
 }
-.photo-panel.is-min {
-  background: transparent;
-  padding: 0 10px calc(14px + var(--sa-bottom));
-  pointer-events: none;
-  max-height: none;
-  overflow: visible;
-}
 /* ● は画面の真ん中（左右の列は同じ幅） */
 .photo-min {
   display: grid;
@@ -1775,6 +1734,85 @@ kbd.key {
   text-align: center;
   min-height: 1.2em;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+/* 設定のチップ（項目名 + 今の値）の横一列。狭ければ横スクロール、広ければ中央寄せ（inline-flex + margin auto） */
+.photo-chips,
+.photo-dial {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  pointer-events: auto;
+}
+.photo-chips::-webkit-scrollbar,
+.photo-dial::-webkit-scrollbar {
+  display: none;
+}
+.photo-chips {
+  padding: 2px 0;
+}
+.photo-chips-in,
+.photo-dial-in {
+  display: inline-flex;
+  gap: 6px;
+  margin: 0 auto;
+  flex: none;
+}
+.photo-chip {
+  flex: none;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 56px;
+  min-height: 40px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 28, 38, 0.78);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.photo-chip-k {
+  font-size: 9px;
+  line-height: 1.1;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.photo-chip-v {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.photo-chip.is-open {
+  border-color: var(--accent);
+  background: rgba(20, 28, 38, 0.96);
+}
+.photo-chip.is-open .photo-chip-k {
+  color: var(--accent);
+}
+.photo-chip.is-on .photo-chip-v {
+  color: var(--accent);
+}
+/* 開いている項目の選択肢（チップの上に 1 行） */
+.photo-dial {
+  border-radius: 12px;
+  background: rgba(20, 28, 38, 0.92);
+  padding: 6px 8px;
+}
+.photo-dial .btn.photo-opt {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.photo-dial .btn.photo-opt.is-active {
+  background: var(--accent);
+  color: #1d2733;
+  border-color: var(--accent);
 }
 .photo-strip {
   display: flex;
