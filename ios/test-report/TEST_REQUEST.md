@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 32
-- status: requested
+- status: reported
 - branch: feature/photo-mode （**試験の対象もこのブランチ**。第 24〜27 回と同じ手順。release/1.0 には触らない）
 - commit: `feature/photo-mode` の先端 `a1234a9` 以降（1.1 の開発版。アプリのバージョン表示は 1.0.2 (3) のまま。同梱 Web の commit で見分ける）
 - requested-at: 2026-10-19（第 32 回）
