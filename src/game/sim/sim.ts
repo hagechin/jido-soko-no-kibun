@@ -14,10 +14,10 @@ import { updateAchievements } from './achievements';
 import { rehomeOrphans } from './integrity';
 import { sec } from '../data/balance';
 import { executeMovement, updateJob, updateStuck } from './robots';
-import { createRuntime, type Runtime } from './runtime';
+import { cloneRuntime, createRuntime, type Runtime } from './runtime';
 import type { WorldState } from './types';
 
-export { createRuntime };
+export { createRuntime, cloneRuntime };
 export type { Runtime };
 
 export function stepSim(w: WorldState, rt: Runtime): void {

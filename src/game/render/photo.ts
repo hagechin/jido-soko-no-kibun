@@ -9,34 +9,50 @@ import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass.js';
 import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { tr } from '../i18n';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 export type PhotoEffect = 'none' | 'film' | 'mono' | 'sepia' | 'vivid' | 'dusk';
 export type PhotoAspect = 'screen' | '3:2' | '16:9' | '4:5' | '1:1';
+/** 写真に入れるロゴ: なし／ロゴ／ロゴ＋倉庫情報（ランク・暦・出荷数） */
+export type PhotoLogo = 'none' | 'logo' | 'logoInfo';
 
 export interface PhotoParams {
   /** 焦点距離（35mm 換算 mm） */
   focalMm: number;
-  /** 絞り F 値 */
+  /** ボケ（被写界深度）を付ける。オフはパンフォーカス（絞りの設定も出さない） */
+  bokeh: boolean;
+  /** 絞り F 値（ボケがオンのとき） */
   fNumber: number;
   /** ピント位置（カメラからの距離、ワールド単位） */
   focusDistance: number;
-  /** シャッター（ゲーム内 tick。0 = ブラーなし。1 tick = ロボの 1 マス移動の 1/5〜1/2） */
+  /** シャッター（ゲーム内 tick。0 = ブラーなし。10 tick = ゲーム内 1 秒。撮影中はシミュレーションの写しをこの分だけ進めてコマを重ねる） */
   shutterTicks: number;
+  /** 露出補正（EV。+1 で 2 倍の明るさ） */
+  exposure: number;
   effect: PhotoEffect;
   aspect: PhotoAspect;
+  logo: PhotoLogo;
+}
+
+/** シャッター中にシミュレーションの写しを進める手段（main が用意する） */
+export interface PhotoAdvance {
+  world: import('../sim/types').WorldState;
+  step: () => void;
 }
 
 export const PHOTO_CHOICES = {
   focalMm: [24, 35, 50, 85, 135] as const,
-  fNumber: [1.4, 2.8, 5.6, 11, 16] as const,
+  fNumber: [1.4, 2.8, 5.6, 11, 16, 32, 64] as const,
   /** 表示名 → tick */
   shutter: [
     { label: '1/250', ticks: 0 },
-    { label: '1/60', ticks: 0.6 },
-    { label: '1/30', ticks: 1.2 },
-    { label: '1/15', ticks: 2.5 },
-    { label: '1/8', ticks: 5 },
+    { label: '1/30', ticks: 0.33 },
+    { label: '1/8', ticks: 1.25 },
+    { label: '1/2', ticks: 5 },
+    { label: '1 秒', ticks: 10 },
+    { label: '2 秒', ticks: 20 },
   ] as const,
+  exposure: [-1, -0.5, 0, 0.5, 1, 1.5, 2] as const,
   effect: [
     { id: 'none', name: tr('なし') },
     { id: 'film', name: tr('フィルム') },
@@ -52,19 +68,76 @@ export const PHOTO_CHOICES = {
     { id: '4:5', name: '4:5' },
     { id: '1:1', name: '1:1' },
   ] as { id: PhotoAspect; name: string }[],
+  logo: [
+    { id: 'none', name: 'なし' },
+    { id: 'logo', name: 'ロゴ' },
+    { id: 'logoInfo', name: 'ロゴ＋倉庫情報' },
+  ] as { id: PhotoLogo; name: string }[],
 };
 
-export const DEFAULT_PHOTO: PhotoParams = { focalMm: 50, fNumber: 2.8, focusDistance: 12, shutterTicks: 0, effect: 'film', aspect: 'screen' };
+export const DEFAULT_PHOTO: PhotoParams = { focalMm: 50, bokeh: true, fNumber: 2.8, focusDistance: 12, shutterTicks: 0, exposure: 0, effect: 'film', aspect: 'screen', logo: 'logo' };
+
+export const PHOTO_TITLE = '箱庭！ディストリビューション';
+/** 共有シートに添える文（iOS） */
+export const PHOTO_SHARE_TEXT = '#箱庭ディストリビューション で撮りました';
+
+/** 写真の右下に入れる文字列（ロゴ行と、倉庫情報の行） */
+export function captionLines(logo: PhotoLogo, info: { rank: string; year: number; month: number; shipped: number }): string[] {
+  if (logo === 'none') return [];
+  if (logo === 'logo') return [PHOTO_TITLE];
+  return [PHOTO_TITLE, `${info.rank} ・ ${info.year} 年目 ${info.month} 月 ・ 出荷 ${info.shipped.toLocaleString('ja-JP')} 件`];
+}
+
+/** 2D canvas に右下のキャプションを描く（長辺に対する比率で大きさを決める） */
+export function drawCaption(ctx: CanvasRenderingContext2D, width: number, height: number, lines: string[]): void {
+  if (!lines.length) return;
+  const long = Math.max(width, height);
+  const size = Math.round(long * 0.016);
+  const small = Math.round(size * 0.78);
+  const pad = Math.round(size * 0.7);
+  const gap = Math.round(size * 0.35);
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'right';
+  const font = (px: number, bold: boolean) => `${bold ? '700' : '500'} ${px}px system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif`;
+  ctx.font = font(size, true);
+  const w0 = ctx.measureText(lines[0]).width;
+  ctx.font = font(small, false);
+  const w1 = lines[1] ? ctx.measureText(lines[1]).width : 0;
+  const boxW = Math.max(w0, w1) + pad * 2;
+  const boxH = pad * 2 + size + (lines[1] ? gap + small : 0);
+  const x = width - pad - boxW;
+  const y = height - pad - boxH;
+  ctx.fillStyle = 'rgba(29, 39, 51, 0.62)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, boxW, boxH, Math.round(size * 0.5));
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = font(size, true);
+  ctx.fillText(lines[0], x + boxW - pad, y + pad + size * 0.86);
+  if (lines[1]) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = font(small, false);
+    ctx.fillText(lines[1], x + boxW - pad, y + pad + size + gap + small * 0.86);
+  }
+  ctx.restore();
+}
 
 /** 35mm 換算の焦点距離 → 縦の画角（度）。センサー縦 24mm */
 export function fovForFocal(focalMm: number): number {
   return (2 * Math.atan(12 / focalMm) * 180) / Math.PI;
 }
 
-/** F 値 → BokehPass の aperture。F1.4 で強く、F16 でほぼ無し */
+/**
+ * F 値 → BokehPass の aperture。F1.4 で強く、F16 で弱い。
+ * 同梱の BokehShader は「ピントからの距離 × aperture」（上限 maxblur）のシンプルな式で、物理的な被写界深度ではないが
+ * 情緒的なミニチュア風のボケになる（物理的な錯乱円の版も試したが、こちらの見た目のほうが好評。0c30350 参照）。
+ * 遠景までくっきり撮りたいときは「ボケ」をオフ（パンフォーカス）
+ */
 export function apertureForF(fNumber: number): number {
   return 0.06 / fNumber;
 }
+export const BOKEH_MAX_BLUR = 0.012;
 
 /** 写真の縦横比（幅/高さ）。screen は画面のまま */
 export function aspectRatio(a: PhotoAspect, screenRatio: number): number {
@@ -88,9 +161,20 @@ export function photoSize(a: PhotoAspect, screenRatio: number, longEdge: number)
   return r >= 1 ? { width: longEdge, height: Math.round(longEdge / r) } : { width: Math.round(longEdge * r), height: longEdge };
 }
 
-/** シャッターの合成コマ数（ブラーが長いほど多く） */
+/** シャッターの合成コマ数（ブラーが長いほど多く。1 tick あたり 3 コマ、4〜24） */
 export function shutterFrames(ticks: number): number {
-  return ticks <= 0 ? 1 : Math.min(16, Math.max(4, Math.round(ticks * 3)));
+  return ticks <= 0 ? 1 : Math.min(24, Math.max(4, Math.round(ticks * 3)));
+}
+
+/**
+ * 撮影する写真の縦の画角（度）: プレビューの枠（黒帯の内側）と同じ範囲が写るようにする。
+ * 出力が画面より横長なら横の画角を合わせ（縦は狭くなる）、縦長なら縦の画角をそのまま使う
+ */
+export function captureFov(previewFovDeg: number, previewRatio: number, outputRatio: number): number {
+  if (outputRatio <= previewRatio) return previewFovDeg;
+  const v = (previewFovDeg * Math.PI) / 180;
+  const h = 2 * Math.atan(Math.tan(v / 2) * previewRatio);
+  return (2 * Math.atan(Math.tan(h / 2) / outputRatio) * 180) / Math.PI;
 }
 
 interface Grade {
@@ -167,12 +251,14 @@ export class PhotoRig {
   ) {
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(scene, camera));
-    this.bokeh = new BokehPass(scene, camera, { focus: 12, aperture: 0.02, maxblur: 0.012 });
+    this.bokeh = new BokehPass(scene, camera, { focus: 12, aperture: 0.02, maxblur: BOKEH_MAX_BLUR });
     this.composer.addPass(this.bokeh);
     this.grade = new ShaderPass(GradeShader);
     this.composer.addPass(this.grade);
     this.film = new FilmPass(0.25, false);
     this.composer.addPass(this.film);
+    // 色空間の変換（sRGB）。これが無いと後処理の出力がリニアのまま表示されて暗くなる
+    this.composer.addPass(new OutputPass());
     this.apply();
   }
 
@@ -180,14 +266,15 @@ export class PhotoRig {
   apply(): void {
     const p = this.params;
     const u = this.bokeh.uniforms as Record<string, { value: number }>;
+    this.bokeh.enabled = p.bokeh !== false;
     u.focus.value = p.focusDistance;
     u.aperture.value = apertureForF(p.fNumber);
-    u.maxblur.value = 0.012;
+    u.maxblur.value = BOKEH_MAX_BLUR;
     const g = gradeFor(p.effect);
     const gu = this.grade.uniforms as Record<string, { value: number }>;
     gu.saturation.value = g.saturation;
     gu.contrast.value = g.contrast;
-    gu.brightness.value = g.brightness;
+    gu.brightness.value = g.brightness * Math.pow(2, p.exposure ?? 0);
     gu.sepia.value = g.sepia;
     gu.vignette.value = g.vignette;
     gu.warm.value = g.warm;

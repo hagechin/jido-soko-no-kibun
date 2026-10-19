@@ -1,4 +1,5 @@
 import Foundation
+import Photos
 import UIKit
 import WebKit
 
@@ -72,12 +73,34 @@ final class Bridge {
             // Web 側の最初の描画が済んだ → 起動画像のオーバーレイを消してよい
             NotificationCenter.default.post(name: .hakoniwaWebReady, object: nil)
             return true
+        case "savePhoto":
+            // フォトモードの写真をカメラロールへ（「追加のみ」の権限。初回に OS のダイアログが出る）
+            guard let dataUrl = p["data"] as? String, let image = Bridge.decodeDataUrl(dataUrl) else { throw BridgeError.badParams }
+            let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+            guard status == .authorized || status == .limited else { return ["saved": false, "denied": true] }
+            do {
+                try await PHPhotoLibrary.shared().performChanges {
+                    PHAssetChangeRequest.creationRequestForAsset(from: image)
+                }
+                return ["saved": true]
+            } catch {
+                return ["saved": false, "error": error.localizedDescription]
+            }
+        case "openSettings":
+            // 権限を断ったあとに設定アプリへ
+            if let url = URL(string: UIApplication.openSettingsURLString) { await UIApplication.shared.open(url) }
+            return true
         case "sharePhoto":
             // フォトモードの写真を共有シートへ（写真に保存・AirDrop・メールなど）
             guard let dataUrl = p["data"] as? String, let image = Bridge.decodeDataUrl(dataUrl) else { throw BridgeError.badParams }
             let name = (p["name"] as? String) ?? "hakoniwa.jpg"
-            Bridge.share(image: image, name: name, from: webView)
+            Bridge.share(image: image, name: name, text: p["text"] as? String, from: webView)
             return true
+        case "saveFileLocal":
+            // セーブの書き出し（本体へ）: ファイル App の「このiPhone内 › 箱庭！DS」に置く（共有シートの「ファイルに保存」は
+            // 「このiPhone内」の直下に置けず、フォルダが無いと保存できなかった）
+            guard let name = p["name"] as? String, let text = p["text"] as? String else { throw BridgeError.badParams }
+            return ["name": try SaveStore.writeToDocuments(name: name, text: text)]
         case "shareFile":
             // セーブの書き出し: WKWebView は blob: の <a download> を扱えない（遷移をキャンセルしている）ので、
             // 一時ファイルに書いて共有シート（「ファイルに保存」「AirDrop」など）を出す。出した時点で true
@@ -149,10 +172,12 @@ final class Bridge {
 
     /// 共有シート。iPad はポップオーバーの起点が要る
     @MainActor
-    static func share(image: UIImage, name: String, from webView: WKWebView?) {
+    static func share(image: UIImage, name: String, text: String? = nil, from webView: WKWebView?) {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         if let jpg = image.jpegData(compressionQuality: 0.92) { try? jpg.write(to: tmp) }
-        let items: [Any] = FileManager.default.fileExists(atPath: tmp.path) ? [tmp] : [image]
+        var items: [Any] = FileManager.default.fileExists(atPath: tmp.path) ? [tmp] : [image]
+        // ハッシュタグなどの添え文（SNS 系の共有先が拾う。「写真に保存」には影響しない）
+        if let text, !text.isEmpty { items.append(text) }
         let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
         guard var top = webView?.window?.rootViewController else { return }
         while let presented = top.presentedViewController { top = presented }

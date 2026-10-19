@@ -6,6 +6,7 @@ import { el, showToast } from './layout';
 import { THEMES, type Skin, type Theme } from './cosmetics';
 import type { LocaleSetting } from '../i18n';
 import { tr } from '../i18n';
+import { TEXT_SIZES, type TextSize } from './textSize';
 
 /** 「最終セーブ」の表示（セーブのたびに main が更新する） */
 export function lastSavedText(at: number | null): string {
@@ -14,6 +15,10 @@ export function lastSavedText(at: number | null): string {
 
 export interface SettingsContext {
   quality: QualityLevel;
+  /** 文字の大きさ（1.0.2） */
+  textSize?: { current: TextSize; set: (s: TextSize) => void };
+  /** チュートリアルをもう一度 */
+  restartTutorial?: () => void;
   /** 追加セクション（眺めモードなど） */
   extra?: (body: HTMLElement) => void;
   saveNow: () => boolean;
@@ -21,6 +26,8 @@ export interface SettingsContext {
   setQuality: (q: QualityLevel) => void;
   exportSave?: () => void;
   importSave?: (file: File) => void;
+  /** iOS アプリ: 本体（ファイル App の「このiPhone内 › 箱庭！DS」）に保存 */
+  saveLocal?: () => void;
   /** iOS アプリ: クリップボード経由の書き出し／読み込み（共有シートが出ないときの逃げ道） */
   copySave?: () => void;
   pasteSave?: () => void;
@@ -55,10 +62,31 @@ export interface SettingsContext {
 }
 
 export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
-  if (ctx.openHelp) {
-    const help = el('button', { class: 'btn', type: 'button' }, iconText('info', tr('操作方法とショートカット（H）')));
-    help.addEventListener('click', () => ctx.openHelp!());
-    body.append(el('div', { class: 'settings-row' }, help));
+  if (ctx.textSize) {
+    const ts = ctx.textSize;
+    body.append(el('h4', { text: '文字の大きさ' }));
+    const row = el('div', { class: 'settings-row' });
+    for (const t of TEXT_SIZES) {
+      const b = el('button', { class: `btn${ts.current === t.id ? ' is-active' : ''}`, type: 'button', text: t.name, title: t.desc });
+      b.addEventListener('click', () => ts.set(t.id));
+      row.append(b);
+    }
+    body.append(row);
+    body.append(el('p', { class: 'muted small', text: '画面の文字とボタンの大きさ（3D の倉庫はそのまま）。いま: ' + (TEXT_SIZES.find((t) => t.id === ts.current)?.desc ?? '') }));
+  }
+  if (ctx.openHelp || ctx.restartTutorial) {
+    const row = el('div', { class: 'settings-row' });
+    if (ctx.openHelp) {
+      const help = el('button', { class: 'btn', type: 'button' }, iconText('info', '操作方法とショートカット（H）'));
+      help.addEventListener('click', () => ctx.openHelp!());
+      row.append(help);
+    }
+    if (ctx.restartTutorial) {
+      const tut = el('button', { class: 'btn', type: 'button' }, iconText('lightbulb', 'チュートリアルをもう一度'));
+      tut.addEventListener('click', () => ctx.restartTutorial!());
+      row.append(tut);
+    }
+    body.append(row);
   }
   if (ctx.setBackground) {
     body.append(el('h4', { text: tr('バックグラウンド動作') }));
@@ -200,7 +228,12 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
   body.append(el('div', { class: 'settings-row' }, saveBtn, el('span', { class: 'muted small', id: 'last-saved', text: lastSavedText(ctx.lastSavedAt) })));
   if (ctx.buildInfo) body.append(el('p', { class: 'muted small', text: ctx.buildInfo }));
   if (ctx.exportSave) {
-    const ex = el('button', { class: 'btn', type: 'button' }, iconText('upload', tr('ファイルに書き出し')));
+    if (ctx.saveLocal) {
+      const loc = el('button', { class: 'btn', type: 'button' }, iconText('save', '本体に保存（ファイル App）'));
+      loc.addEventListener('click', () => ctx.saveLocal!());
+      body.append(el('div', { class: 'settings-row' }, loc), el('p', { class: 'muted small', text: 'ファイル App の「このiPhone内 › 箱庭！DS」に hako-dis-save-日時.json を置きます。読み込みは「ファイルから読み込み」でそのファイルを選ぶ' }));
+    }
+    const ex = el('button', { class: 'btn', type: 'button' }, iconText('upload', ctx.saveLocal ? '共有（AirDrop・iCloud など）' : 'ファイルに書き出し'));
     ex.addEventListener('click', () => ctx.exportSave!());
     const im = el('label', { class: 'btn' }, iconText('download', tr('ファイルから読み込み')));
     const input = el('input', { type: 'file', accept: 'application/json,.json', hidden: true });

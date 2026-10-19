@@ -6,10 +6,10 @@ import { INBOUND_FREQ, SPEED_OPTIONS, TICKS_PER_SECOND } from './data/balance';
 import { inboundSettings, restockStockCap, setInbound } from './sim/inbound';
 import { itemDef } from './data/items';
 import { createWorld } from './sim/world';
-import { createRuntime, stepSim, type Runtime } from './sim/sim';
+import { cloneRuntime, createRuntime, stepSim, type Runtime } from './sim/sim';
 import { adviseNext, createAdvisorStats, sampleAdvisor, type AdvisorStats, type Hint } from './sim/advisor';
 import { ADVISOR } from './data/balance';
-import { iconText, type IconName } from './ui/icon';
+import { icon, iconText, type IconName } from './ui/icon';
 import type { NoticeIcon } from './sim/types';
 
 /** sim のお知らせ種別 → アイコン */
@@ -24,7 +24,7 @@ import { OrderSheet } from './ui/orderSheet';
 import { Popup } from './ui/popup';
 import { binLabel, selectedInfoNode } from './ui/selection';
 import { iconImg } from './ui/icons';
-import { $, el, showToast } from './ui/layout';
+import { $, el, showToast, setToastsSuppressed } from './ui/layout';
 import { renderUpgrades } from './ui/upgrades';
 import { renderAchievements } from './ui/achievements';
 import { ACHIEVEMENT_BY_ID, mergeProfile, type AchievementProfile } from './sim/achievements';
@@ -35,7 +35,7 @@ import { lastSavedText, renderSettings } from './ui/settings';
 import { renderBuild, type BuildUiState } from './ui/buildMode';
 import { renderPortPanel, renderStationPanel } from './ui/stationPanel';
 import { EventBanner, Modal, cyberReportNode } from './ui/eventBanner';
-import { expand, move as moveObject, place, remove } from './sim/build';
+import { expand, move as moveObject, place, remove, canPlace } from './sim/build';
 import { buyAutomation, freeBinSlots, reservedSlots } from './sim/shop';
 import { rankName, unlockSummary } from './sim/rank';
 import { clearStorage, loadFromStorage, saveToStorage } from './ui/storage';
@@ -58,7 +58,19 @@ import { cloudAvailable, cloudEnabled, cloudLoad, onCloudChanged, setCloudEnable
 import { deserialize, type LoadResult } from './sim/save';
 import { formatDate } from './sim/calendar';
 import { installDemoSave, isDemoRequested } from './ui/demo';
-import { PhotoMode } from './ui/photoMode';
+import { PhotoMode, type PhotoCameraMode, type PhotoSnapshot } from './ui/photoMode';
+import { WalkCamera, type WalkPose } from './render/walkCamera';
+
+type CameraPose = { kind: 'orbit'; target: Vector3; azimuth: number; polar: number; distance: number } | { kind: 'walk'; pose: WalkPose };
+/** 連写で記録した瞬間 */
+interface PhotoSnap extends PhotoSnapshot {
+  world: WorldState;
+  rt: Runtime;
+  alpha: number;
+  cam: CameraPose;
+}
+import { applyTextSize, loadTextSize, loadTextSizeChoice, saveTextSize, TEXT_SIZES, type TextSize } from './ui/textSize';
+import { loadTutorialStep, shouldAutoStart, Tutorial, type TutorialSnapshot } from './ui/tutorial';
 import { preloadNativeSave } from './ui/storage';
 import { BUILD_TOOL_ORDER } from './ui/buildMode';
 import { registerServiceWorker } from './ui/pwa';
@@ -67,7 +79,7 @@ import { renderDebug } from './ui/debugPanel';
 import { refreshRobotListStatus, renderRobotList } from './ui/robotList';
 import { isCyberWeek } from './sim/events';
 import { visibleOrders } from './sim/orders';
-import { copySaveToClipboard, exportSaveFile, importSaveFile, importSaveFromClipboard } from './ui/storage';
+import { copySaveToClipboard, exportSaveFile, importSaveFile, importSaveFromClipboard, saveSaveFileLocal } from './ui/storage';
 import type { QualityLevel } from './render/quality';
 import { localeSetting, saveLocaleSetting, tr } from './i18n';
 import { translateStaticDom } from './i18n/dom';
@@ -91,6 +103,14 @@ class Game {
   private selectedRobotId: number | null = null;
   /** オーダーの商品タップで選ばれた商品（スタックタップ時に直接そのビンを選ぶ） */
   private focusItem: string | null = null;
+  /** 文字の大きさ（1.0.2） */
+  private textSize: TextSize = loadTextSize();
+  /** チュートリアル（1.0.2）。構築は DOM が要るので constructor で */
+  private tutorial!: Tutorial;
+  /** 初回の「文字の大きさ」を選んでいる間（「おすすめ」のヒントを出さない） */
+  private onboardingPending = false;
+  /** チュートリアルの手助け: 6/6 で置けるマスを光らせた印と、5/6 で強化パネルを自動化 AI までスクロールした印 */
+  private tutAssist = { cellsKey: '', scrolledFor: '' };
   private highlightTimer = 0;
   private infoSig = '';
   private lastStockoutHint = 0;
@@ -115,6 +135,9 @@ class Game {
   sound = new Sound();
   private autoCam: AutoCamera;
   private keyCam: KeyboardCamera;
+  /** フォトモードのウォークスルー（歩く・飛ぶ）カメラ */
+  private walk: WalkCamera;
+  private photoCamera: PhotoCameraMode = 'orbit';
   private editor = new LayoutEditor();
   /** 最後に選ばれていた 0 以外の速度（Space で再開するとき用） */
   private lastSpeed = 1;
@@ -132,10 +155,66 @@ class Game {
   /** フォトモード（★）: カメラを置いて撮る。撮った写真は起動画面に使える */
   photo = new PhotoMode();
   private cameraBeforePhoto: { target: Vector3; azimuth: number; polar: number; distance: number } | null = null;
+  /** ウォークスルーのままフォトモードを出たときの視点（次に入るとき、ここから始める） */
+  private lastWalkPose: WalkPose | null = null;
+
+  /** いまのカメラの位置（フォトモードの連写で、記録した瞬間と同じ構図で撮り直すため） */
+  private cameraPose(): CameraPose {
+    if (this.photoCamera === 'walk') return { kind: 'walk', pose: this.walk.pose };
+    const c = this.renderer.controls;
+    return { kind: 'orbit', target: c.target.clone(), azimuth: c.azimuth, polar: c.polar, distance: c.distance };
+  }
+
+  private setCameraPose(p: CameraPose): void {
+    if (p.kind === 'walk') {
+      this.walk.setPose(p.pose);
+      return;
+    }
+    const c = this.renderer.controls;
+    c.target.copy(p.target);
+    c.azimuth = p.azimuth;
+    c.polar = p.polar;
+    c.distance = p.distance;
+    c.update();
+  }
+
+  /** フォトモードのカメラ: オービット（回す）⇄ ウォークスルー（歩く・飛ぶ）。切り替えで視点は飛ばない */
+  private setPhotoCamera(mode: PhotoCameraMode, resume = false): void {
+    const c = this.renderer.controls;
+    if (mode === 'walk') {
+      this.walk.setWarehouse(this.world.width, this.world.height);
+      // 前回ウォークスルーで出たなら、その視点から（眺めモードの自動カメラが動いた後の視点を引き継ぐと飛んで見える。第 26 回）
+      if (resume && this.lastWalkPose) this.walk.setPose(this.lastWalkPose);
+      else this.walk.enterFrom(this.renderer.camera);
+      this.walk.enabled = true;
+      c.enabled = false;
+      this.keyCam.enabled = false;
+    } else {
+      if (this.photoCamera === 'walk') {
+        // 今見ている構図をオービットの注視点・距離に直す
+        const pos = this.walk.position;
+        const d = this.walk.suggestedDistance();
+        const f = this.walk.forward();
+        c.target.set(pos.x + f.x * d, 0, pos.z + f.z * d);
+        c.target.x = Math.min(this.world.width, Math.max(0, c.target.x));
+        c.target.z = Math.min(this.world.height, Math.max(0, c.target.z));
+        const dist = Math.max(1, pos.distanceTo(c.target));
+        c.distance = dist;
+        c.azimuth = Math.atan2(pos.x - c.target.x, pos.z - c.target.z);
+        c.polar = Math.acos(Math.max(-1, Math.min(1, pos.y / dist)));
+      }
+      this.walk.enabled = false;
+      c.enabled = true;
+      this.keyCam.enabled = true;
+      c.update();
+    }
+    this.photoCamera = mode;
+  }
   private stationPanelId: number | null = null;
   private portPanelId: number | null = null;
 
   constructor() {
+    applyTextSize(this.textSize);
     const loaded = loadFromStorage();
     let offlineReport: ReturnType<typeof applyOffline> | null = null;
     if (loaded?.ok) {
@@ -166,6 +245,10 @@ class Game {
     });
     this.autoCam = new AutoCamera(this.renderer.controls);
     this.keyCam = new KeyboardCamera(this.renderer.controls);
+    this.walk = new WalkCamera(this.renderer.camera, this.renderer.canvas);
+    this.walk.onTap = (x, y) => {
+      if (this.photo.active) this.photo.onTap(x, y);
+    };
     // 眺めモードのカメラ: AUTO は自動カメラ（タップで解除）、MANUAL はキーボードとドラッグ（Esc／× で解除）
     const applyCalmCamera = () => {
       const manual = this.calm.settings.camera === 'manual';
@@ -195,6 +278,7 @@ class Game {
       applyCalmCamera();
     };
     this.calm.onExit = () => {
+      if (this.photo.active) this.photo.exit(); // フォトモードは眺めモードの中の機能。眺めモードを出るなら先に閉じる
       const c = this.renderer.controls;
       c.enabled = true;
       this.keyCam.enabled = false;
@@ -207,11 +291,17 @@ class Game {
       }
       cameraBeforeCalm = null;
     };
+    // フォトモードは眺めモードの中の機能: ミニ HUD の「フォト」か P で開き、Esc で眺めモードに戻る
+    this.calm.onPhoto = () => this.openPhoto();
+    this.calm.isPhotoActive = () => this.photo.active;
     this.photo.attach({
       onEnter: () => {
-        if (this.calm.active) this.calm.exit();
+        if (!this.calm.active) this.calm.enter(true);
         this.bar.close();
         this.popup.hide();
+        // 撮影中はゲームのトーストとモーダル（成績表など）を前に出さない。終わったら順番に見せる
+        setToastsSuppressed(true);
+        this.modal.suspend(true);
         const c = this.renderer.controls;
         this.cameraBeforePhoto = { target: c.target.clone(), azimuth: c.azimuth, polar: c.polar, distance: c.distance };
         c.enabled = true;
@@ -221,7 +311,13 @@ class Game {
         this.renderer.resize();
       },
       onExit: () => {
+        setToastsSuppressed(false);
+        this.modal.suspend(false);
         this.keyCam.enabled = false;
+        this.walk.enabled = false;
+        this.lastWalkPose = this.photoCamera === 'walk' ? this.walk.pose : null;
+        this.photoCamera = 'orbit';
+        this.renderer.controls.enabled = true;
         this.renderer.setPhotoMode(false);
         const c = this.renderer.controls;
         if (this.cameraBeforePhoto) {
@@ -232,14 +328,40 @@ class Game {
           c.update();
           this.cameraBeforePhoto = null;
         }
+        if (this.calm.active) applyCalmCamera(); // 眺めモードへ戻る（AUTO なら自動カメラを再開）
         this.renderer.resize();
       },
       apply: (p) => this.renderer.setPhotoParams(p),
+      setCameraMode: (mode, resume) => this.setPhotoCamera(mode, resume),
+      walkHome: () => this.walk.home(this.world.width, this.world.height),
       distanceAt: (x, y) => this.renderer.distanceAt(this.world, x, y, this.alpha),
-      capture: (longEdge) => this.renderer.capturePhoto(this.world, this.alpha, longEdge),
+      focusAtStart: () => (this.photoCamera === 'walk' ? this.walk.suggestedDistance() : this.renderer.controls.distance),
+      capture: (longEdge) =>
+        this.renderer.capturePhoto(this.world, this.alpha, longEdge, () => {
+          // シャッター: 本物は動かさず、世界と予約表の写しを進める
+          const wc = structuredClone(this.world);
+          const rc = cloneRuntime(this.rt);
+          return { world: wc, step: () => stepSim(wc, rc) };
+        }),
+      // 連写: いまの瞬間（世界・予約表・カメラ・補間位置）を記録しておき、あとから選んだ 1 枚だけ本番の大きさで撮る
+      snapshot: (): PhotoSnap => ({ at: performance.now(), world: structuredClone(this.world), rt: cloneRuntime(this.rt), alpha: this.alpha, cam: this.cameraPose() }),
+      captureFrom: (snap, longEdge) => {
+        const s = snap as PhotoSnap;
+        const cur = this.cameraPose();
+        this.setCameraPose(s.cam);
+        try {
+          return this.renderer.capturePhoto(s.world, s.alpha, longEdge, () => {
+            const wc = structuredClone(s.world);
+            const rc = cloneRuntime(s.rt);
+            return { world: wc, step: () => stepSim(wc, rc) };
+          });
+        } finally {
+          this.setCameraPose(cur);
+        }
+      },
       isPaused: () => this.world.speed === 0,
       togglePause: () => this.setSpeed(this.world.speed === 0 ? this.lastSpeed : 0),
-      showModal: (title, ...content) => this.modal.show(title, ...content),
+      showModal: (title, ...content) => this.modal.showUrgent(title, ...content),
       hideModal: () => this.modal.hide(),
     });
     this.calm.onCameraChange = () => {
@@ -247,9 +369,12 @@ class Game {
     };
     this.renderer.controls.onInteract = () => {
       this.cameraTouched = true;
-      if (this.calm.active && this.calm.settings.camera === 'auto') this.calm.exit();
+      if (this.calm.active && !this.photo.active && this.calm.settings.camera === 'auto') this.calm.exit();
     };
-    this.hud = new Hud((s) => this.setSpeed(s));
+    this.hud = new Hud(
+      (s) => this.setSpeed(s),
+      (x) => this.openCoinMenu(x, $('hud').getBoundingClientRect().bottom), // HUD の下端から下に出す（上端はステータスバーに隠れる）
+    );
     this.bar = new BottomBar();
     this.orders = new OrderSheet();
     this.popup = new Popup();
@@ -347,6 +472,18 @@ class Game {
     });
     this.bar.registerPanel('settings', (body) =>
       renderSettings(body, {
+        textSize: {
+          current: this.textSize,
+          set: (s) => {
+            this.setTextSize(s);
+            this.bar.refresh();
+          },
+        },
+        restartTutorial: () => {
+          this.bar.close();
+          this.tutorial.start(this.tutorialSnapshot(), 'pickOrder');
+          showToast('チュートリアルを最初から始めます', 2500, 'lightbulb');
+        },
         openHelp: () => this.openHelp(),
         background: this.backgroundMode,
         // iOS アプリでは OS に止められるので「バックグラウンド動作」は出さない（常にオフ: 戻ったときに追いつき／お留守番）
@@ -415,6 +552,13 @@ class Game {
           : undefined,
         openSandbox: hasFeature('sandbox') ? () => this.bar.show('debug') : undefined,
         featureStatus: () => featureStatusNode(),
+        saveLocal: native.available
+          ? () => {
+              void saveSaveFileLocal(this.world)
+                .then((name) => showToast(`ファイル App の「このiPhone内 › 箱庭！DS」に保存しました: ${name}`, 5000, 'check'))
+                .catch((e) => showToast(`保存できませんでした: ${e instanceof Error ? e.message : String(e)}`, 4000, 'triangle-alert'));
+            }
+          : undefined,
         exportSave: () => {
           void exportSaveFile(this.world).then((err) => {
             if (err) showToast(tr('書き出せませんでした: {0}', err), 5000, 'triangle-alert');
@@ -448,10 +592,6 @@ class Game {
             st.textContent = tr('BGM の状態: {0}', this.sound.status());
           }, 1000);
           this.calm.renderSettings(body);
-          body.append(el('h4', { text: tr('フォトモード') }));
-          const ph = el('button', { class: 'btn', type: 'button', title: 'P' }, iconText('camera', tr('フォトモードを開く'), 14), el('kbd', { class: 'key', text: 'P' }));
-          ph.addEventListener('click', () => this.photo.enter());
-          body.append(el('div', { class: 'settings-row' }, ph, el('span', { class: 'muted small', text: tr('カメラを自由に置いて、焦点距離・絞り・シャッター・エフェクトを決めて撮る。撮った写真は起動画面にできる') })));
         },
         saveNow: () => this.save(),
         newGame: () => this.newGame(),
@@ -523,6 +663,121 @@ class Game {
       this.modal.show(tr('サイバーウィーク成績表'), cyberReportNode(rec, this.world.stats.cyberWeekRecords));
       this.world.season.pendingReport = null;
     }
+    this.tutorial = new Tutorial();
+    this.startOnboarding(!!loaded?.ok);
+  }
+
+  /** 1.0.2: 初回は文字の大きさを選んでもらい、続けてチュートリアル（既存のセーブは出荷が少ないときだけ） */
+  private startOnboarding(saveExisted: boolean): void {
+    const begin = () => {
+      if (shouldAutoStart(saveExisted, this.world.stats.totalShipped, loadTutorialStep())) this.tutorial.start(this.tutorialSnapshot());
+    };
+    if (loadTextSizeChoice() !== null || !$('modal').hidden) return begin();
+    if (saveExisted) {
+      // 既存のプレイヤーにはモーダルを出さず、設定に増えたことだけ知らせる（選択は「標準」として記録）
+      saveTextSize(this.textSize);
+      setTimeout(() => showToast('設定に「文字の大きさ」を追加しました（下のバーの「設定」の先頭）', 6000, 'info'), 1500);
+      return begin();
+    }
+    this.onboardingPending = true;
+    const row = el('div', { class: 'settings-row text-size-pick' });
+    for (const t of TEXT_SIZES) {
+      const b = el('button', { class: `btn${t.id === 'normal' ? ' primary' : ''}`, type: 'button', text: t.name });
+      b.addEventListener('click', () => {
+        this.setTextSize(t.id);
+        this.onboardingPending = false;
+        this.modal.hide();
+        begin();
+      });
+      row.append(b);
+    }
+    this.modal.show('文字の大きさ', el('p', { text: '読みやすい大きさを選んでください。あとから設定（下のバーの「設定」）でいつでも変えられます。' }), row);
+  }
+
+  setTextSize(s: TextSize): void {
+    this.textSize = s;
+    saveTextSize(s);
+    applyTextSize(s);
+    this.renderer.resize();
+  }
+
+  /**
+   * チュートリアルの手助け（毎フレーム。1.0.2）:
+   *  5/6: 強化パネルを開いたら「自動化 AI」の見出しまでスクロール（2 画面半下にあって探しにくかった）
+   *  6/6: 建設でスタックを選んでいる間、置けるマス（棚かポートの隣で、床が分断されない）を緑に光らせる
+   */
+  private tutorialAssist(): void {
+    const step = this.tutorial.state?.step;
+    const panel = this.bar.open;
+    if (step === 'automation' && panel === 'upgrades') {
+      if (this.tutAssist.scrolledFor !== 'upgrades') {
+        this.tutAssist.scrolledFor = 'upgrades';
+        const h = [...document.querySelectorAll('#sheet-body h4')].find((e) => e.textContent?.includes('自動化'));
+        h?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    } else if (panel !== 'upgrades') this.tutAssist.scrolledFor = '';
+    const w = this.world;
+    const wantCells = step === 'build' && w.flags.buildMode && this.build.tool === 'stack' && !this.build.held;
+    if (wantCells) {
+      const key = `${w.stacks.length}:${w.ports.length}:${w.width}x${w.height}:${Math.floor(w.coins / 10)}`;
+      if (this.tutAssist.cellsKey !== key) {
+        this.tutAssist.cellsKey = key;
+        const seen = new Set<string>();
+        const cells: { x: number; z: number; color: string }[] = [];
+        const around = (cx: number, cz: number) => {
+          for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+            const x = cx + dx;
+            const z = cz + dz;
+            const k = `${x},${z}`;
+            if (seen.has(k)) continue;
+            seen.add(k);
+            if (canPlace(w, 'stack', x, z) === null) cells.push({ x, z, color: '#7bd389' });
+          }
+        };
+        for (const st of w.stacks) around(st.x, st.z);
+        for (const pt of w.ports) around(pt.x, pt.z);
+        this.renderer.highlightCells = cells;
+      }
+    } else if (this.tutAssist.cellsKey) {
+      this.tutAssist.cellsKey = '';
+      this.renderer.highlightCells = [];
+    }
+  }
+
+  /** チュートリアルの達成判定に渡す、いまの様子 */
+  private tutorialSnapshot(): TutorialSnapshot {
+    const w = this.world;
+    const r = this.selectedRobot;
+    const isManual = (j: { type: string; manual?: boolean } | null | undefined, types: string[]) => !!j && types.includes(j.type) && j.manual === true;
+    return {
+      selectedKind: r ? (r.kind === 'shelf' ? 'shelf' : 'amr') : null,
+      focusItem: this.focusItem !== null,
+      shelfManualJob: w.robots.some((x) => x.kind === 'shelf' && (isManual(x.job, ['retrieve']) || x.queue.some((j) => isManual(j, ['retrieve'])))),
+      amrManualJob: w.robots.some((x) => x.kind === 'amr' && (isManual(x.job, ['fetch', 'deliver']) || x.queue.some((j) => isManual(j, ['fetch', 'deliver'])))),
+      totalShipped: w.stats.totalShipped,
+      dispatch: w.automation.dispatch,
+      stacks: w.stacks.length,
+      uiBusy: this.bar.open !== null || w.flags.buildMode || !!document.querySelector('.order-card.is-expanded'),
+    };
+  }
+
+  /** フォトモードを開く（眺めモードの中の機能。眺めモードでなければ入ってから） */
+  openPhoto(): void {
+    if (this.editor.open || this.photo.active) return;
+    this.photo.enter();
+  }
+
+  /** HUD のコインをタップ → 使い道のメニュー（建設／強化。いまの「おすすめ」があれば先頭に）。1.0.2 */
+  private openCoinMenu(x: number, y: number): void {
+    if (this.calm.active || this.editor.open) return;
+    if (this.popup.visible) return this.popup.hide();
+    const item = (ic: IconName, label: string, sub: string) => el('span', { class: 'popup-menu-item' }, el('span', { class: 'popup-menu-label' }, icon(ic, 16), el('b', { text: ' ' + label })), el('span', { class: 'popup-menu-sub', text: sub }));
+    const items: { node: Node; onPick: () => void }[] = [];
+    const hint = this.currentHint;
+    if (hint) items.push({ node: item('lightbulb', 'おすすめ', hint.text), onPick: () => this.bar.toggle(hint.panel) });
+    items.push({ node: item('hammer', '建設（B）', 'スタック・ポート・ピッカー・入荷ステーションを増やす。倉庫を広げる'), onPick: () => this.bar.toggle('build') });
+    items.push({ node: item('trending-up', '強化（U）', 'ロボを買う・速くする、自動化AI、空ビンの追加'), onPick: () => this.bar.toggle('upgrades') });
+    this.popup.show(x, y, items, `コイン ${Math.floor(this.world.coins).toLocaleString('ja-JP')}: 出荷の報酬。何に使う？`, { column: true, below: true });
   }
 
   /** 操作方法のモーダル */
@@ -563,7 +818,7 @@ class Game {
       this.calm.enter();
       e.preventDefault();
     } else if (code === 'KeyP') {
-      this.photo.enter();
+      this.openPhoto(); // 眺めモードをフォトモードで起動
       e.preventDefault();
     } else if (code === 'KeyF') {
       this.renderer.controls.reset();
@@ -637,6 +892,7 @@ class Game {
 
   /** アドバイザー（★）: 30 秒ごとに提案を確認し、新しい提案（または 3 分ぶり）ならトーストで知らせる */
   private checkAdvisor(now: number): void {
+    if (this.tutorial.active || this.onboardingPending) return; // チュートリアル中（と最初の文字の大きさの選択中）はヒントを重ねない
     if (now - this.lastHintCheck < ADVISOR.checkMs || this.world.speed === 0 || this.world.flags.buildMode) return;
     this.lastHintCheck = now;
     const hint = adviseNext(this.world, this.advisor, { drones: !native.available ? 'none' : hasFeature('specialRobots') ? 'available' : 'locked' });
@@ -850,7 +1106,8 @@ class Game {
     this.select(null);
     this.bar.close();
     this.save();
-    showToast(tr('新しい倉庫を始めました'));
+    showToast('新しい倉庫を始めました');
+    this.tutorial.start(this.tutorialSnapshot(), 'pickOrder');
   }
 
   setSpeed(s: number): void {
@@ -1178,7 +1435,9 @@ class Game {
       this.sound.setActivity(this.world.speed === 0 ? 0 : this.world.robots.filter((r) => r.phase === 'moving').length);
       this.sound.check(now); // BGM の見張り（1 秒に 1 回。フォトモード中も）
       if (this.photo.active) {
-        this.keyCam.update(Math.min(0.25, (now - this.lastRender) / 1000));
+        const pdt = Math.min(0.25, (now - this.lastRender) / 1000);
+        this.keyCam.update(pdt);
+        this.walk.update(pdt);
         this.lastRender = now;
         this.renderer.render(this.world, this.alpha);
         return;
@@ -1195,6 +1454,8 @@ class Game {
         return;
       }
       this.lastRender = now;
+      this.tutorial.update(this.tutorialSnapshot());
+      if (this.tutorial.active) this.tutorialAssist();
       this.checkStockoutHint(now);
       this.checkAdvisor(now);
       this.hud.update(this.world);

@@ -19,6 +19,14 @@ export class ReservationTable {
     this.byRobot.clear();
   }
 
+  /** 写し（フォトモードのシャッターで、シミュレーションの写しを進めるため） */
+  clone(): ReservationTable {
+    const c = new ReservationTable();
+    for (const [k, arr] of this.cells) c.cells.set(k, arr.map((r) => ({ ...r })));
+    for (const [k, set] of this.byRobot) c.byRobot.set(k, new Set(set));
+    return c;
+  }
+
   reserve(cellIdx: number, from: number, to: number, robotId: number): void {
     let arr = this.cells.get(cellIdx);
     if (!arr) {

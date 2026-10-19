@@ -10,8 +10,8 @@ settings:
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1,2"
     DEVELOPMENT_TEAM: "TTM3VRP3Y3"
-    MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.0.2"
+    CURRENT_PROJECT_VERSION: "3"
 targets:
   HakoniwaDS:
     type: application
@@ -50,6 +50,10 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
+        NSPhotoLibraryAddUsageDescription: フォトモードで撮った写真をカメラロールに保存するために使います
+        # ファイル App の「このiPhone内」に「箱庭！DS」フォルダを出す（書き出したセーブの置き場。本体のセーブは Application Support で見えない）
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:

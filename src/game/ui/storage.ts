@@ -76,7 +76,7 @@ export function clearStorage(): void {
 /** 書き出すファイル名（日時入り） */
 export function exportFileName(d = new Date()): string {
   const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
-  return `jido-soko-save-${stamp}.json`;
+  return `hako-dis-save-${stamp}.json`;
 }
 
 /**
@@ -105,6 +105,14 @@ export async function exportSaveFile(w: WorldState): Promise<string | null> {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   return null;
+}
+
+/** iOS: セーブをファイル App の「このiPhone内 › 箱庭！DS」に置く。置いたファイル名を返す。失敗したら Error */
+export async function saveSaveFileLocal(w: WorldState): Promise<string> {
+  const text = serialize(w);
+  const name = exportFileName();
+  const r = (await native.call('saveFileLocal', { name, text }, 10_000)) as { name?: string } | null;
+  return r?.name ?? name;
 }
 
 /** セーブをクリップボードへ（iOS で共有シートが使えないときの逃げ道。メモや「ファイル」に貼り付けて保管できる）。失敗したら理由 */
