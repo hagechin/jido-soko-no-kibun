@@ -116,6 +116,9 @@ function saveTutorialStep(v: TutorialStepId | 'done'): void {
 export class Tutorial {
   state: TutorialState | null = null;
   private root = $('tutorial');
+  /** パネルが開いている間の 1 行のカード: シートの見出しの行の下に差し込む（浮かせるとパネルの中身に重なる。第 29〜33 回） */
+  private inline = el('div', { class: 'tut-inline' });
+  private docked = false;
   private lastRendered = '';
   onChange: (() => void) | null = null;
 
@@ -136,6 +139,9 @@ export class Tutorial {
   finish(): void {
     this.state = null;
     saveTutorialStep('done');
+    this.dock(false);
+    this.compact = false;
+    this.root.classList.remove('is-compact');
     this.root.hidden = true;
     document.body.classList.remove('has-tutorial');
     this.lastRendered = '';
@@ -153,9 +159,25 @@ export class Tutorial {
       this.compact = compact;
       this.root.classList.toggle('is-compact', compact);
     }
-    this.root.classList.toggle('is-top', compact && !!snap.sheetOpen);
+    this.dock(compact && !!snap.sheetOpen);
   }
   private compact = false;
+
+  /** シートの見出しの行に 1 行のカードを入れる／外す（見出しは毎フレーム確認: パネルを切り替えても残す） */
+  private dock(on: boolean): void {
+    const head = document.querySelector<HTMLElement>('.sheet-head');
+    if (on && head) {
+      if (!head.contains(this.inline)) head.append(this.inline);
+      head.classList.add('has-tut');
+    } else if (this.docked) {
+      this.inline.remove();
+      head?.classList.remove('has-tut');
+    }
+    if (on !== this.docked) {
+      this.docked = on;
+      this.root.classList.toggle('is-docked', on);
+    }
+  }
 
   private goto(step: TutorialStepId, snap: TutorialSnapshot): void {
     if (!this.state) return;
@@ -203,6 +225,9 @@ export class Tutorial {
     const phone = isPhoneLayout();
     const body = step === 'pickOrder' && phone ? PICK_ORDER_BODY_PHONE : step === 'ship' && phone ? SHIP_BODY_PHONE : t.body;
     this.root.replaceChildren(head, el('div', { class: 'tut-title', text: t.title }), el('div', { class: 'tut-body', text: body }), actions);
+    const closeInline = el('button', { class: 'btn icon-btn tut-close', type: 'button', title: tr('チュートリアルを終える'), 'aria-label': tr('チュートリアルを終える') }, icon('x', 16));
+    closeInline.addEventListener('click', () => this.finish());
+    this.inline.replaceChildren(icon('lightbulb', 16), el('span', { class: 'tut-inline-title', text: t.title }), closeInline);
     this.root.hidden = false;
     document.body.classList.add('has-tutorial');
     this.highlight(t.target ?? '');

@@ -1799,10 +1799,22 @@ kbd.key {
 .photo-chip.is-on .photo-chip-v {
   color: var(--accent);
 }
-/* 右にまだチップがあるときは右端をフェード */
+/* 右（左）にまだチップがあるときはその端をフェード */
 .photo-chips.has-more {
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
   mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+}
+.photo-chips.has-left {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 36px);
+  mask-image: linear-gradient(to right, transparent, #000 36px);
+}
+.photo-chips.has-left.has-more {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+}
+/* 一時停止⇄再開で幅が変わって列がずれないように */
+.photo-chip-act {
+  min-width: 84px;
 }
 .photo-chip-act .photo-chip-v {
   text-decoration: underline;
@@ -1910,7 +1922,7 @@ body.is-photo .catchup {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
 }
 .tutorial[hidden] {
-  display: none;
+  display: none !important; /* .is-compact の display:flex に負けて、1 行のカードから終えたとき消えなかった */
 }
 /* コインのメニュー（縦並び） */
 .popup.is-column {
@@ -2007,9 +2019,32 @@ body.has-tutorial:has(.tutorial.is-compact) .view-overlay {
   align-items: center;
   gap: 8px;
 }
-.tutorial.is-compact.is-top {
-  top: 8px;
-  bottom: auto; /* パネルが開いている間は左上（左下だとパネルの説明文に重なる） */
+.tutorial.is-docked {
+  display: none; /* パネルが開いている間はシートの見出しの行に入れる（.tut-inline） */
+}
+.sheet-head.has-tut {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.tut-inline {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 4px 4px 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: rgba(20, 28, 38, 0.6);
+}
+.tut-inline .tut-inline-title {
+  flex: 1;
+  min-width: 0;
+}
+.tut-inline .tut-close {
+  flex: none;
 }
 .tutorial.is-compact .tut-body,
 .tutorial.is-compact .tut-actions,

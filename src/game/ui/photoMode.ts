@@ -494,7 +494,10 @@ export class PhotoMode {
       // 右にまだチップがあるときは右端をフェード（スクロールできる手がかり。第 32 回）
       const prevChips = this.panel.querySelector<HTMLElement>('.photo-chips');
       const chipScroll = prevChips?.scrollLeft ?? 0;
-      const more = () => chipRow.classList.toggle('has-more', chipRow.scrollLeft + chipRow.clientWidth < chipRow.scrollWidth - 2);
+      const more = () => {
+        chipRow.classList.toggle('has-more', chipRow.scrollLeft + chipRow.clientWidth < chipRow.scrollWidth - 2);
+        chipRow.classList.toggle('has-left', chipRow.scrollLeft > 2);
+      };
       chipRow.addEventListener('scroll', more, { passive: true });
       const mountDial = afterMount;
       afterMount = () => {
