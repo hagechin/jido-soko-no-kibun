@@ -188,7 +188,7 @@ export class PhotoMode {
       /* ignore */
     }
     if (remembered === 'walk') this.setCameraMode('walk', { resume: true, quiet: true });
-    showToast(`フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、${isTouch() ? '×' : 'Esc'} で眺めモードに戻る`, 4000, 'camera', true);
+    showToast(tr('フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、{0} で眺めモードに戻る', isTouch() ? '×' : 'Esc'), 4000, 'camera', true);
   }
 
   exit(): void {
@@ -222,7 +222,7 @@ export class PhotoMode {
       /* ignore */
     }
     if (mode === 'walk' && !opts.quiet) {
-      showToast(isTouch() ? 'ウォークスルー: 左半分をドラッグで移動（遠くへ引くほど速く）、右半分で見回す、2 本指の上下で上昇・下降' : 'ウォークスルー: ドラッグで見回す、WASD で移動、Q/E で下降・上昇、Shift で速く、ホイールで前後', 4500, 'camera', true);
+      showToast(isTouch() ? tr('ウォークスルー: 左半分をドラッグで移動（遠くへ引くほど速く）、右半分で見回す、2 本指の上下で上昇・下降') : tr('ウォークスルー: ドラッグで見回す、WASD で移動、Q/E で下降・上昇、Shift で速く、ホイールで前後'), 4500, 'camera', true);
     }
   }
 
@@ -230,7 +230,7 @@ export class PhotoMode {
   private walkHome(): void {
     if (!this.host || this.cameraMode !== 'walk') return;
     this.host.walkHome();
-    showToast('倉庫の正面へ戻りました', 1800, 'camera', true);
+    showToast(tr('倉庫の正面へ戻りました'), 1800, 'camera', true);
   }
 
   setMinimal(on: boolean): void {
@@ -282,7 +282,7 @@ export class PhotoMode {
 
   /** シャッター ●: タップで 1 枚、長押しで連写（瞬間の記録） */
   private makeShutter(): HTMLButtonElement {
-    const b = el('button', { class: 'photo-shutter', type: 'button', title: '撮影（Enter）。長押しで連写して後から 1 枚選ぶ', 'aria-label': '撮影' }) as HTMLButtonElement;
+    const b = el('button', { class: 'photo-shutter', type: 'button', title: tr('撮影（Enter）。長押しで連写して後から 1 枚選ぶ'), 'aria-label': tr('撮影') }) as HTMLButtonElement;
     b.append(el('span', { class: 'photo-shutter-count', text: '' }));
     b.addEventListener('pointerdown', (e) => {
       if (this.busy) return;
@@ -355,9 +355,9 @@ export class PhotoMode {
     this.busy = true;
     this.panel.classList.add('is-busy');
     const host = this.host;
-    const big = el('img', { class: 'photo-preview', alt: '選んでいる瞬間' }) as HTMLImageElement;
+    const big = el('img', { class: 'photo-preview', alt: tr('選んでいる瞬間') }) as HTMLImageElement;
     const strip = el('div', { class: 'photo-strip' });
-    const note = el('p', { class: 'muted small', text: `${snaps.length} 枚の瞬間（${((snaps.length - 1) * BURST_INTERVAL_MS) / 1000} 秒ぶん）。タップして選び、「この 1 枚を現像」` });
+    const note = el('p', { class: 'muted small', text: tr('{0} 枚の瞬間（{1} 秒ぶん）。タップして選び、「この 1 枚を現像」', snaps.length, ((snaps.length - 1) * BURST_INTERVAL_MS) / 1000) });
     let selected = 0;
     const thumbs: HTMLImageElement[] = [];
     const pick = (i: number) => {
@@ -365,17 +365,17 @@ export class PhotoMode {
       thumbs.forEach((t, k) => t.classList.toggle('is-active', k === i));
       big.src = thumbs[i].src;
     };
-    const develop = el('button', { class: 'btn primary', type: 'button' }, iconText('camera', 'この 1 枚を現像', 14));
+    const develop = el('button', { class: 'btn primary', type: 'button' }, iconText('camera', tr('この 1 枚を現像'), 14));
     develop.addEventListener('click', () => {
       host.hideModal();
       void this.shoot(snaps[selected]);
     });
-    const cancel = el('button', { class: 'btn', type: 'button', text: 'やめる' });
+    const cancel = el('button', { class: 'btn', type: 'button', text: tr('やめる') });
     cancel.addEventListener('click', () => host.hideModal());
-    host.showModal('現像', big, strip, note, el('div', { class: 'settings-row' }, develop, cancel));
+    host.showModal(tr('現像'), big, strip, note, el('div', { class: 'settings-row' }, develop, cancel));
     // サムネイルは 1 枚ずつ描く（描画の合間に画面を返す）
     for (let i = 0; i < snaps.length; i++) {
-      const t = el('img', { class: 'photo-thumb', alt: `${i + 1} 枚目` }) as HTMLImageElement;
+      const t = el('img', { class: 'photo-thumb', alt: tr('{0} 枚目', i + 1) }) as HTMLImageElement;
       t.addEventListener('click', () => pick(i));
       thumbs.push(t);
       strip.append(t);
@@ -408,30 +408,30 @@ export class PhotoMode {
       }
       return r;
     };
-    const pause = el('button', { class: 'btn', type: 'button', title: 'Space' }, this.host?.isPaused() ? iconText('play', '再開', 14) : iconText('pause', '一時停止', 14));
+    const pause = el('button', { class: 'btn', type: 'button', title: 'Space' }, this.host?.isPaused() ? iconText('play', tr('再開'), 14) : iconText('pause', tr('一時停止'), 14));
     pause.addEventListener('click', () => {
       this.host?.togglePause();
       this.renderPanel();
     });
-    const close = el('button', { class: 'btn', type: 'button', title: '眺めモードに戻る（Esc）' }, iconText('x', '終了', 14));
+    const close = el('button', { class: 'btn', type: 'button', title: tr('眺めモードに戻る（Esc）') }, iconText('x', tr('終了'), 14));
     close.addEventListener('click', () => this.exit());
     this.panel.classList.toggle('is-min', this.minimal);
     if (this.minimal) {
       // シャッターだけの画面: 左に設定、中央に ●、右に終了
-      const settings = el('button', { class: 'btn photo-min-btn', type: 'button', title: '設定を出す（H）', 'aria-label': '設定' }, icon('settings', 16));
+      const settings = el('button', { class: 'btn photo-min-btn', type: 'button', title: tr('設定を出す（H）'), 'aria-label': tr('設定') }, icon('settings', 16));
       settings.addEventListener('click', () => this.setMinimal(false));
       // カメラの切り替えは「回す｜歩く」の 2 つで、今のほうを点灯（片方だけだと今どちらか分からなかった。第 24 回）
-      const seg = el('span', { class: 'photo-seg', title: 'カメラの切り替え（V）' });
-      for (const [mode, label] of [['orbit', '回す'], ['walk', '歩く']] as [PhotoCameraMode, string][]) {
+      const seg = el('span', { class: 'photo-seg', title: tr('カメラの切り替え（V）') });
+      for (const [mode, label] of [['orbit', tr('回す')], ['walk', tr('歩く')]] as [PhotoCameraMode, string][]) {
         const b = el('button', { class: `btn photo-min-btn${this.cameraMode === mode ? ' is-active' : ''}`, type: 'button', text: label });
         b.addEventListener('click', () => this.setCameraMode(mode));
         seg.append(b);
       }
-      const exit = el('button', { class: 'btn photo-min-btn', type: 'button', title: '眺めモードに戻る（Esc）', 'aria-label': '終了' }, icon('x', 16));
+      const exit = el('button', { class: 'btn photo-min-btn', type: 'button', title: tr('眺めモードに戻る（Esc）'), 'aria-label': tr('終了') }, icon('x', 16));
       exit.addEventListener('click', () => this.exit());
       const right = el('span', { class: 'photo-min-group' });
       if (this.cameraMode === 'walk') {
-        const home = el('button', { class: 'btn photo-min-btn', type: 'button', title: '倉庫の正面へ戻る', 'aria-label': '倉庫の正面へ' }, icon('house', 16));
+        const home = el('button', { class: 'btn photo-min-btn', type: 'button', title: tr('倉庫の正面へ戻る'), 'aria-label': tr('倉庫の正面へ') }, icon('house', 16));
         home.addEventListener('click', () => this.walkHome());
         right.append(home);
       }
@@ -440,28 +440,28 @@ export class PhotoMode {
       this.updatePanelHeight();
       return;
     }
-    const hide = el('button', { class: 'btn', type: 'button', title: '設定を隠してシャッターだけにする（H）' }, iconText('image', '設定を隠す', 14));
+    const hide = el('button', { class: 'btn', type: 'button', title: tr('設定を隠してシャッターだけにする（H）') }, iconText('image', tr('設定を隠す'), 14));
     hide.addEventListener('click', () => this.setMinimal(true));
     this.panel.replaceChildren(
-      el('div', { class: 'photo-head' }, el('span', { class: 'photo-title' }, icon('camera', 16), el('span', { text: ' フォトモード' })), this.focusHint, el('span', { class: 'photo-actions' }, pause, hide, this.makeShutter(), close)),
-      row('カメラ', [
-        { key: 'orbit', text: 'オービット（回す）', on: this.cameraMode === 'orbit', pick: () => this.setCameraMode('orbit') },
-        { key: 'walk', text: 'ウォークスルー（歩く・飛ぶ）', on: this.cameraMode === 'walk', pick: () => this.setCameraMode('walk') },
-        ...(this.cameraMode === 'walk' ? [{ key: 'home', text: '倉庫の正面へ戻る', on: false, pick: () => this.walkHome() }] : []),
+      el('div', { class: 'photo-head' }, el('span', { class: 'photo-title' }, icon('camera', 16), el('span', { text: tr(' フォトモード') })), this.focusHint, el('span', { class: 'photo-actions' }, pause, hide, this.makeShutter(), close)),
+      row(tr('カメラ'), [
+        { key: 'orbit', text: tr('オービット（回す）'), on: this.cameraMode === 'orbit', pick: () => this.setCameraMode('orbit') },
+        { key: 'walk', text: tr('ウォークスルー（歩く・飛ぶ）'), on: this.cameraMode === 'walk', pick: () => this.setCameraMode('walk') },
+        ...(this.cameraMode === 'walk' ? [{ key: 'home', text: tr('倉庫の正面へ戻る'), on: false, pick: () => this.walkHome() }] : []),
       ]),
       row(
         tr('焦点距離'),
         PHOTO_CHOICES.focalMm.map((f) => ({ key: String(f), text: `${f}mm`, on: p.focalMm === f, pick: () => this.set({ focalMm: f }) })),
       ),
-      row('ボケ', [
-        { key: 'off', text: 'オフ（パンフォーカス）', on: !p.bokeh, pick: () => this.set({ bokeh: false }) },
-        { key: 'on', text: 'オン', on: p.bokeh, pick: () => this.set({ bokeh: true }) },
+      row(tr('ボケ'), [
+        { key: 'off', text: tr('オフ（パンフォーカス）'), on: !p.bokeh, pick: () => this.set({ bokeh: false }) },
+        { key: 'on', text: tr('オン'), on: p.bokeh, pick: () => this.set({ bokeh: true }) },
       ]),
       // 絞りはボケがオンのときだけ
       ...(p.bokeh
         ? [
             row(
-              '絞り',
+              tr('絞り'),
               PHOTO_CHOICES.fNumber.map((f) => ({ key: String(f), text: `F${f}`, on: p.fNumber === f, pick: () => this.set({ fNumber: f }) })),
             ),
           ]
@@ -471,11 +471,11 @@ export class PhotoMode {
         PHOTO_CHOICES.shutter.map((s) => ({ key: s.label, text: s.label, on: p.shutterTicks === s.ticks, pick: () => this.set({ shutterTicks: s.ticks }) })),
       ),
       row(
-        '露出',
+        tr('露出'),
         PHOTO_CHOICES.exposure.map((e) => ({ key: String(e), text: e === 0 ? '±0' : `${e > 0 ? '+' : ''}${e}`, on: p.exposure === e, pick: () => this.set({ exposure: e }) })),
       ),
       row(
-        'エフェクト',
+        tr('エフェクト'),
         PHOTO_CHOICES.effect.map((e) => ({ key: e.id, text: e.name, on: p.effect === e.id, pick: () => this.set({ effect: e.id }) })),
       ),
       row(
@@ -483,7 +483,7 @@ export class PhotoMode {
         PHOTO_CHOICES.aspect.map((a) => ({ key: a.id, text: a.name, on: p.aspect === a.id, pick: () => this.set({ aspect: a.id }) })),
       ),
       row(
-        'ロゴ',
+        tr('ロゴ'),
         PHOTO_CHOICES.logo.map((l) => ({ key: l.id, text: l.name, on: p.logo === l.id, pick: () => this.set({ logo: l.id }) })),
       ),
     );
@@ -500,7 +500,7 @@ export class PhotoMode {
     try {
       url = snap ? this.host.captureFrom(snap, PHOTO_LONG_EDGE) : this.host.capture(PHOTO_LONG_EDGE);
     } catch (e) {
-      showToast(`撮影できませんでした: ${e instanceof Error ? e.message : String(e)}`);
+      showToast(tr('撮影できませんでした: {0}', e instanceof Error ? e.message : String(e)));
       this.busy = false;
       this.panel.classList.remove('is-busy');
       return;
@@ -513,18 +513,18 @@ export class PhotoMode {
   /** 「撮れました」のモーダル（保存のあとの案内から戻ってくるときにも使う） */
   private showResult(url: string, saved = false): void {
     if (!this.host) return;
-    const img = el('img', { class: 'photo-preview', alt: '撮った写真' }) as HTMLImageElement;
+    const img = el('img', { class: 'photo-preview', alt: tr('撮った写真') }) as HTMLImageElement;
     // 大きな JPEG の読み込みに 1〜2 秒かかるので、その間は「現像中…」を出す
-    const loading = el('p', { class: 'muted small photo-loading', text: '現像中…' });
+    const loading = el('p', { class: 'muted small photo-loading', text: tr('現像中…') });
     img.addEventListener('load', () => loading.remove());
-    img.addEventListener('error', () => (loading.textContent = '写真を表示できませんでした'));
+    img.addEventListener('error', () => (loading.textContent = tr('写真を表示できませんでした')));
     img.src = url;
-    const save = el('button', { class: 'btn primary', type: 'button' }, saved ? iconText('check', '保存しました', 14) : iconText(native.available ? 'image' : 'download', native.available ? 'カメラロールに保存' : 'ダウンロード', 14));
+    const save = el('button', { class: 'btn primary', type: 'button' }, saved ? iconText('check', tr('保存しました'), 14) : iconText(native.available ? 'image' : 'download', native.available ? tr('カメラロールに保存') : tr('ダウンロード'), 14));
     if (saved) save.setAttribute('disabled', 'true');
     save.addEventListener('click', () => void this.savePhoto(url, save));
-    const share = native.available ? el('button', { class: 'btn', type: 'button' }, iconText('upload', '共有', 14)) : null;
+    const share = native.available ? el('button', { class: 'btn', type: 'button' }, iconText('upload', tr('共有'), 14)) : null;
     share?.addEventListener('click', () => this.sharePhoto(url));
-    const startup = el('button', { class: 'btn', type: 'button' }, iconText('image', '起動画面にする', 14));
+    const startup = el('button', { class: 'btn', type: 'button' }, iconText('image', tr('起動画面にする'), 14));
     startup.addEventListener('click', async () => {
       startup.setAttribute('disabled', 'true');
       const small = await downscaleDataUrl(url, STARTUP_LONG_EDGE);
@@ -534,7 +534,7 @@ export class PhotoMode {
     });
     const again = el('button', { class: 'btn', type: 'button', text: tr('撮り直す') });
     again.addEventListener('click', () => this.host?.hideModal());
-    this.host.showModal('撮れました', loading, img, el('div', { class: 'settings-row' }, save, share, startup, again));
+    this.host.showModal(tr('撮れました'), loading, img, el('div', { class: 'settings-row' }, save, share, startup, again));
   }
 
   private stamp(): string {
@@ -543,7 +543,7 @@ export class PhotoMode {
 
   /** iOS: 共有シート（写真 + ハッシュタグの文） */
   private sharePhoto(url: string): void {
-    native.call('sharePhoto', { data: url, name: `hakoniwa-${this.stamp()}.jpg`, text: PHOTO_SHARE_TEXT }, 120_000).catch(() => showToast('共有できませんでした', 2200, undefined, true));
+    native.call('sharePhoto', { data: url, name: `hakoniwa-${this.stamp()}.jpg`, text: PHOTO_SHARE_TEXT }, 120_000).catch(() => showToast(tr('共有できませんでした'), 2200, undefined, true));
   }
 
   /** iOS: カメラロールへ保存（「追加のみ」の権限）。Web: ダウンロード */
@@ -553,24 +553,24 @@ export class PhotoMode {
       try {
         const r = (await native.call('savePhoto', { data: url, name: `hakoniwa-${this.stamp()}.jpg` }, 60_000)) as { saved?: boolean; denied?: boolean; error?: string } | null;
         if (r?.saved) {
-          showToast('カメラロールに保存しました', 2200, 'check', true);
-          button?.replaceChildren(iconText('check', '保存しました', 14));
+          showToast(tr('カメラロールに保存しました'), 2200, 'check', true);
+          button?.replaceChildren(iconText('check', tr('保存しました'), 14));
           return;
         }
         button?.removeAttribute('disabled');
         if (r?.denied) {
-          const open = el('button', { class: 'btn primary', type: 'button', text: '設定を開く' });
+          const open = el('button', { class: 'btn primary', type: 'button', text: tr('設定を開く') });
           open.addEventListener('click', () => nativeTry('openSettings'));
           // 「戻る」で撮った写真（撮れました）に戻る（以前は閉じると写真が失われた。第 24 回）
-          const back = el('button', { class: 'btn', type: 'button', text: '写真に戻る' });
+          const back = el('button', { class: 'btn', type: 'button', text: tr('写真に戻る') });
           back.addEventListener('click', () => this.showResult(url));
-          this.host?.showModal('写真への保存が許可されていません', el('p', { text: '設定 → 箱庭！DS → 写真 で「追加のみ」を許可すると、カメラロールに保存できます。許可しなくても「共有」から "ファイル" に保存したり、ほかのアプリへ送れます。' }), el('div', { class: 'settings-row' }, open, back));
+          this.host?.showModal(tr('写真への保存が許可されていません'), el('p', { text: tr('設定 → 箱庭！DS → 写真 で「追加のみ」を許可すると、カメラロールに保存できます。許可しなくても「共有」から "ファイル" に保存したり、ほかのアプリへ送れます。') }), el('div', { class: 'settings-row' }, open, back));
           return;
         }
-        showToast(`保存できませんでした${r?.error ? `: ${r.error}` : ''}`, 3000, 'triangle-alert', true);
+        showToast(tr('保存できませんでした{0}', r?.error ? `: ${r.error}` : ''), 3000, 'triangle-alert', true);
       } catch {
         button?.removeAttribute('disabled');
-        showToast('保存できませんでした', 2200, 'triangle-alert', true);
+        showToast(tr('保存できませんでした'), 2200, 'triangle-alert', true);
       }
       return;
     }

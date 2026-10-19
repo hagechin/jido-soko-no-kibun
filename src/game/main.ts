@@ -482,7 +482,7 @@ class Game {
         restartTutorial: () => {
           this.bar.close();
           this.tutorial.start(this.tutorialSnapshot(), 'pickOrder');
-          showToast('チュートリアルを最初から始めます', 2500, 'lightbulb');
+          showToast(tr('チュートリアルを最初から始めます'), 2500, 'lightbulb');
         },
         openHelp: () => this.openHelp(),
         background: this.backgroundMode,
@@ -555,8 +555,8 @@ class Game {
         saveLocal: native.available
           ? () => {
               void saveSaveFileLocal(this.world)
-                .then((name) => showToast(`ファイル App の「このiPhone内 › 箱庭！DS」に保存しました: ${name}`, 5000, 'check'))
-                .catch((e) => showToast(`保存できませんでした: ${e instanceof Error ? e.message : String(e)}`, 4000, 'triangle-alert'));
+                .then((name) => showToast(tr('ファイル App の「このiPhone内 › 箱庭！DS」に保存しました: {0}', name), 5000, 'check'))
+                .catch((e) => showToast(tr('保存できませんでした: {0}', e instanceof Error ? e.message : String(e)), 4000, 'triangle-alert'));
             }
           : undefined,
         exportSave: () => {
@@ -676,7 +676,7 @@ class Game {
     if (saveExisted) {
       // 既存のプレイヤーにはモーダルを出さず、設定に増えたことだけ知らせる（選択は「標準」として記録）
       saveTextSize(this.textSize);
-      setTimeout(() => showToast('設定に「文字の大きさ」を追加しました（下のバーの「設定」の先頭）', 6000, 'info'), 1500);
+      setTimeout(() => showToast(tr('設定に「文字の大きさ」を追加しました（下のバーの「設定」の先頭）'), 6000, 'info'), 1500);
       return begin();
     }
     this.onboardingPending = true;
@@ -691,7 +691,7 @@ class Game {
       });
       row.append(b);
     }
-    this.modal.show('文字の大きさ', el('p', { text: '読みやすい大きさを選んでください。あとから設定（下のバーの「設定」）でいつでも変えられます。' }), row);
+    this.modal.show(tr('文字の大きさ'), el('p', { text: tr('読みやすい大きさを選んでください。あとから設定（下のバーの「設定」）でいつでも変えられます。') }), row);
   }
 
   setTextSize(s: TextSize): void {
@@ -712,7 +712,7 @@ class Game {
     if (step === 'automation' && panel === 'upgrades') {
       if (this.tutAssist.scrolledFor !== 'upgrades') {
         this.tutAssist.scrolledFor = 'upgrades';
-        const h = [...document.querySelectorAll('#sheet-body h4')].find((e) => e.textContent?.includes('自動化'));
+        const h = [...document.querySelectorAll('#sheet-body h4')].find((e) => e.textContent?.includes(tr('自動化')));
         h?.scrollIntoView({ block: 'start', behavior: 'smooth' });
       }
     } else if (panel !== 'upgrades') this.tutAssist.scrolledFor = '';
@@ -774,10 +774,10 @@ class Game {
     const item = (ic: IconName, label: string, sub: string) => el('span', { class: 'popup-menu-item' }, el('span', { class: 'popup-menu-label' }, icon(ic, 16), el('b', { text: ' ' + label })), el('span', { class: 'popup-menu-sub', text: sub }));
     const items: { node: Node; onPick: () => void }[] = [];
     const hint = this.currentHint;
-    if (hint) items.push({ node: item('lightbulb', 'おすすめ', hint.text), onPick: () => this.bar.toggle(hint.panel) });
-    items.push({ node: item('hammer', '建設（B）', 'スタック・ポート・ピッカー・入荷ステーションを増やす。倉庫を広げる'), onPick: () => this.bar.toggle('build') });
-    items.push({ node: item('trending-up', '強化（U）', 'ロボを買う・速くする、自動化AI、空ビンの追加'), onPick: () => this.bar.toggle('upgrades') });
-    this.popup.show(x, y, items, `コイン ${Math.floor(this.world.coins).toLocaleString('ja-JP')}: 出荷の報酬。何に使う？`, { column: true, below: true });
+    if (hint) items.push({ node: item('lightbulb', tr('おすすめ'), hint.text), onPick: () => this.bar.toggle(hint.panel) });
+    items.push({ node: item('hammer', tr('建設（B）'), tr('スタック・ポート・ピッカー・入荷ステーションを増やす。倉庫を広げる')), onPick: () => this.bar.toggle('build') });
+    items.push({ node: item('trending-up', tr('強化（U）'), tr('ロボを買う・速くする、自動化AI、空ビンの追加')), onPick: () => this.bar.toggle('upgrades') });
+    this.popup.show(x, y, items, tr('コイン {0}: 出荷の報酬。何に使う？', Math.floor(this.world.coins).toLocaleString('ja-JP')), { column: true, below: true });
   }
 
   /** 操作方法のモーダル */
@@ -1106,7 +1106,7 @@ class Game {
     this.select(null);
     this.bar.close();
     this.save();
-    showToast('新しい倉庫を始めました');
+    showToast(tr('新しい倉庫を始めました'));
     this.tutorial.start(this.tutorialSnapshot(), 'pickOrder');
   }
 

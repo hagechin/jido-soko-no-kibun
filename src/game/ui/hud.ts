@@ -40,15 +40,15 @@ export class Hud {
     if (onCoinsTap) {
       const c = $('hud-coins');
       c.style.cursor = 'pointer';
-      c.title = 'コイン: タップで使い道（建設・強化）';
+      c.title = tr('コイン: タップで使い道（建設・強化）');
       c.addEventListener('click', (e) => onCoinsTap(e.clientX, e.clientY));
     }
     const explain: [HTMLElement, () => string][] = [
-      ...(onCoinsTap ? [] : ([[$('hud-coins'), () => 'コイン: 出荷の報酬。ロボ・設備・強化に使います']] as [HTMLElement, () => string][])),
-      [$('hud-rank'), () => '倉庫ランク: 累計出荷で昇格し、新商品や設備が解放されます（難易度・経済モードも表示）'],
-      [$('hud-rep'), () => '評判: 速い出荷で上がり、遅延や溜まりすぎで下がります。高いほど客が増えます'],
-      [this.sandbox, () => 'SB: サンドボックスを使ったセーブの印（正規の進行ではありません。新しく始めると消えます）'],
-      [this.dock, () => `入荷口の滞留: トラックが運んできて、まだ棚に入っていない商品の数（${this.last.dock} 個）。空ビンがあればロボが取り込みます`],
+      ...(onCoinsTap ? [] : ([[$('hud-coins'), () => tr('コイン: 出荷の報酬。ロボ・設備・強化に使います')]] as [HTMLElement, () => string][])),
+      [$('hud-rank'), () => tr('倉庫ランク: 累計出荷で昇格し、新商品や設備が解放されます（難易度・経済モードも表示）')],
+      [$('hud-rep'), () => tr('評判: 速い出荷で上がり、遅延や溜まりすぎで下がります。高いほど客が増えます')],
+      [this.sandbox, () => tr('SB: サンドボックスを使ったセーブの印（正規の進行ではありません。新しく始めると消えます）')],
+      [this.dock, () => tr('入荷口の滞留: トラックが運んできて、まだ棚に入っていない商品の数（{0} 個）。空ビンがあればロボが取り込みます', this.last.dock)],
       // スマホ幅ではランクと季節のアイコンが出ないので、日付の説明にランクと今の季節イベントも添える
       [$('hud-date'), () => tr('暦: 1 か月 = 6 分。入荷トラックは設定の頻度で、季節イベントは月ごとに変わります。いま: {0}、{1}', this.rank.textContent, activeEvents(this.lastWorld?.calendar.month ?? 1, this.lastWorld?.calendar.week ?? 1).map((e) => e.name).join(tr('・')) || tr('イベントなし'))],
       [this.season, () => tr('季節: いま売れやすい商品が変わります（上の帯の文を参照）')],

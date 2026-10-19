@@ -6,6 +6,7 @@
 import { PORT } from '../data/balance';
 import { pickStackWithRoom } from './robots';
 import type { WorldState } from './types';
+import { tr } from '../i18n';
 
 /** どこにも無いビンの id */
 export function auditBins(w: WorldState): number[] {
@@ -48,6 +49,6 @@ export function rehomeOrphans(w: WorldState): number {
       n++;
     }
   }
-  if (n) w.events.push({ type: 'notice', icon: 'info', text: `行方不明だったビン ${n} 個を棚に戻しました` });
+  if (n) w.events.push({ type: 'notice', icon: 'info', text: tr('行方不明だったビン {0} 個を棚に戻しました', n) });
   return n;
 }

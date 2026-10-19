@@ -1470,3 +1470,11 @@ npm run preview   # http://localhost:4321 で確認
 
 - release/1.0 `c01e53a` のコード（1.0.2 / ビルド 3）を実機確認のうえ提出。Web 版（main）は `feature/photo-mode` の `0272ffa` に fast-forward（1.0.2 の内容 + フォトモード）
 - 審査通過後: `git tag -a v1.0.2 c01e53a -m "1.0.2"` → `git push origin v1.0.2`（タグの push はユーザー側で）
+
+---
+
+## 1.1: 英語対応の取り込み（feature/i18n に photo-mode + 1.0.2 を merge）
+
+- `feature/photo-mode`（1.0.2 + フォトモードの統合）を `feature/i18n` に merge。衝突 8 ファイル（Bridge.swift・main.ts・photo.ts・calmMode.ts・help.ts・hud.ts・photoMode.ts・settings.ts）は photo-mode 側の文面を採用し、`node scripts/wrap-strings.mjs` で包み直し（11 ファイル、キー 1,007 本）。未訳 102 本（文字の大きさ・チュートリアル・コインのメニュー・本体に保存・眺めモードの中のフォトモード・ボケ・ウォークスルー・連写・現像）を `en.ts` に追加 → 未訳 0
+- 注意: `tutorialAssist` の見出し検索 `includes(tr('自動化'))` は英語で 'Automation'（見出し 'Automation AI' に含まれる）
+- 確認: tsc、199 件のテスト（i18n の 3 件含む）、build。ヘッドレス（英語、PC 1280×800 とスマホ 390×844）で初回の「Text size」モーダル → チュートリアル 6 段 → コインのメニュー → 全パネル → ヘルプ → フォトモード → 眺めモードを走査し、日本語の残りは設定の言語ボタン「日本語」だけ。HUD は PC「300 | Small Town Warehouse · Normal | 50 | Year 1 · Apr W1」、スマホ「Y1 Apr W1」ではみ出し無し。コンソールエラー 0

@@ -49,8 +49,8 @@ export const PHOTO_CHOICES = {
     { label: '1/30', ticks: 0.33 },
     { label: '1/8', ticks: 1.25 },
     { label: '1/2', ticks: 5 },
-    { label: '1 秒', ticks: 10 },
-    { label: '2 秒', ticks: 20 },
+    { label: tr('1 秒'), ticks: 10 },
+    { label: tr('2 秒'), ticks: 20 },
   ] as const,
   exposure: [-1, -0.5, 0, 0.5, 1, 1.5, 2] as const,
   effect: [
@@ -69,23 +69,23 @@ export const PHOTO_CHOICES = {
     { id: '1:1', name: '1:1' },
   ] as { id: PhotoAspect; name: string }[],
   logo: [
-    { id: 'none', name: 'なし' },
-    { id: 'logo', name: 'ロゴ' },
-    { id: 'logoInfo', name: 'ロゴ＋倉庫情報' },
+    { id: 'none', name: tr('なし') },
+    { id: 'logo', name: tr('ロゴ') },
+    { id: 'logoInfo', name: tr('ロゴ＋倉庫情報') },
   ] as { id: PhotoLogo; name: string }[],
 };
 
 export const DEFAULT_PHOTO: PhotoParams = { focalMm: 50, bokeh: true, fNumber: 2.8, focusDistance: 12, shutterTicks: 0, exposure: 0, effect: 'film', aspect: 'screen', logo: 'logo' };
 
-export const PHOTO_TITLE = '箱庭！ディストリビューション';
+export const PHOTO_TITLE = tr('箱庭！ディストリビューション');
 /** 共有シートに添える文（iOS） */
-export const PHOTO_SHARE_TEXT = '#箱庭ディストリビューション で撮りました';
+export const PHOTO_SHARE_TEXT = tr('#箱庭ディストリビューション で撮りました');
 
 /** 写真の右下に入れる文字列（ロゴ行と、倉庫情報の行） */
 export function captionLines(logo: PhotoLogo, info: { rank: string; year: number; month: number; shipped: number }): string[] {
   if (logo === 'none') return [];
   if (logo === 'logo') return [PHOTO_TITLE];
-  return [PHOTO_TITLE, `${info.rank} ・ ${info.year} 年目 ${info.month} 月 ・ 出荷 ${info.shipped.toLocaleString('ja-JP')} 件`];
+  return [PHOTO_TITLE, tr('{0} ・ {1} 年目 {2} 月 ・ 出荷 {3} 件', info.rank, info.year, info.month, info.shipped.toLocaleString('ja-JP'))];
 }
 
 /** 2D canvas に右下のキャプションを描く（長辺に対する比率で大きさを決める） */

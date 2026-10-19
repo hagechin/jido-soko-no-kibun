@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 /**
  * 文字の大きさ（1.0.2。「老眼で見づらい」への対応）。
  * UI の各部分（HUD・オーダー・下のバー・パネル・モーダル・トースト）を CSS の zoom でまとめて拡大する。
@@ -6,10 +7,10 @@
 export type TextSize = 'small' | 'normal' | 'large' | 'xlarge';
 
 export const TEXT_SIZES: { id: TextSize; name: string; scale: number; desc: string }[] = [
-  { id: 'small', name: '小', scale: 0.9, desc: '画面を広く使いたいとき' },
-  { id: 'normal', name: '標準', scale: 1, desc: '標準の大きさ' },
-  { id: 'large', name: '大', scale: 1.2, desc: '文字が約 1.2 倍' },
-  { id: 'xlarge', name: '特大', scale: 1.4, desc: '文字が約 1.4 倍。パネルは縦に長くなります' },
+  { id: 'small', name: tr('小'), scale: 0.9, desc: tr('画面を広く使いたいとき') },
+  { id: 'normal', name: tr('標準'), scale: 1, desc: tr('標準の大きさ') },
+  { id: 'large', name: tr('大'), scale: 1.2, desc: tr('文字が約 1.2 倍') },
+  { id: 'xlarge', name: tr('特大'), scale: 1.4, desc: tr('文字が約 1.4 倍。パネルは縦に長くなります') },
 ];
 
 const KEY = 'jido-soko-no-kibun:text-size';

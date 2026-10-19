@@ -5,6 +5,7 @@
  */
 import { icon } from './icon';
 import { $, el } from './layout';
+import { tr } from '../i18n';
 
 export type TutorialStepId = 'pickOrder' | 'tapStack' | 'amr' | 'ship' | 'automation' | 'build' | 'done';
 
@@ -47,18 +48,18 @@ interface StepText {
 }
 
 export const STEP_TEXT: Record<TutorialStepId, StepText> = {
-  pickOrder: { title: 'オーダーの商品をタップ', body: '右のオーダー欄で、商品のアイコンを 1 つタップしてください。その商品がある棚が黄色く光り、手の空いた棚ロボが選ばれます。', target: '#orders' },
-  tapStack: { title: '光っている棚をタップ', body: '選ばれた棚ロボが、その棚までビンを取りに行き、ポート（黄色い枠のマス）へ降ろします。', target: '' },
-  amr: { title: '搬送ロボにポートへ行かせる', body: '搬送ロボ（低い車体）をタップしてから、ポート（黄色い枠のマス）をタップ。ビンを積んでピッキングステーション（机）へ届けます。', target: '' },
-  ship: { title: 'オーダーの商品を全部そろえる', body: 'ピッカーが商品を取り、オーダーの商品が全部そろうと出荷してコインが入ります（早いほどボーナス）。残りの商品も同じように、オーダー欄でタップ → 光る棚 → 搬送ロボ、で運びましょう。', target: '#orders' },
-  automation: { title: '自動配車AIを買う', body: '下の「強化」で自動配車AI Lv1 を買うと、搬送ロボがポートのビンを自分で運ぶようになります。コインが足りなければ、同じ手順でもう少し出荷しましょう。', target: '[data-panel="upgrades"]' },
-  build: { title: 'スタックを 1 つ増やす', body: '下の「建設」でスタック（棚）を選ぶと、置けるマスが緑に光ります。そのどれかをタップ。棚が増えると在庫を多く持てて、品切れが減ります。', target: '[data-panel="build"]' },
-  done: { title: 'ここまでできれば大丈夫', body: 'あとは「強化」の「おすすめ」と、ときどき出るヒントに従って育てていきましょう。眺めたくなったら下のバーの「眺める」、操作に迷ったら「設定」→「操作方法とショートカット」。', target: '' },
+  pickOrder: { title: tr('オーダーの商品をタップ'), body: tr('右のオーダー欄で、商品のアイコンを 1 つタップしてください。その商品がある棚が黄色く光り、手の空いた棚ロボが選ばれます。'), target: '#orders' },
+  tapStack: { title: tr('光っている棚をタップ'), body: tr('選ばれた棚ロボが、その棚までビンを取りに行き、ポート（黄色い枠のマス）へ降ろします。'), target: '' },
+  amr: { title: tr('搬送ロボにポートへ行かせる'), body: tr('搬送ロボ（低い車体）をタップしてから、ポート（黄色い枠のマス）をタップ。ビンを積んでピッキングステーション（机）へ届けます。'), target: '' },
+  ship: { title: tr('オーダーの商品を全部そろえる'), body: tr('ピッカーが商品を取り、オーダーの商品が全部そろうと出荷してコインが入ります（早いほどボーナス）。残りの商品も同じように、オーダー欄でタップ → 光る棚 → 搬送ロボ、で運びましょう。'), target: '#orders' },
+  automation: { title: tr('自動配車AIを買う'), body: tr('下の「強化」で自動配車AI Lv1 を買うと、搬送ロボがポートのビンを自分で運ぶようになります。コインが足りなければ、同じ手順でもう少し出荷しましょう。'), target: '[data-panel="upgrades"]' },
+  build: { title: tr('スタックを 1 つ増やす'), body: tr('下の「建設」でスタック（棚）を選ぶと、置けるマスが緑に光ります。そのどれかをタップ。棚が増えると在庫を多く持てて、品切れが減ります。'), target: '[data-panel="build"]' },
+  done: { title: tr('ここまでできれば大丈夫'), body: tr('あとは「強化」の「おすすめ」と、ときどき出るヒントに従って育てていきましょう。眺めたくなったら下のバーの「眺める」、操作に迷ったら「設定」→「操作方法とショートカット」。'), target: '' },
 };
 
 /** スマホ（縦）では注文票が縮小表示なので、1 段目はまず開いてもらう */
-const PICK_ORDER_BODY_PHONE = '上の注文票をタップして開き、商品のアイコンを 1 つタップしてください。その商品がある棚が黄色く光り、手の空いた棚ロボが選ばれます。';
-const SHIP_BODY_PHONE = 'ピッカーが商品を取り、オーダーの商品が全部そろうと出荷してコインが入ります（早いほどボーナス）。残りの商品も同じように、注文票を開いてタップ → 光る棚 → 搬送ロボ、で運びましょう。';
+const PICK_ORDER_BODY_PHONE = tr('上の注文票をタップして開き、商品のアイコンを 1 つタップしてください。その商品がある棚が黄色く光り、手の空いた棚ロボが選ばれます。');
+const SHIP_BODY_PHONE = tr('ピッカーが商品を取り、オーダーの商品が全部そろうと出荷してコインが入ります（早いほどボーナス）。残りの商品も同じように、注文票を開いてタップ → 光る棚 → 搬送ロボ、で運びましょう。');
 
 function isPhoneLayout(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(max-width: 899px)').matches;
@@ -182,17 +183,17 @@ export class Tutorial {
     const t = STEP_TEXT[step];
     const i = TUTORIAL_STEPS.indexOf(step);
     const total = TUTORIAL_STEPS.length - 1;
-    const head = el('div', { class: 'tut-head' }, icon('lightbulb', 18), el('span', { class: 'tut-count', text: step === 'done' ? 'チュートリアル' : `チュートリアル ${i + 1} / ${total}` }));
-    const close = el('button', { class: 'btn icon-btn tut-close', type: 'button', title: 'チュートリアルを終える', 'aria-label': 'チュートリアルを終える' }, icon('x', 16));
+    const head = el('div', { class: 'tut-head' }, icon('lightbulb', 18), el('span', { class: 'tut-count', text: step === 'done' ? tr('チュートリアル') : tr('チュートリアル {0} / {1}', i + 1, total) }));
+    const close = el('button', { class: 'btn icon-btn tut-close', type: 'button', title: tr('チュートリアルを終える'), 'aria-label': tr('チュートリアルを終える') }, icon('x', 16));
     close.addEventListener('click', () => this.finish());
     head.append(close);
     const actions = el('div', { class: 'tut-actions' });
     if (step === 'done') {
-      const ok = el('button', { class: 'btn primary', type: 'button', text: '完了' });
+      const ok = el('button', { class: 'btn primary', type: 'button', text: tr('完了') });
       ok.addEventListener('click', () => this.finish());
       actions.append(ok);
     } else {
-      const skip = el('button', { class: 'btn', type: 'button', text: 'この手順を飛ばす' });
+      const skip = el('button', { class: 'btn', type: 'button', text: tr('この手順を飛ばす') });
       skip.addEventListener('click', () => this.skip());
       actions.append(skip);
     }

@@ -587,7 +587,7 @@ function assignAmrJob(w: WorldState, r: Robot): boolean {
 export function diagnoseIdle(w: WorldState): string[] {
   const out: string[] = [];
   const orphans = auditBins(w);
-  if (orphans.length) out.push(`[!] どこにも無いビンが ${orphans.length} 個（${orphans.slice(0, 5).map((id) => `${w.bins[id]?.item ?? '空'} ${w.bins[id]?.qty ?? 0}`).join('、')}）。次の整合性チェックで棚に戻します`);
+  if (orphans.length) out.push(tr('[!] どこにも無いビンが {0} 個（{1}）。次の整合性チェックで棚に戻します', orphans.length, orphans.slice(0, 5).map((id) => `${w.bins[id]?.item ?? '空'} ${w.bins[id]?.qty ?? 0}`).join('、')));
   const auto = w.automation;
   const inFlight = binsInFlight(w);
   const locate = (id: number): string => {
