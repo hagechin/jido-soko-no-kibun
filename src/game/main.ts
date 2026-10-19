@@ -251,10 +251,20 @@ class Game {
     };
     // 眺めモードのカメラ: AUTO は自動カメラ（タップで解除）、MANUAL はキーボードとドラッグ（Esc／× で解除）
     const applyCalmCamera = () => {
-      const manual = this.calm.settings.camera === 'manual';
+      const cam = this.calm.settings.camera;
+      const manual = cam === 'manual';
       this.renderer.controls.enabled = manual;
       this.keyCam.enabled = manual;
-      if (!manual) this.autoCam.start(this.world);
+      if (cam === 'walk') {
+        // WALK: フォトモードのウォークスルーと同じカメラ。前回の歩いた視点があればそこから、無ければ今の視点から
+        this.walk.setWarehouse(this.world.width, this.world.height);
+        if (this.lastWalkPose) this.walk.setPose(this.lastWalkPose);
+        else this.walk.enterFrom(this.renderer.camera);
+        this.walk.enabled = true;
+      } else {
+        this.walk.enabled = false;
+        if (cam === 'auto') this.autoCam.start(this.world);
+      }
     };
     // 眺めモードに入る前のカメラを覚えておき、AUTO で出たときは戻す（自動カメラの寄った位置のままにしない）
     let cameraBeforeCalm: { target: Vector3; azimuth: number; polar: number; distance: number } | null = null;
@@ -282,7 +292,9 @@ class Game {
       const c = this.renderer.controls;
       c.enabled = true;
       this.keyCam.enabled = false;
-      if (cameraBeforeCalm && this.calm.settings.camera === 'auto') {
+      if (this.calm.settings.camera === 'walk') this.lastWalkPose = this.walk.pose; // 次に WALK で入ったとき同じ場所から
+      this.walk.enabled = false;
+      if (cameraBeforeCalm && this.calm.settings.camera !== 'manual') {
         c.target.copy(cameraBeforeCalm.target);
         c.azimuth = cameraBeforeCalm.azimuth;
         c.polar = cameraBeforeCalm.polar;
@@ -304,6 +316,9 @@ class Game {
         this.modal.suspend(true);
         const c = this.renderer.controls;
         this.cameraBeforePhoto = { target: c.target.clone(), azimuth: c.azimuth, polar: c.polar, distance: c.distance };
+        // 眺めモードが WALK なら、その視点のままフォトモードの「歩く」で始める（preferredCamera）
+        if (this.calm.settings.camera === 'walk') this.lastWalkPose = this.walk.pose;
+        this.walk.enabled = false;
         c.enabled = true;
         this.keyCam.enabled = true;
         this.cameraTouched = true;
@@ -336,6 +351,7 @@ class Game {
       walkHome: () => this.walk.home(this.world.width, this.world.height),
       distanceAt: (x, y) => this.renderer.distanceAt(this.world, x, y, this.alpha),
       focusAtStart: () => (this.photoCamera === 'walk' ? this.walk.suggestedDistance() : this.renderer.controls.distance),
+      preferredCamera: () => (this.calm.settings.camera === 'walk' ? 'walk' : null),
       capture: (longEdge) =>
         this.renderer.capturePhoto(this.world, this.alpha, longEdge, () => {
           // シャッター: 本物は動かさず、世界と予約表の写しを進める
@@ -1448,6 +1464,7 @@ class Game {
         if (now - this.lastRender < minInterval) return;
         const cdt = Math.min(0.25, (now - this.lastRender) / 1000);
         if (this.calm.settings.camera === 'manual') this.keyCam.update(cdt);
+        else if (this.calm.settings.camera === 'walk') this.walk.update(cdt);
         else this.autoCam.update(this.world, cdt);
         this.lastRender = now;
         this.renderer.render(this.world, this.alpha);

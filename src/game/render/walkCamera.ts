@@ -1,7 +1,7 @@
 /**
  * ウォークスルーのカメラ（★ フォトモード）: 倉庫の中を歩いたり、空を飛んで撮影位置を探す。
  *  キーボード: W/A/S/D・矢印で前後左右、Q/E で下降・上昇、Shift で速く。マウスの左ドラッグで見回す、ホイールで前後
- *  タッチ: 画面の左半分をドラッグで移動（上下 = 前後、左右 = 横歩き）、右半分をドラッグで見回す、2 本指の上下で上昇・下降
+ *  タッチ: 画面の左半分をドラッグで移動（上下 = 前後、左右 = 横歩き）、右半分をドラッグで見回す、2 本指の上下で上昇・下降（景色が指についてくる: 下へ引くと上昇）
  *  タップ（移動量 < 8px）は onTap で通知する（ピント合わせに使う）
  * 床の下には潜れない。倉庫の外へは少しだけ出られる
  */
@@ -232,7 +232,8 @@ export class WalkCamera {
     if (this.pointers.size === 2) {
       const [a, b] = [...this.pointers.values()];
       const cy = (a.y + b.y) / 2;
-      this.position.y -= (cy - this.lastTwoY) * LIFT_PER_PX;
+      // 景色が指についてくる向き（見回し・オービットのパンと同じ）: 2 本指を下へ引くと景色が下がる = 自分は上昇
+      this.position.y += (cy - this.lastTwoY) * LIFT_PER_PX;
       this.lastTwoY = cy;
       this.apply();
       return;

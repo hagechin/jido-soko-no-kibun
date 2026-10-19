@@ -39,12 +39,13 @@ export const EDITOR_SHORTCUTS: ShortcutRow[] = [
 ];
 
 export const CALM_SHORTCUTS: ShortcutRow[] = [
-  { keys: ['M'], what: tr('カメラ AUTO / MANUAL 切替') },
+  { keys: ['M'], what: tr('カメラ AUTO / MANUAL / WALK 切替') },
   { keys: ['W A S D', tr('矢印')], what: tr('MANUAL: 前後左右に移動') },
   { keys: ['Q', 'E'], what: tr('MANUAL: 回転') },
   { keys: ['R', 'F'], what: tr('MANUAL: 見下ろし角') },
   { keys: ['Z', 'X'], what: tr('MANUAL: ズーム') },
   { keys: ['P'], what: tr('フォトモード（ミニ HUD の「フォト」でも）。Esc で眺めモードに戻る') },
+  { keys: ['W A S D', tr('ドラッグ')], what: tr('WALK: 倉庫の中を歩く（フォトモードのウォークスルーと同じ）') },
   { keys: ['Esc'], what: tr('眺めモードを終了（AUTO は画面タップでも）') },
 ];
 

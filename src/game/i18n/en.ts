@@ -1068,4 +1068,15 @@ export const EN: Record<string, string> = {
   'チュートリアルを終える': 'End tutorial',
   '完了': 'Done',
   'この手順を飛ばす': 'Skip this step',
+  // 1.1: 眺めモードの WALK カメラ、2 本指の向き
+  'カメラ WALK: 左半分をドラッグで移動（遠くへ引くほど速く）、右半分で見回す、2 本指で景色を下へ引くと上昇': 'Camera WALK: drag the left half to move (farther = faster), the right half to look around, pull the scene down with two fingers to rise',
+  'カメラ WALK: ドラッグで見回す、WASD で移動、Q/E で下降・上昇、Shift で速く、ホイールで前後': 'Camera WALK: drag to look around, WASD to move, Q / E to descend / rise, Shift for speed, wheel to move forward / back',
+  'カメラ: AUTO（自動）／ MANUAL（WASD・矢印キー・ドラッグ）／ WALK（倉庫の中を歩く）。M キーでも切替': 'Camera: AUTO / MANUAL (WASD, arrows, drag) / WALK (walk through the warehouse). M also toggles',
+  '眺めモード（WALK）。倉庫の中を歩けます。Esc か右下の × で戻ります。下の「フォト」で撮影': 'Calm Mode (WALK). Walk through the warehouse. Esc or the × at bottom right to return. "Photo" below to shoot',
+  'WALK（倉庫の中を歩く）': 'WALK (walk through the warehouse)',
+  'MANUAL: W/A/S/D・矢印キーで移動、Q/E で回転、R/F で見下ろし角、Z/X でズーム。ドラッグ・ホイールも使えます。眺めモード中は M キーで AUTO/MANUAL/WALK 切替、Esc で終了': 'MANUAL: W/A/S/D or arrows to move, Q/E to rotate, R/F to tilt, Z/X to zoom. Drag and wheel also work. In Calm Mode, M cycles AUTO/MANUAL/WALK and Esc exits',
+  'WALK: フォトモードのウォークスルーと同じ操作で倉庫の中を歩きます（タッチ: 左半分で移動・右半分で見回す・2 本指の上下で昇降。PC: WASD・ドラッグ・Q/E）。フォトモードに入るとその視点のまま「歩く」で始まります': 'WALK: walk through the warehouse with the same controls as Photo Mode\'s walkthrough (touch: left half to move, right half to look around, two fingers up / down to rise / descend. PC: WASD, drag, Q/E). Entering Photo Mode starts in "Walk" from the same viewpoint',
+  'カメラ AUTO / MANUAL / WALK 切替': 'Cycle camera AUTO / MANUAL / WALK',
+  'WALK: 倉庫の中を歩く（フォトモードのウォークスルーと同じ）': 'WALK: walk through the warehouse (same as Photo Mode\'s walkthrough)',
+  'ウォークスルー: 左半分をドラッグで移動（遠くへ引くほど速く）、右半分で見回す、2 本指で景色を下へ引くと上昇': 'Walkthrough: drag the left half to move (farther = faster), the right half to look around, pull the scene down with two fingers to rise',
 };

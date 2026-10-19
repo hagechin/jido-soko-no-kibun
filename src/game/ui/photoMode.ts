@@ -56,6 +56,8 @@ export interface PhotoHost {
   distanceAt: (clientX: number, clientY: number) => number | null;
   /** 開始時のピント: いま見ている場所（カメラの注視点）までの距離 */
   focusAtStart?: () => number | null;
+  /** 入るときのカメラ（眺めモードが WALK ならその視点のまま「歩く」で始める。無ければ前回の記憶） */
+  preferredCamera?: () => PhotoCameraMode | null;
   /** 撮影 → JPEG データ URL */
   capture: (longEdge: number) => string;
   /** いまの瞬間を記録する／記録した瞬間を撮影する（連写 → 現像） */
@@ -190,7 +192,8 @@ export class PhotoMode {
     } catch {
       /* ignore */
     }
-    if (remembered === 'walk') this.setCameraMode('walk', { resume: true, quiet: true });
+    const preferred = this.host.preferredCamera?.() ?? null;
+    if (preferred === 'walk' || (!preferred && remembered === 'walk')) this.setCameraMode('walk', { resume: true, quiet: true });
     showToast(tr('フォトモード: 画面をタップでピント、● で撮影（長押しで連写して後から選ぶ）、{0} で眺めモードに戻る', isTouch() ? '×' : 'Esc'), 4000, 'camera', true);
   }
 
@@ -226,7 +229,7 @@ export class PhotoMode {
       /* ignore */
     }
     if (mode === 'walk' && !opts.quiet) {
-      showToast(isTouch() ? tr('ウォークスルー: 左半分をドラッグで移動（遠くへ引くほど速く）、右半分で見回す、2 本指の上下で上昇・下降') : tr('ウォークスルー: ドラッグで見回す、WASD で移動、Q/E で下降・上昇、Shift で速く、ホイールで前後'), 4500, 'camera', true);
+      showToast(isTouch() ? tr('ウォークスルー: 左半分をドラッグで移動（遠くへ引くほど速く）、右半分で見回す、2 本指で景色を下へ引くと上昇') : tr('ウォークスルー: ドラッグで見回す、WASD で移動、Q/E で下降・上昇、Shift で速く、ホイールで前後'), 4500, 'camera', true);
     }
   }
 
