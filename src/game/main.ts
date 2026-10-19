@@ -35,7 +35,7 @@ import { lastSavedText, renderSettings } from './ui/settings';
 import { renderBuild, type BuildUiState } from './ui/buildMode';
 import { renderPortPanel, renderStationPanel } from './ui/stationPanel';
 import { EventBanner, Modal, cyberReportNode } from './ui/eventBanner';
-import { expand, move as moveObject, place, remove } from './sim/build';
+import { expand, move as moveObject, place, remove, canPlace } from './sim/build';
 import { buyAutomation, freeBinSlots, reservedSlots } from './sim/shop';
 import { rankName, unlockSummary } from './sim/rank';
 import { clearStorage, loadFromStorage, saveToStorage } from './ui/storage';
@@ -96,6 +96,8 @@ class Game {
   private tutorial!: Tutorial;
   /** 初回の「文字の大きさ」を選んでいる間（「おすすめ」のヒントを出さない） */
   private onboardingPending = false;
+  /** チュートリアルの手助け: 6/6 で置けるマスを光らせた印と、5/6 で強化パネルを自動化 AI までスクロールした印 */
+  private tutAssist = { cellsKey: '', scrolledFor: '' };
   private highlightTimer = 0;
   private infoSig = '';
   private lastStockoutHint = 0;
@@ -536,6 +538,49 @@ class Game {
     saveTextSize(s);
     applyTextSize(s);
     this.renderer.resize();
+  }
+
+  /**
+   * チュートリアルの手助け（毎フレーム。1.0.2）:
+   *  5/6: 強化パネルを開いたら「自動化 AI」の見出しまでスクロール（2 画面半下にあって探しにくかった）
+   *  6/6: 建設でスタックを選んでいる間、置けるマス（棚かポートの隣で、床が分断されない）を緑に光らせる
+   */
+  private tutorialAssist(): void {
+    const step = this.tutorial.state?.step;
+    const panel = this.bar.open;
+    if (step === 'automation' && panel === 'upgrades') {
+      if (this.tutAssist.scrolledFor !== 'upgrades') {
+        this.tutAssist.scrolledFor = 'upgrades';
+        const h = [...document.querySelectorAll('#sheet-body h4')].find((e) => e.textContent?.includes('自動化'));
+        h?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    } else if (panel !== 'upgrades') this.tutAssist.scrolledFor = '';
+    const w = this.world;
+    const wantCells = step === 'build' && w.flags.buildMode && this.build.tool === 'stack' && !this.build.held;
+    if (wantCells) {
+      const key = `${w.stacks.length}:${w.ports.length}:${w.width}x${w.height}:${Math.floor(w.coins / 10)}`;
+      if (this.tutAssist.cellsKey !== key) {
+        this.tutAssist.cellsKey = key;
+        const seen = new Set<string>();
+        const cells: { x: number; z: number; color: string }[] = [];
+        const around = (cx: number, cz: number) => {
+          for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+            const x = cx + dx;
+            const z = cz + dz;
+            const k = `${x},${z}`;
+            if (seen.has(k)) continue;
+            seen.add(k);
+            if (canPlace(w, 'stack', x, z) === null) cells.push({ x, z, color: '#7bd389' });
+          }
+        };
+        for (const st of w.stacks) around(st.x, st.z);
+        for (const pt of w.ports) around(pt.x, pt.z);
+        this.renderer.highlightCells = cells;
+      }
+    } else if (this.tutAssist.cellsKey) {
+      this.tutAssist.cellsKey = '';
+      this.renderer.highlightCells = [];
+    }
   }
 
   /** チュートリアルの達成判定に渡す、いまの様子 */
@@ -1231,6 +1276,7 @@ class Game {
       }
       this.lastRender = now;
       this.tutorial.update(this.tutorialSnapshot());
+      if (this.tutorial.active) this.tutorialAssist();
       this.checkStockoutHint(now);
       this.checkAdvisor(now);
       this.hud.update(this.world);
