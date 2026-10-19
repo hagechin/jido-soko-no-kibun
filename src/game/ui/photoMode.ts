@@ -211,7 +211,8 @@ export class PhotoMode {
   /** 3D ビューのタップ: ピント合わせ */
   onTap(clientX: number, clientY: number): void {
     if (!this.host) return;
-    this.closeDial();
+    // 選択肢が開いているときのタップは「閉じる」だけ（ピントは動かさない。第 32 回）
+    if (this.openDial) return this.closeDial();
     const d = this.host.distanceAt(clientX, clientY);
     if (d === null) return;
     this.set({ focusDistance: Math.max(1, d) });
@@ -406,6 +407,8 @@ export class PhotoMode {
 
   /** 設定の項目（チップ）。タップでその項目の選択肢だけを横一列に出す（カメラアプリ風。1.1） */
   private openDial: PhotoDial | null = null;
+  /** 直前の描画で開いていた項目（同じ項目の描き直しならスクロール位置を保つ） */
+  private openDialRendered: PhotoDial | null = null;
 
   private toggleDial(id: PhotoDial): void {
     this.openDial = this.openDial === id ? null : id;
@@ -447,6 +450,9 @@ export class PhotoMode {
     if (!this.minimal) {
       // 開いている項目の選択肢（横一列。今の値が見える位置へスクロール）
       const open = dials.find((d) => d.id === this.openDial);
+      // 同じ項目を開いたまま値を変えたときは、行のスクロール位置を保つ（位置が動くと同じ場所をタップして隣の値になる。第 32 回）
+      const prevDial = this.panel.querySelector<HTMLElement>('.photo-dial');
+      const keepScroll = prevDial && this.openDialRendered === this.openDial ? prevDial.scrollLeft : null;
       if (open) {
         const inner = el('span', { class: 'photo-dial-in' }, el('span', { class: 'photo-label', text: open.label }));
         let active: HTMLElement | null = null;
@@ -458,8 +464,10 @@ export class PhotoMode {
         }
         const dial = el('div', { class: 'photo-dial' }, inner);
         children.push(dial);
-        if (active) {
-          // 今の値が右に隠れているときだけ、その値が中央に来るようにスクロール（左から見えるなら先頭のまま）。DOM に入れた後に実行
+        if (keepScroll !== null) {
+          afterMount = () => (dial.scrollLeft = keepScroll);
+        } else if (active) {
+          // 開いた直後、今の値が右に隠れているときだけ、その値が中央に来るようにスクロール（左から見えるなら先頭のまま）。DOM に入れた後に実行
           const a = active;
           afterMount = () => {
             const rel = a.offsetLeft - dial.offsetLeft;
@@ -474,15 +482,29 @@ export class PhotoMode {
         c.addEventListener('click', () => this.toggleDial(d.id));
         chips.append(c);
       }
+      // 倉庫の一時停止: 上の段が今の状態（動作中／停止中）、下の段が押したときの動作（第 32 回: 状態かボタンか分からなかった）
       const paused = !!this.host?.isPaused();
-      const pause = el('button', { class: `photo-chip${paused ? ' is-on' : ''}`, type: 'button', title: 'Space' }, el('span', { class: 'photo-chip-k', text: tr('倉庫') }), el('span', { class: 'photo-chip-v' }, icon(paused ? 'play' : 'pause', 12), el('span', { text: ' ' + (paused ? tr('再開') : tr('一時停止')) })));
+      const pause = el('button', { class: `photo-chip photo-chip-act${paused ? ' is-on' : ''}`, type: 'button', title: 'Space' }, el('span', { class: 'photo-chip-k', text: paused ? tr('倉庫: 停止中') : tr('倉庫: 動作中') }), el('span', { class: 'photo-chip-v' }, icon(paused ? 'play' : 'pause', 12), el('span', { text: ' ' + (paused ? tr('再開') : tr('一時停止')) })));
       pause.addEventListener('click', () => {
         this.host?.togglePause();
         this.renderPanel();
       });
       chips.append(pause);
-      children.push(el('div', { class: 'photo-chips' }, chips));
+      const chipRow = el('div', { class: 'photo-chips' }, chips);
+      // 右にまだチップがあるときは右端をフェード（スクロールできる手がかり。第 32 回）
+      const prevChips = this.panel.querySelector<HTMLElement>('.photo-chips');
+      const chipScroll = prevChips?.scrollLeft ?? 0;
+      const more = () => chipRow.classList.toggle('has-more', chipRow.scrollLeft + chipRow.clientWidth < chipRow.scrollWidth - 2);
+      chipRow.addEventListener('scroll', more, { passive: true });
+      const mountDial = afterMount;
+      afterMount = () => {
+        mountDial?.();
+        chipRow.scrollLeft = chipScroll;
+        more();
+      };
+      children.push(chipRow);
     }
+    this.openDialRendered = this.openDial;
     // いちばん下: 左に設定の表示／非表示とカメラの切り替え、中央に ●、右に（歩くなら正面へ）と終了
     const settings = el('button', { class: `btn photo-min-btn${this.minimal ? '' : ' is-active'}`, type: 'button', title: this.minimal ? tr('設定を出す（H）') : tr('設定を隠してシャッターだけにする（H）'), 'aria-label': tr('設定') }, icon('settings', 16));
     settings.addEventListener('click', () => this.setMinimal(!this.minimal));

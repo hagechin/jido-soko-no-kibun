@@ -25,6 +25,21 @@ import { iconMarkup } from '../game/ui/icon';
         var p = localStorage.getItem('jido-soko-no-kibun:startup-photo');
         if (p) document.documentElement.style.setProperty('--startup-photo', 'url("' + p + '")');
       } catch (e) {}
+      // 起動画面の文字: 言語の設定（無ければ端末の言語。日本語以外は英語）に合わせる（JS の本体が動く前に出る文字なのでここで）
+      try {
+        var l = localStorage.getItem('jido-soko-no-kibun:locale');
+        var langs = navigator.languages || [navigator.language || ''];
+        var ja = l === 'ja' || (l !== 'en' && langs.some(function (x) { return String(x).toLowerCase().indexOf('ja') === 0; }));
+        if (!ja) {
+          document.documentElement.lang = 'en';
+          document.addEventListener('DOMContentLoaded', function () {
+            var t = document.querySelector('.splash-title');
+            var s = document.querySelector('.splash-sub');
+            if (t) t.textContent = 'Hakoniwa! Distribution';
+            if (s) s.textContent = 'Preparing the warehouse…';
+          });
+        }
+      } catch (e) {}
     </script>
   </head>
   <body>

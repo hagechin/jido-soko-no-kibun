@@ -70,8 +70,8 @@ export const PHOTO_CHOICES = {
   ] as { id: PhotoAspect; name: string }[],
   logo: [
     { id: 'none', name: tr('なし') },
-    { id: 'logo', name: tr('ロゴ') },
-    { id: 'logoInfo', name: tr('ロゴ＋倉庫情報') },
+    { id: 'logo', name: tr('あり') },
+    { id: 'logoInfo', name: tr('あり＋倉庫情報') },
   ] as { id: PhotoLogo; name: string }[],
 };
 

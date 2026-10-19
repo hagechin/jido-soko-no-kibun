@@ -83,6 +83,7 @@ import { copySaveToClipboard, exportSaveFile, importSaveFile, importSaveFromClip
 import type { QualityLevel } from './render/quality';
 import { localeSetting, saveLocaleSetting, tr } from './i18n';
 import { translateStaticDom } from './i18n/dom';
+import { robotName } from './ui/robotName';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 
@@ -774,6 +775,7 @@ class Game {
       dispatch: w.automation.dispatch,
       stacks: w.stacks.length,
       uiBusy: this.bar.open !== null || w.flags.buildMode || !!document.querySelector('.order-card.is-expanded'),
+      sheetOpen: this.bar.open !== null,
     };
   }
 
@@ -1208,14 +1210,14 @@ class Game {
     if (r.kind === 'shelf' && hit.kind === 'stack') return this.onStackTap(r, hit, x, y);
     if (r.kind === 'amr' && hit.kind === 'port') {
       const res = commandFetch(this.world, this.rt, r.id, hit.id);
-      showToast(res.ok ? tr('{0}: ポートのビンを取りに行きます', r.name) : res.reason);
+      showToast(res.ok ? tr('{0}: ポートのビンを取りに行きます', robotName(r)) : res.reason);
       this.refreshSelectedInfo(true);
       return;
     }
     if (r.kind === 'amr' && hit.kind === 'station') {
       const res = commandGoStation(this.world, this.rt, r.id, hit.id);
       const st = this.world.stations.find((s) => s.id === hit.id);
-      showToast(res.ok ? tr('{0}: {1}ステーションへ', r.name, st?.kind === 'pick' ? tr('ピッキング') : tr('入荷')) : res.reason);
+      showToast(res.ok ? tr('{0}: {1}ステーションへ', robotName(r), st?.kind === 'pick' ? tr('ピッキング') : tr('入荷')) : res.reason);
       this.refreshSelectedInfo(true);
       return;
     }
@@ -1253,7 +1255,7 @@ class Game {
       }
     } else {
       res = place(w, tool, x, z);
-      if (res.ok) showToast(tr('{0} を置きました', tool === 'stack' ? tr('スタック') : tool === 'port' ? tr('ポート') : tool === 'waitSpot' ? tr('待機スポット') : tr('ステーション')));
+      if (res.ok) showToast(tr('{0}を置きました', tool === 'stack' ? tr('スタック') : tool === 'port' ? tr('ポート') : tool === 'waitSpot' ? tr('待機スポット') : tr('ステーション')));
     }
     if (!res.ok) showToast(res.reason);
     this.bar.refresh();
@@ -1286,7 +1288,7 @@ class Game {
     }
     const issue = (binId: number) => {
       const res = commandRetrieve(w, this.rt, r.id, stack.id, binId);
-      showToast(res.ok ? tr('{0}: {1} を取り出します', r.name, binLabel(w, binId)) : res.reason);
+      showToast(res.ok ? tr('{0}: {1} を取り出します', robotName(r), binLabel(w, binId)) : res.reason);
       if (res.ok && this.focusItem && w.bins[binId]?.item === this.focusItem) {
         this.focusItem = null;
         this.renderer.highlightCells = [];

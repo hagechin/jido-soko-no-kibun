@@ -165,10 +165,10 @@ export class CalmMode {
   /** 毎フレーム: ミニ HUD と無操作の提案 */
   update(w: WorldState, now: number): void {
     if (this.active) {
-      const txt = `${formatDate(w.calendar)}　${Math.floor(w.coins).toLocaleString('ja-JP')}`;
+      const txt = `${formatDate(w.calendar)}${tr('　')}${Math.floor(w.coins).toLocaleString('ja-JP')}`;
       if (this.mini.dataset.txt !== txt) {
         this.mini.dataset.txt = txt;
-        this.miniText.replaceChildren(el('span', { text: formatDate(w.calendar) + '　' }), icon('coins', 14), el('span', { text: ' ' + Math.floor(w.coins).toLocaleString('ja-JP') + '　' }));
+        this.miniText.replaceChildren(el('span', { text: formatDate(w.calendar) + tr('　') }), icon('coins', 14), el('span', { text: ' ' + Math.floor(w.coins).toLocaleString('ja-JP') + tr('　') }));
       }
       return;
     }

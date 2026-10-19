@@ -6,11 +6,12 @@ import { itemDef } from '../data/items';
 import { el } from './layout';
 import { iconImg } from './icons';
 import { tr } from '../i18n';
+import { robotName } from './robotName';
 
 export function selectedInfoNode(w: WorldState, r: Robot | null, hint: string | null, onCancel: () => void): Node {
   if (!r) return el('span', { class: 'muted', text: hint ?? tr('ロボをタップして選択') });
   const root = el('div', { class: 'selected-inner' });
-  root.append(el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${r.kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + r.name })));
+  root.append(el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${r.kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + robotName(r) })));
   root.append(el('span', { class: 'sel-status', text: describeRobot(w, r) }));
   if (r.carrying.length) {
     const cargo = el('span', { class: 'sel-cargo' });

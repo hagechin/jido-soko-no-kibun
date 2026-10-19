@@ -27,6 +27,8 @@ export interface TutorialSnapshot {
   stacks: number;
   /** パネル（下から出るシート）・建設モード・拡大した注文票が出ている → カードを 1 行に縮める（操作を覆わない） */
   uiBusy?: boolean;
+  /** 下のシート（パネル）が開いている: 1 行のカードを左下でなく左上に置く（パネルの説明文と重ならないように。第 29〜32 回） */
+  sheetOpen?: boolean;
 }
 
 export interface TutorialState {
@@ -151,6 +153,7 @@ export class Tutorial {
       this.compact = compact;
       this.root.classList.toggle('is-compact', compact);
     }
+    this.root.classList.toggle('is-top', compact && !!snap.sheetOpen);
   }
   private compact = false;
 

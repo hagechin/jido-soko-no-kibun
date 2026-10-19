@@ -22,7 +22,7 @@ export function renderInventory(body: HTMLElement, w: WorldState, onItemTap: (it
       el('span', { class: 'inv-name', text: def.name }),
       el('span', { class: 'inv-qty', text: stockout ? tr('欠品') : tr('{0} 個 / {1} ビン', s.qty, s.bins) }),
       el('span', { class: 'inv-dock muted', text: s.dock ? tr('入荷待ち {0}', s.dock) : '' }),
-      el('span', { class: 'inv-loc muted', text: s.locations.slice(0, 3).join('、') + (s.locations.length > 3 ? ' …' : '') }),
+      el('span', { class: 'inv-loc muted', text: s.locations.slice(0, 3).join(tr('、')) + (s.locations.length > 3 ? ' …' : '') }),
     );
     row.addEventListener('click', () => onItemTap(s.item));
     table.append(row);

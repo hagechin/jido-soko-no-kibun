@@ -7,6 +7,7 @@ import type { WorldState } from '../sim/types';
 import { iconImg } from './icons';
 import { el } from './layout';
 import { tr } from '../i18n';
+import { robotName } from './robotName';
 
 /** 開いたままでも状態が追いかけるように、状態の文字だけ書き換える（行の作り直しはしない） */
 export function refreshRobotListStatus(body: HTMLElement, w: WorldState): void {
@@ -54,7 +55,7 @@ export function renderRobotList(body: HTMLElement, w: WorldState, selectedId: nu
       const row = el(
         'div',
         { class: `robot-row${r.id === selectedId ? ' is-active' : ''}`, 'data-robot': String(r.id) },
-        el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + r.name })), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small robot-meta', 'data-lv': lv, text: tr('{0} / 運んだ {1}{2}', lv, r.carried ?? 0, r.job?.manual ? tr(' / 手動指示中') : '') })),
+        el('button', { class: 'btn robot-pick', type: 'button' }, el('span', { class: 'sel-name' }, el('span', { class: `robot-dot ${kind}${r.variant && r.variant !== 'standard' ? ' ' + r.variant : ''}` }), el('span', { text: ' ' + robotName(r) })), el('span', { class: 'sel-status', text: describeRobot(w, r) }), cargo, el('span', { class: 'muted small robot-meta', 'data-lv': lv, text: tr('{0} / 運んだ {1}{2}', lv, r.carried ?? 0, r.job?.manual ? tr(' / 手動指示中') : '') })),
         el('button', { class: 'btn', type: 'button', text: robotMaxed(w, r) ? 'MAX' : tr('強化'), ...(robotMaxed(w, r) ? { disabled: 'true', title: tr('速度・リフト・積載とも最大です') } : {}) }),
       );
       row.children[0].addEventListener('click', () => onSelect(r.id));

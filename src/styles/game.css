@@ -1799,6 +1799,16 @@ kbd.key {
 .photo-chip.is-on .photo-chip-v {
   color: var(--accent);
 }
+/* 右にまだチップがあるときは右端をフェード */
+.photo-chips.has-more {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+}
+.photo-chip-act .photo-chip-v {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+}
 /* 開いている項目の選択肢（チップの上に 1 行） */
 .photo-dial {
   border-radius: 12px;
@@ -1996,6 +2006,10 @@ body.has-tutorial:has(.tutorial.is-compact) .view-overlay {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.tutorial.is-compact.is-top {
+  top: 8px;
+  bottom: auto; /* パネルが開いている間は左上（左下だとパネルの説明文に重なる） */
 }
 .tutorial.is-compact .tut-body,
 .tutorial.is-compact .tut-actions,

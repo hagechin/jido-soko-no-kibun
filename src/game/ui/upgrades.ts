@@ -40,6 +40,7 @@ import { hasFeature } from '../platform/entitlements';
 import { isDrone, speedLevelOf } from '../sim/layers';
 import { el, showToast } from './layout';
 import { tr } from '../i18n';
+import { robotName } from './robotName';
 
 export interface UpgradeContext {
   world: WorldState;
@@ -111,7 +112,7 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const allShort = allCost !== null && w.coins < allCost;
   body.append(row(allCost === null ? tr('全ロボを最大強化（MAX）') : allShort ? tr('全ロボを最大強化（足りるぶんまで）') : tr('全ロボを最大強化'), allCost, () => upgradeAllRobots(w), ctx, allCost === null ? tr('全ロボとも速度・リフト・積載が最大です。ロボを追加するとまた押せます') : tr('全ロボの速度・リフト・積載を一気に最大まで（強化が要る {0} 台ぶんの合計）{1}', w.robots.filter((r) => !robotMaxed(w, r)).length, allShort ? tr('。コインが {0} 足りないので、押すと安い段階から足りるぶんだけ強化します', (allCost - w.coins).toLocaleString('ja-JP')) : ''), undefined, { allowShort: true }));
   const r = w.robots.find((r) => r.id === ctx.selectedRobotId) ?? null;
-  body.append(el('h4', { text: r ? tr('{0} の強化（機体ごと）', r.name) : tr('ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）') }));
+  body.append(el('h4', { text: r ? tr('{0} の強化（機体ごと）', robotName(r)) : tr('ロボの強化（3D ビューかロボ一覧でロボを選ぶと表示）') }));
   if (r) {
     body.append(row(tr('速度 Lv{0} → {1}', r.speedLevel, r.speedLevel + 1), speedUpgradeCost(r, w), () => upgradeSpeed(w, r.id), ctx, isDrone(r) ? tr('移動速度 +20%/Lv。ドローンは飛行で +1 段階（いまの実効 Lv{0}）', speedLevelOf(r)) : tr('移動速度 +20%/Lv')));
     if (r.kind === 'shelf') body.append(row(tr('リフト速度 Lv{0} → {1}', r.liftLevel, r.liftLevel + 1), liftUpgradeCost(r, w), () => upgradeLift(w, r.id), ctx, tr('掘り出し・上げ下ろしの時間短縮')));
