@@ -8,7 +8,7 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 |---|---|
 | Bundle ID | `jp.hatte.hakoniwa.ds`（`project.yml`。変えるなら StoreKit の商品 ID と `Products.storekit` も合わせる） |
 | 表示名 | 箱庭！DS（ホーム画面）。App Store 上の名前は「箱庭！ディストリビューション」 |
-| バージョン / ビルド | `MARKETING_VERSION 1.0.1` / `CURRENT_PROJECT_VERSION 2`（`project.yml`。アップデートのたびに両方上げる） |
+| バージョン / ビルド | `MARKETING_VERSION 1.0.2` / `CURRENT_PROJECT_VERSION 3`（`project.yml`。アップデートのたびに両方上げる） |
 | チーム | `project.yml` の `DEVELOPMENT_TEAM` にチーム ID を入れる（iCloud の KVS 識別子にチーム接頭辞が付く） |
 | 対応 OS | iOS 26 以降、iPhone / iPad |
 | 向き | iPhone: 縦・横、iPad: 全部 |
@@ -71,6 +71,13 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 ・並べ替えAIが 2 つの棚の間で同じビンを動かし続けることがある不具合を修正しました
 ・セーブデータを本体（ファイル App の「箱庭！DS」フォルダ）に保存できるようになりました
 ・長いお知らせが読みやすくなりました
+```
+
+- **新機能（1.0.2）**:
+
+```
+・画面上のコインをタップすると、コインの使い道（おすすめ・建設・強化）への近道が出るようになりました
+・チュートリアルで、強化パネルが自動化AIの行まで自動でスクロールし、建設では置けるマスが緑に光るようになりました
 ```
 
 ## 3. アプリ内課金（App Store Connect → 機能 → App 内課金）
@@ -154,9 +161,9 @@ xcrun simctl io booted screenshot ios/screenshots/01-main.png
 
 ### アップデート（1.0.1 以降）の手順
 
-1. `release/1.0` を `git pull`。`project.yml` のバージョンとビルド番号が上がっていることを確認（1.0.1 / 2）
+1. `release/1.0` を `git pull`。`project.yml` のバージョンとビルド番号が上がっていることを確認（1.0.2 / 3）
 2. `./ios/sync-web.sh` → `ios/Web/BUILD_INFO` の commit が `release/1.0` の先端 → `cd ios && xcodegen generate`
-3. 実機で: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.0.1 (2)」、M51（行方不明のビンの回復）、M52（文字の大きさ）、M53（チュートリアル。「新しく始める」で出る）、M54（本体に保存 → ファイル App に「箱庭！DS」フォルダ）
+3. 実機で: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.0.2 (3)」、M55（コインのメニュー）、M56（チュートリアルの手助け）、M51（行方不明のビンの回復）、M52（文字の大きさ）、M53（チュートリアル。「新しく始める」で出る）、M54（本体に保存 → ファイル App に「箱庭！DS」フォルダ）
 4. Product → Archive → Distribute → App Store Connect にアップロード
 5. App Store Connect → アプリ → 「＋」で新しいバージョン 1.0.1 → ビルドを選ぶ → 「このバージョンの新機能」に上の文面 → 審査に提出（課金・スクリーンショット・説明はそのまま。変更なしなら触らない）
 6. 審査が通ったら `release/1.0` に `v1.0.1` のタグを打ち、`PROGRESS.md` に記録
