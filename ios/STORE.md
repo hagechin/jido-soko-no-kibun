@@ -8,7 +8,7 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 |---|---|
 | Bundle ID | `jp.hatte.hakoniwa.ds`（`project.yml`。変えるなら StoreKit の商品 ID と `Products.storekit` も合わせる） |
 | 表示名 | 箱庭！DS（ホーム画面）。App Store 上の名前は「箱庭！ディストリビューション」 |
-| バージョン / ビルド | `MARKETING_VERSION 1.0.2` / `CURRENT_PROJECT_VERSION 3`（`project.yml`。アップデートのたびに両方上げる） |
+| バージョン / ビルド | `MARKETING_VERSION 1.1` / `CURRENT_PROJECT_VERSION 4`（`project.yml`。アップデートのたびに両方上げる） |
 | チーム | `project.yml` の `DEVELOPMENT_TEAM` にチーム ID を入れる（iCloud の KVS 識別子にチーム接頭辞が付く） |
 | 対応 OS | iOS 26 以降、iPhone / iPad |
 | 向き | iPhone: 縦・横、iPad: 全部 |
@@ -117,6 +117,22 @@ No network, no account, no ads. Works offline. Japanese and English.
 ・チュートリアルで、強化パネルが自動化AIの行まで自動でスクロールし、建設では置けるマスが緑に光るようになりました
 ```
 
+- **新機能（1.1）**:
+
+```
+・フォトモード: 眺めモードの「フォト」から、倉庫の中を歩いたり飛んだりして写真が撮れます。焦点距離・ボケ・シャッター・露出・エフェクトを選び、長押しの連写から 1 枚を現像。撮った写真はカメラロールに保存・共有でき、起動画面にもできます
+・眺めモードに WALK カメラを追加。倉庫の中を歩いて眺められます
+・英語に対応しました。端末の言語が日本語以外なら英語で表示されます（設定で切り替え可）
+```
+
+- **What's New（1.1、English）**:
+
+```
+- Photo Mode: tap "Photo" in Calm Mode to walk or fly through your warehouse and take pictures. Choose focal length, bokeh, shutter, exposure and effects, hold the shutter to burst and develop the best frame. Save photos to your Camera Roll, share them, or use one as the startup screen.
+- Calm Mode gets a WALK camera: stroll through the warehouse.
+- English localization. The app follows your device language (switch anytime in Settings).
+```
+
 ## 3. アプリ内課金（App Store Connect → 機能 → App 内課金）
 
 4 本とも **非消耗型**。`Products.storekit` と同じ ID・表示名・説明を登録し、**最初のバージョンと一緒に審査に提出する**（商品を作っただけでは審査されない）。
@@ -198,12 +214,12 @@ xcrun simctl io booted screenshot ios/screenshots/01-main.png
 
 ### アップデート（1.0.1 以降）の手順
 
-1. `release/1.0` を `git pull`。`project.yml` のバージョンとビルド番号が上がっていることを確認（1.0.2 / 3）
-2. `./ios/sync-web.sh` → `ios/Web/BUILD_INFO` の commit が `release/1.0` の先端 → `cd ios && xcodegen generate`
-3. 実機で: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.0.2 (3)」、M55（コインのメニュー）、M56（チュートリアルの手助け）、M51（行方不明のビンの回復）、M52（文字の大きさ）、M53（チュートリアル。「新しく始める」で出る）、M54（本体に保存 → ファイル App に「箱庭！DS」フォルダ）
+1. リリースのブランチ（1.0.x は `release/1.0`、1.1 は `release/1.1`）を `git pull`。`project.yml` のバージョンとビルド番号が上がっていることを確認（1.1 / 4）
+2. `./ios/sync-web.sh` → `ios/Web/BUILD_INFO` の commit がそのブランチの先端 → `cd ios && xcodegen generate`
+3. 実機で（1.1）: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.1 (4)」、M24〜M25d（フォトモード。特に実機でしか見られない 3 件: 写真の保存を許可しなかったときの「設定を開く」が本アプリの設定ページに行く、「現像中…」の表示、ボケ オンのプレビューのカクつき・発熱）、M57（眺めモードの WALK）、M58（英語。iPhone の言語を English にして起動）、M56（チュートリアル 5/6 で強化を開くと見出しの下に 1 行）。1.0.2 の M55・M51〜M54 は軽く
 4. Product → Archive → Distribute → App Store Connect にアップロード
-5. App Store Connect → アプリ → 「＋」で新しいバージョン 1.0.1 → ビルドを選ぶ → 「このバージョンの新機能」に上の文面 → 審査に提出（課金・スクリーンショット・説明はそのまま。変更なしなら触らない）
-6. 審査が通ったら `release/1.0` に `v1.0.1` のタグを打ち、`PROGRESS.md` に記録
+5. App Store Connect → アプリ → 「＋」で新しいバージョン（1.1）→ ビルドを選ぶ → 「このバージョンの新機能」に上の文面（日本語と English の両方のローカライズに）→ 審査に提出。1.1 は English のローカライズを追加する（説明・サブタイトル・キーワードは §2 の英語版。スクリーンショットは日本語のものを流用可）。フォトモードの写真保存で `NSPhotoLibraryAddUsageDescription` を使うので、審査メモに「写真はユーザーが撮った倉庫の画像の保存のみ」と一言
+6. 審査が通ったらリリースのブランチに `v1.1` のタグを打ち、`PROGRESS.md` に記録。Web 版（main）にも同じ内容を反映
 
 
 - [ ] `DEVELOPMENT_TEAM` を設定し、実機で起動・課金（Sandbox）・iCloud を確認（`TESTPLAN.md` の D1〜D8）
