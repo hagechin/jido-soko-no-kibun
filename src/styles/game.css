@@ -321,9 +321,9 @@ button {
 /* ---------- シート（下からせり上がるパネル） ---------- */
 .sheet {
   position: absolute;
-  right: 0;
+  right: var(--sa-right); /* .app の padding は absolute には効かないので、左右のセーフエリアは自分でよける（iPhone Duo の縦のステータスバー。1.0.3） */
   bottom: calc(var(--bar-h) * var(--ui-scale) + var(--sa-bottom));
-  width: min(calc(420px * var(--ui-scale)), 100%);
+  width: min(calc(420px * var(--ui-scale)), calc(100% - var(--sa-left) - var(--sa-right)));
   max-height: 60%;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -508,13 +508,15 @@ button {
     gap: 8px;
   }
   .sheet {
-    width: 100%;
+    left: var(--sa-left);
+    right: var(--sa-right);
+    width: auto;
     max-height: 70%;
     border-radius: var(--radius) var(--radius) 0 0;
   }
-  /* 眺めモードのミニ HUD は中央に（後ろで定義している .mini-hud の left に勝つよう body を付ける） */
+  /* 眺めモードのミニ HUD は中央に（後ろで定義している .mini-hud の left に勝つよう body を付ける）。左右のセーフエリアが非対称でもその内側の中央 */
   body .mini-hud {
-    left: 50%;
+    left: calc(50% + (var(--sa-left) - var(--sa-right)) / 2);
     transform: translateX(-50%);
     max-width: calc(100% - 20px);
     white-space: nowrap;
@@ -978,7 +980,7 @@ button {
 /* ---------- モーダル・イベント演出 ---------- */
 .modal {
   position: absolute;
-  inset: 0;
+  inset: 0 var(--sa-right) 0 var(--sa-left); /* カードを左右のセーフエリアの内側で中央に（閉じるボタンが縦のステータスバーの下に隠れていた。1.0.3） */
   z-index: 20;
   background: rgba(0, 0, 0, 0.55);
   display: flex;
@@ -1069,7 +1071,7 @@ body.is-cyber .view::after {
 /* ---------- 眺めモード（§10.1） ---------- */
 .mini-hud {
   position: absolute;
-  left: 10px;
+  left: calc(10px + var(--sa-left));
   bottom: 10px;
   z-index: 30;
   font-size: 12px;
@@ -1752,6 +1754,20 @@ body:has(.tutorial.is-compact) .toasts {
   }
   :root[data-text-size='large'] .hud-item.rank-name b,
   :root[data-text-size='xlarge'] .hud-item.rank-name b {
+    display: none;
+  }
+}
+/* 幅 900〜1099px のタブレットのレイアウト（iPhone Duo の内側 951×669 など）は HUD の列が約 600px しかないので、文字の大きさによらず短い HUD に（倉庫名を省き、速度は 1 つのボタン） */
+@media (min-width: 900px) and (max-width: 1099px) {
+  .speed-btn[data-speed='1'],
+  .speed-btn[data-speed='2'],
+  .speed-btn[data-speed='4'] {
+    display: none;
+  }
+  #speed-cycle {
+    display: inline-flex;
+  }
+  .hud-item.rank-name b {
     display: none;
   }
 }

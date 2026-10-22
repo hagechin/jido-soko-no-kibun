@@ -10,8 +10,8 @@ settings:
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1,2"
     DEVELOPMENT_TEAM: "TTM3VRP3Y3"
-    MARKETING_VERSION: "1.0.2"
-    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "1.0.3"
+    CURRENT_PROJECT_VERSION: "5"
 targets:
   HakoniwaDS:
     type: application

@@ -34,9 +34,13 @@ export class Popup {
     const app = $('app').getBoundingClientRect();
     const r = this.root.getBoundingClientRect();
     const safeTop = parseFloat(getComputedStyle($('hud')).paddingTop) || 0;
+    // 左右のセーフエリア（.app の padding。iPhone Duo の縦のステータスバー）の内側に収める
+    const cs = getComputedStyle($('app'));
+    const padL = parseFloat(cs.paddingLeft) || 0;
+    const padR = parseFloat(cs.paddingRight) || 0;
     const minY = safeTop + 8;
     const maxY = Math.max(minY, app.height - r.height - 8);
-    const x = Math.min(Math.max(8, clientX - r.width / 2), app.width - r.width - 8);
+    const x = Math.min(Math.max(padL + 8, clientX - r.width / 2), app.width - padR - r.width - 8);
     const wantY = opts.below ? clientY + 6 : clientY - r.height - 12;
     const y = Math.min(Math.max(minY, wantY), maxY);
     this.root.style.left = `${x}px`;
