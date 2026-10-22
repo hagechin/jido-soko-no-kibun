@@ -8,7 +8,7 @@ App Store Connect に入力する文面と、提出前の手順。`<...>` は提
 |---|---|
 | Bundle ID | `jp.hatte.hakoniwa.ds`（`project.yml`。変えるなら StoreKit の商品 ID と `Products.storekit` も合わせる） |
 | 表示名 | 箱庭！DS（ホーム画面）。App Store 上の名前は「箱庭！ディストリビューション」 |
-| バージョン / ビルド | `MARKETING_VERSION 1.1` / `CURRENT_PROJECT_VERSION 4`（`project.yml`。アップデートのたびに両方上げる） |
+| バージョン / ビルド | `MARKETING_VERSION 1.1` / `CURRENT_PROJECT_VERSION 6`（`project.yml`。アップデートのたびに両方上げる） |
 | チーム | `project.yml` の `DEVELOPMENT_TEAM` にチーム ID を入れる（iCloud の KVS 識別子にチーム接頭辞が付く） |
 | 対応 OS | iOS 26 以降、iPhone / iPad |
 | 向き | iPhone: 縦・横、iPad: 全部 |
@@ -117,6 +117,11 @@ No network, no account, no ads. Works offline. Japanese and English.
 ・チュートリアルで、強化パネルが自動化AIの行まで自動でスクロールし、建設では置けるマスが緑に光るようになりました
 ```
 
+- **新機能（1.0.3）**:
+
+```
+・iPhone Duo に対応しました。閉じた画面・開いた画面のどちらでも遊べ、遊んでいる途中で開いたり閉じたりしても続きます
+・パネルや設定の閉じるボタンがステータスバーに隠れないようにしました
 - **新機能（1.1）**:
 
 ```
@@ -214,9 +219,9 @@ xcrun simctl io booted screenshot ios/screenshots/01-main.png
 
 ### アップデート（1.0.1 以降）の手順
 
-1. リリースのブランチ（1.0.x は `release/1.0`、1.1 は `release/1.1`）を `git pull`。`project.yml` のバージョンとビルド番号が上がっていることを確認（1.1 / 4）
+1. リリースのブランチ（1.0.x は `release/1.0`、1.1 は `release/1.1`）を `git pull`。`project.yml` のバージョンとビルド番号が上がっていることを確認（1.1 / 6。**Xcode 27.1 でビルドする**: iOS 27.1 SDK でないと iPhone Duo の内側画面で端まで使えない）
 2. `./ios/sync-web.sh` → `ios/Web/BUILD_INFO` の commit がそのブランチの先端 → `cd ios && xcodegen generate`
-3. 実機で（1.1）: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.1 (4)」、M24〜M25d（フォトモード。特に実機でしか見られない 3 件: 写真の保存を許可しなかったときの「設定を開く」が本アプリの設定ページに行く、「現像中…」の表示、ボケ オンのプレビューのカクつき・発熱）、M57（眺めモードの WALK）、M58（英語。iPhone の言語を English にして起動）、M56（チュートリアル 5/6 で強化を開くと見出しの下に 1 行）。1.0.2 の M55・M51〜M54 は軽く
+3. 実機で（1.1）: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.1 (6)」、M24〜M25d（フォトモード。特に実機でしか見られない 3 件: 写真の保存を許可しなかったときの「設定を開く」が本アプリの設定ページに行く、「現像中…」の表示、ボケ オンのプレビューのカクつき・発熱）、M57（眺めモードの WALK）、M58（英語。iPhone の言語を English にして起動）、M56（チュートリアル 5/6 で強化を開くと見出しの下に 1 行）、M59（iPhone Duo: 4 姿勢・開閉・パネルの閉じるボタン。実機があれば）。1.0.2 の M55・M51〜M54 は軽く
 4. Product → Archive → Distribute → App Store Connect にアップロード
 5. App Store Connect → アプリ → 「＋」で新しいバージョン（1.1）→ ビルドを選ぶ → 「このバージョンの新機能」に上の文面（日本語と English の両方のローカライズに）→ 審査に提出。1.1 は English のローカライズを追加する（説明・サブタイトル・キーワードは §2 の英語版。スクリーンショットは日本語のものを流用可）。フォトモードの写真保存で `NSPhotoLibraryAddUsageDescription` を使うので、審査メモに「写真はユーザーが撮った倉庫の画像の保存のみ」と一言
 6. 審査が通ったらリリースのブランチに `v1.1` のタグを打ち、`PROGRESS.md` に記録。Web 版（main）にも同じ内容を反映
