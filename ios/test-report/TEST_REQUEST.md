@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 36
-- status: requested
+- status: reported
 - branch: release/1.1 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。release/1.1 には push しない）
 - commit: `release/1.1` の先端（1.1 / ビルド 6 = 1.1 の内容 + 第 35 回の Duo の直し。直しは release/1.0 の `f511f17` と同じ）
 - requested-at: 2026-10-23（第 36 回）
