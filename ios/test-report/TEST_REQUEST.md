@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 35
-- status: requested
+- status: reported
 - branch: release/1.0 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。第 28〜31 回と同じ手順。release/1.0 には push しない）
 - commit: `release/1.0` の先端（1.0.2 のコード + TESTPLAN M59。アプリの表示は 1.0.2 (3)）
 - requested-at: 2026-10-22（第 35 回）
