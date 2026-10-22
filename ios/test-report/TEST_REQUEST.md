@@ -1,41 +1,38 @@
 # テスト依頼
 
-- round: 35
-- status: reported
-- branch: release/1.0 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。第 28〜31 回と同じ手順。release/1.0 には push しない）
-- commit: `release/1.0` の先端（1.0.2 のコード + TESTPLAN M59。アプリの表示は 1.0.2 (3)）
-- requested-at: 2026-10-22（第 35 回）
-- やりとりの約束: `ios/test-report/PROTOCOL.md`。項目の定義: `ios/TESTPLAN.md`（release/1.0 側の M59）
+- round: 36
+- status: requested
+- branch: release/1.1 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。release/1.1 には push しない）
+- commit: `release/1.1` の先端（1.1 / ビルド 6 = 1.1 の内容 + 第 35 回の Duo の直し。直しは release/1.0 の `f511f17` と同じ）
+- requested-at: 2026-10-23（第 36 回）
+- やりとりの約束: `ios/test-report/PROTOCOL.md`。項目の定義: `ios/TESTPLAN.md`（M59、M24〜M25d）
 
 ## 今回のねらい
 
-**iPhone Duo（折りたたみ）での見え方の確認**（45 分）。1.0.3 で Duo 対応を出すための調査。**Xcode 27.1 の iPhone Duo シミュレータ**を使う（Device Hub で開く／閉じる／回転／Split View ができる）。コードの直しはまだ入れていないので、「いまどう見えるか」を姿勢ごとに画像で教えてほしい。
+**第 35 回の NG の直しの確認（iPhone Duo）と、Duo でのフォトモード**（30 分）。Xcode 27.1 の Duo シミュレータ。対象を release/1.1 にしたのは、フォトモードが 1.1 側にしか無いため（Duo の直しは 1.0.3 と同じ内容）。
 
-## 手順
+## 手順（第 35 回と同じ。ブランチだけ release/1.1）
 
-1. `git fetch origin release/1.0 && git checkout release/1.0 && git pull --ff-only origin release/1.0`
-2. Node 22 で `./ios/sync-web.sh` → `cd ios && xcodegen generate`。**Xcode 27.1 で**ビルド（Settings → Components で iOS 27.1 のランタイムに Update が出ていれば押す）。設定の「セーブ」の下が「アプリ 1.0.2 (3)・同梱 Web commit=<HEAD>」
-3. Device Hub で **iPhone Duo** のシミュレータを 1 台だけ起動（ほかのシミュレータは止める。負荷のため）
-4. 下の項目を実施（画像は `r35-*.png`。姿勢ごとに画面全体を撮る）
-5. 報告は **feature/photo-mode** に: `git checkout feature/photo-mode && git pull --ff-only origin feature/photo-mode` → `TEST_REPORT.md` の末尾に「# 第35回: release/1.0 `<commit>`（iPhone Duo）」を追記 → この `TEST_REQUEST.md` の status を `reported` → `ios: round-35 … on release/1.0 <commit>` でコミット → `git push origin feature/photo-mode`
+1. `git fetch origin release/1.1 && git checkout release/1.1 && git pull --ff-only origin release/1.1`
+2. Node 22 で `./ios/sync-web.sh` → `cd ios && xcodegen generate` → Xcode 27.1 でビルド。設定の「セーブ」の下が「アプリ 1.1 (6)・同梱 Web commit=<HEAD>」
+3. iPhone Duo のシミュレータ 1 台だけ。画像は `r36-*.png`
+4. 報告は **feature/photo-mode** に: `git checkout feature/photo-mode && git pull --ff-only origin feature/photo-mode` → `TEST_REPORT.md` の末尾に「# 第36回: release/1.1 `<commit>`（iPhone Duo の直し + フォト）」→ status を `reported` → `ios: round-36 … on release/1.1 <commit>` → `git push origin feature/photo-mode`
 
 ## 項目
 
 | # | 項目 | 補足 |
 |---|---|---|
-| 1 | 環境 | Xcode のバージョン（27.1 か）、Duo シミュレータの名前と iOS のバージョン、ビルドに使った SDK。アプリが内側画面で**端まで**広がるか、**右端（ステータスバー側）を避けて**広がるか、**従来サイズのまま中央で周りが余白**か、のどれか |
-| 2 | 外側（閉じた状態）縦 | 通常画面（`-demo` 可）。HUD・注文票・下のバーがはみ出していないか。文字やボタンがカメラ／ステータスバーの下に隠れていないか。画像 |
-| 3 | 外側 横 | 同上。左右のセーフエリアのぶん内側に寄っているか |
-| 4 | 内側（開いた状態）縦 | 同上。縦のステータスバー（右端）の側に、HUD の右端のボタン（一時停止・速度）や下のバーの右端が重なっていないか。注文票の段と 3D の広さ。画像 |
-| 5 | 内側 横 | 同上。注文票が上の段に 1 列で出る（スマホのレイアウト）はず。見た目の感想（右の列にしたほうが良さそうか） |
-| 6 | ゲーム中の開閉 | 閉じた状態で 30 秒遊ぶ → 開く → 続きが遊べて 3D が画面に合うか（崩れ・固まり・ロボの消失が無いか）→ 閉じる → 同じ。開閉の直後の画像を各 1 枚 |
-| 7 | パネル・モーダル中の開閉 | 強化パネルを開いたまま開閉、設定のモーダル（文字の大きさ）を出したまま開閉。パネルが画面に収まり直すか |
-| 8 | 眺めモード・フォトモード中の開閉 | 眺める → 開閉。フォト → 開閉（撮影パネル／● の位置が画面の下中央に来るか、比率 3:2 の黒帯が合うか）。画像 |
-| 9 | Split View | Device Hub で片側に置く（左右それぞれ）。崩れないか。画像 |
-| 10 | 自動テスト（§2） | Xcode 27.1 で SUCCEEDED / FAILED（Duo ではなく iPhone 17e のままで可） |
+| 1 | 外側 縦: シートの閉じるボタン | 強化パネル・設定を開く → シートが帯（右の縦のステータスバー）の手前（x ≈ 382）で終わり、右上の × が見えて押せる。画像 |
+| 2 | 外側 縦: モーダル | 設定 → 操作方法（または文字の大きさ）→ カードが帯の手前の範囲で中央、× が押せる |
+| 3 | 外側 縦: 眺めモードのミニ HUD | 眺める → 下の情報バーが帯の手前の範囲の中央で、右端の × が切れていない |
+| 4 | 外側 縦: コインのメニュー | HUD のコインをタップ → メニューが帯の手前で収まる |
+| 5 | 内側（951×669、タブレットのレイアウト）: HUD | 「4x」がオーダーの列に食い込まず、速度は 1 つのボタン（例「1x」）、倉庫名は無く、日付のアイコンが ★ の数に重ならない。強化パネルを開くと右のシートが帯の手前（x ≈ 867）で終わる |
+| 6 | 内側: フォトモード | 眺める → フォト。チップの列と下のバー（歯車・回す｜歩く・●・×）が帯の手前の範囲に収まり、● が中身の中央。チップをタップして選択肢が出る。● で撮れて「撮れました」が収まる。画像 |
+| 7 | フォトモード中の開閉 | 外側でフォトに入る → 開く → 内側でチップとバーが収まり直す → 閉じる → 外側に戻る。固まらない。画像 |
+| 8 | 開閉の回帰 | ゲーム中に開く／閉じるで続きが遊べる（第 35 回と同じ） |
 
-報告してほしい数値: 可能なら各姿勢の画面のポイント寸法（Device Hub の表示、または画像の大きさ ÷ 倍率）。
+実機でしか見られない Split View は今回も不要。
 
 ## 報告してほしいこと
 
-- 姿勢ごとの画像と、隠れ・はみ出し・崩れの有無。全部問題なければ「Duo OK」と一言。直したほうがよい所は優先度を付けて
+- 第 35 回の NG 3 件（1・3・5）が直っているか、フォトモードの Duo での見え方。全部 OK なら「Duo OK」と一言
