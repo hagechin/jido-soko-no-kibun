@@ -173,7 +173,7 @@ xcrun simctl io booted screenshot ios/screenshots/01-main.png
 3. 実機で: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.0.3 (5)」、M59（iPhone Duo: 4 姿勢・開閉・パネルの閉じるボタン）、M55・M56 は軽く
 4. Product → Archive → Distribute → App Store Connect にアップロード
 5. App Store Connect → アプリ → 「＋」で新しいバージョン 1.0.1 → ビルドを選ぶ → 「このバージョンの新機能」に上の文面 → 審査に提出（課金・スクリーンショット・説明はそのまま。変更なしなら触らない）
-6. 審査が通ったら `release/1.0` に `v1.0.1` のタグを打ち、`PROGRESS.md` に記録
+6. 審査が通ったら `release/1.0` に `v1.0.3` のタグを打ち、`PROGRESS.md` に記録。Web 版（main）にも反映
 
 
 - [ ] `DEVELOPMENT_TEAM` を設定し、実機で起動・課金（Sandbox）・iCloud を確認（`TESTPLAN.md` の D1〜D8）
