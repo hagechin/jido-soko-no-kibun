@@ -122,6 +122,8 @@ No network, no account, no ads. Works offline. Japanese and English.
 ```
 ・iPhone Duo に対応しました。閉じた画面・開いた画面のどちらでも遊べ、遊んでいる途中で開いたり閉じたりしても続きます
 ・パネルや設定の閉じるボタンがステータスバーに隠れないようにしました
+```
+
 - **新機能（1.1）**:
 
 ```
