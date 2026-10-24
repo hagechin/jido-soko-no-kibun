@@ -9,7 +9,7 @@
 import { ITEM_BY_ID } from '../data/items';
 import { expand, expansionCost, type BuildKind, type ExpandDir } from '../sim/build';
 import { cellAt } from '../sim/grid';
-import { countSelection, eraseCell, moveCells, paintCell, restoreLayout, snapshotLayout, validateLayout, type LayoutSnapshot } from '../sim/layoutEditor';
+import { countSelection, eraseCell, layoutProblems, moveCells, paintCell, restoreLayout, snapshotLayout, type LayoutProblem, type LayoutSnapshot } from '../sim/layoutEditor';
 import type { Vec2, WorldState } from '../sim/types';
 import { icon, iconText, type IconName } from './icon';
 import { $, el, showToast } from './layout';
@@ -175,7 +175,7 @@ export class LayoutEditor {
       restoreLayout(w, this.original!);
       this.host?.onCancel();
     });
-    const problems = validateLayout(w);
+    const problems = layoutProblems(w);
     const save = el('button', { class: 'btn primary', type: 'button' }, iconText('save', '保存して出荷を再開', 16));
     if (problems.length) save.setAttribute('disabled', 'true');
     save.addEventListener('click', () => this.host?.onSave());
@@ -188,14 +188,17 @@ export class LayoutEditor {
     this.renderStatus(problems);
   }
 
-  private renderStatus(problems = validateLayout(this.world!)): void {
+  private renderStatus(problems = layoutProblems(this.world!)): void {
     const w = this.world!;
     this.status.replaceChildren();
     const n = countSelection(w, this.selectedCells());
     const selText = this.selection.size ? `選択 ${this.selection.size} マス（スタック ${n.stacks} / ポート ${n.ports} / ステーション ${n.stations} / 待機 ${n.waitSpots}）。ドラッグで移動、Delete で撤去` : this.tool === 'select' ? 'ドラッグで範囲選択、設備をタップで選択' : this.tool === 'pan' ? 'ドラッグで画面を動かす' : this.tool === 'erase' ? 'タップ／ドラッグで撤去（ビンの入ったスタックは不可）' : 'タップ／ドラッグで配置';
     this.status.append(el('div', { class: 'editor-line' }, el('span', { text: `${w.width}×${w.height} マス　` }), icon('coins', 12), el('span', { text: ` ${Math.floor(w.coins).toLocaleString('ja-JP')}　${selText}` })));
-    if (problems.length) this.status.append(el('div', { class: 'editor-line is-problem' }, icon('triangle-alert', 14), el('span', { text: ' ' + problems.slice(0, 3).join(' / ') + (problems.length > 3 ? ` ほか ${problems.length - 3} 件` : '') })));
+    const msgs = problems.map((p) => p.message);
+    if (problems.length) this.status.append(el('div', { class: 'editor-line is-problem' }, icon('triangle-alert', 14), el('span', { text: ' ' + msgs.slice(0, 3).join(' / ') + (msgs.length > 3 ? ` ほか ${msgs.length - 3} 件` : '') })));
     else this.status.append(el('div', { class: 'editor-line is-ok' }, icon('check', 14), el('span', { text: ' 保存できる配置です' })));
+    // 凡例（マスの文字の意味。「P2 って何？」への答え。1.0.3）
+    this.status.append(el('div', { class: 'editor-line editor-legend' }, el('span', { text: '凡例: P ポート（棚ロボがビンを降ろす場所）／K ピッキング／I 入荷ステーション／入・出 入荷口・出荷口／点線 待機スポット／左下の数字 置いてあるビンの数／赤い印 保存できない原因のマス' })));
   }
 
   private setPreview(on: boolean): void {
@@ -318,6 +321,31 @@ export class LayoutEditor {
         }
       }
     }
+    // 保存できない原因のマスに赤い印（本体から離れたスタック・ポート、床に面していないポート・ステーション、分断された床。1.0.3）
+    const marks = new Set<string>();
+    for (const p of layoutProblems(w)) for (const c of p.cells) marks.add(`${c.x},${c.z}`);
+    if (marks.size) {
+      ctx.save();
+      for (const key of marks) {
+        const [mx, mz] = key.split(',').map(Number);
+        const px = this.ox + mx * s;
+        const py = this.oy + mz * s;
+        ctx.fillStyle = 'rgba(255, 80, 80, 0.35)';
+        ctx.fillRect(px, py, s, s);
+        ctx.strokeStyle = '#ff5252';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px + 1.5, py + 1.5, s - 3, s - 3);
+        if (s >= 12) {
+          ctx.fillStyle = '#ff5252';
+          ctx.font = `bold ${Math.max(9, s * 0.5)}px system-ui, sans-serif`;
+          ctx.textBaseline = 'top';
+          ctx.textAlign = 'right';
+          ctx.fillText('!', px + s - 2, py + 1);
+          ctx.textAlign = 'left';
+        }
+      }
+      ctx.restore();
+    }
     // 移動のゴースト
     if (this.drag && this.selection.size) {
       const ok = this.canMove(dx, dz);
@@ -382,8 +410,15 @@ export class LayoutEditor {
       ctx.font = `bold ${Math.max(8, s * 0.45)}px system-ui, sans-serif`;
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
-      ctx.fillText(n ? `P${n}` : 'P', px + s / 2, py + s / 2);
+      ctx.fillText('P', px + s / 2, py + s / 2);
       ctx.textAlign = 'left';
+      // 置いてあるビンの数はスタックと同じく左下の小さな数字（以前は「P2」と並べていて意味が分からなかった。1.0.3）
+      if (s >= 14 && n) {
+        ctx.fillStyle = '#1b1b1b';
+        ctx.font = `${Math.max(8, s * 0.38)}px system-ui, sans-serif`;
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(String(n), px + 2, py + s - 2);
+      }
     } else if (k === 'pickStation' || k === 'inboundStation') {
       ctx.fillStyle = '#1b1b1b';
       ctx.font = `bold ${Math.max(8, s * 0.45)}px system-ui, sans-serif`;

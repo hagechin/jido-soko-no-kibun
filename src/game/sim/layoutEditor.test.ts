@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildPreset } from './presets';
 import { createRuntime, stepSim } from './sim';
-import { beginEdit, finishEdit, moveCells, paintCell, eraseCell, validateLayout, snapshotLayout, restoreLayout, floorConnected } from './layoutEditor';
+import { beginEdit, finishEdit, moveCells, paintCell, eraseCell, validateLayout, snapshotLayout, restoreLayout, floorConnected, layoutProblems } from './layoutEditor';
 import { cellAt } from './grid';
 
 describe('layout editor (stop → edit → resume)', () => {
@@ -79,5 +79,35 @@ describe('layout editor (stop → edit → resume)', () => {
     const p = w.ports[0];
     for (const [dx, dz] of [[1, 0], [0, 1], [0, -1]]) if (cellAt(w, p.x + dx, p.z + dz) === 'floor') paintCell(w, 'stack', p.x + dx, p.z + dz);
     expect(validateLayout(w).length).toBeGreaterThan(0);
+  });
+
+  it('layoutProblems marks the cells that block saving: a stack apart from the main rail, and floor cut off from the rest', () => {
+    const w = buildPreset('medium');
+    beginEdit(w);
+    expect(layoutProblems(w)).toEqual([]);
+    // 本体から離れたスタック → レールの問題にそのマスが印
+    expect(paintCell(w, 'stack', 0, 0).ok).toBe(true);
+    const rail = layoutProblems(w).find((p) => p.message.includes('レール'))!;
+    expect(rail).toBeTruthy();
+    expect(rail.cells).toEqual([{ x: 0, z: 0 }]);
+    expect(eraseCell(w, 0, 0).ok).toBe(true);
+    // ポートを囲う → そのポートに印（床に面していない）
+    const p = w.ports[0];
+    for (const [dx, dz] of [[1, 0], [0, 1], [0, -1]]) if (cellAt(w, p.x + dx, p.z + dz) === 'floor') paintCell(w, 'stack', p.x + dx, p.z + dz);
+    const port = layoutProblems(w).find((q) => q.message.includes('ポート('));
+    expect(port).toBeTruthy();
+    expect(port!.cells).toEqual([{ x: p.x, z: p.z }]);
+    // 隅の床 1 マスを塞いで分断 → その床に印
+    const w2 = buildPreset('medium');
+    beginEdit(w2);
+    const cx = w2.width - 1;
+    const cz = w2.height - 1;
+    expect(cellAt(w2, cx, cz)).toBe('floor');
+    for (const [x, z] of [[cx - 1, cz], [cx, cz - 1]]) if (cellAt(w2, x, z) === 'floor') paintCell(w2, 'stack', x, z);
+    const floor = layoutProblems(w2).find((q) => q.message.includes('床の通路'));
+    expect(floor).toBeTruthy();
+    expect(floor!.cells).toEqual([{ x: cx, z: cz }]);
+    // 印の無い理由（設備が無い）は cells が空
+    for (const pr of layoutProblems(w)) expect(Array.isArray(pr.cells)).toBe(true);
   });
 });
