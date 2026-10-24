@@ -212,6 +212,20 @@ button {
   min-width: 0;
   min-height: 0;
   background: #dfe9f3;
+  /* 3D のビューは左右のセーフエリア（横向きのノッチ、iPhone Duo の縦のステータスバー）の下まで広げる（Apple の案内: 全幅の背景 + 内側の前景）。
+     操作部品（HUD・注文票・バー・ビューの中のボタンやトースト）は --vx-l / --vx-r ぶん内側に戻す。PC/iPad の配置は右に注文票があるので左だけ（1.0.3） */
+  --vx-l: var(--sa-left);
+  --vx-r: 0px;
+  margin-left: calc(-1 * var(--vx-l));
+  margin-right: calc(-1 * var(--vx-r));
+}
+@media (max-width: 899px) {
+  .view {
+    --vx-r: var(--sa-right);
+  }
+}
+body.is-calm .view {
+  --vx-r: var(--sa-right);
 }
 .game-canvas {
   position: absolute;
@@ -223,7 +237,7 @@ button {
 }
 .view-overlay {
   position: absolute;
-  right: 8px;
+  right: calc(8px + var(--vx-r, 0px));
   top: 8px;
   display: flex;
   flex-direction: column;
@@ -231,7 +245,7 @@ button {
 }
 .banner {
   position: absolute;
-  left: 50%;
+  left: calc(50% + (var(--vx-l, 0px) - var(--vx-r, 0px)) / 2);
   top: 10px;
   transform: translateX(-50%);
   background: rgba(220, 40, 40, 0.9);
@@ -246,7 +260,7 @@ button {
 }
 .toasts {
   position: absolute;
-  left: 50%;
+  left: calc(50% + (var(--vx-l, 0px) - var(--vx-r, 0px)) / 2);
   bottom: 12px;
   transform: translateX(-50%);
   /* left: 50% の絶対配置は幅が右半分ぶんに縮むので、中身の幅で広げる（長い案内が 5 行に折れていた） */
@@ -1180,7 +1194,7 @@ body.is-calm .mini-hud {
 }
 .calm-suggest {
   position: absolute;
-  left: 50%;
+  left: calc(50% + (var(--vx-l, 0px) - var(--vx-r, 0px)) / 2);
   bottom: 56px;
   transform: translateX(-50%);
   z-index: 8;
@@ -1195,7 +1209,7 @@ body.has-modal .calm-suggest {
 }
 .update-banner {
   position: absolute;
-  left: 50%;
+  left: calc(50% + (var(--vx-l, 0px) - var(--vx-r, 0px)) / 2);
   top: 48px;
   transform: translateX(-50%);
   z-index: 9;
@@ -1415,6 +1429,7 @@ body.has-modal .photo-panel {
   flex: 1;
   position: relative;
   min-height: 0;
+  overflow: hidden; /* 拡大・移動したマス目が下の状態の行に重ならないように（第 37 回） */
 }
 .layout-editor[hidden] {
   display: none;
@@ -1473,6 +1488,16 @@ body.has-modal .photo-panel {
   color: var(--muted);
   font-size: 11px;
   flex-wrap: wrap;
+  column-gap: 0;
+}
+/* 凡例・状態の行は項目の区切りでだけ折り返す（語の途中で切れないように） */
+.editor-legend > span,
+.editor-line .nowrap {
+  white-space: nowrap;
+}
+.editor-preview-bar > .btn {
+  white-space: nowrap;
+  flex: none;
 }
 .editor-actions {
   display: flex;
@@ -1491,6 +1516,8 @@ body.has-modal .photo-panel {
   z-index: 50;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap; /* iPhone 縦では説明文を折り返し、「エディタに戻る」のボタンは細くしない（第 37 回） */
+  justify-content: center;
   background: rgba(20, 28, 38, 0.9);
   padding: 8px 12px;
   border-radius: 12px;
@@ -1917,7 +1944,7 @@ body.is-photo .catchup {
 /* ---------- チュートリアル（1.0.2） ---------- */
 .tutorial {
   position: absolute;
-  left: 50%;
+  left: calc(50% + (var(--vx-l, 0px) - var(--vx-r, 0px)) / 2);
   top: 10px;
   transform: translateX(-50%);
   width: min(460px, calc(100% - 20px));
@@ -2015,7 +2042,7 @@ body.has-tutorial:has(.tutorial.is-compact) .view-overlay {
 }
 /* パネル・建設・拡大した注文票の間: 左上に 1 行だけ（操作を覆わない） */
 .tutorial.is-compact {
-  left: 10px;
+  left: calc(10px + var(--vx-l, 0px));
   top: auto;
   bottom: 12px; /* 拡大した注文票（上寄り）と重ならないよう、縮めている間は左下に */
   transform: none;
