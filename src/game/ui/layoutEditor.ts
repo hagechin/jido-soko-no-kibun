@@ -193,12 +193,14 @@ export class LayoutEditor {
     this.status.replaceChildren();
     const n = countSelection(w, this.selectedCells());
     const selText = this.selection.size ? `選択 ${this.selection.size} マス（スタック ${n.stacks} / ポート ${n.ports} / ステーション ${n.stations} / 待機 ${n.waitSpots}）。ドラッグで移動、Delete で撤去` : this.tool === 'select' ? 'ドラッグで範囲選択、設備をタップで選択' : this.tool === 'pan' ? 'ドラッグで画面を動かす' : this.tool === 'erase' ? 'タップ／ドラッグで撤去（ビンの入ったスタックは不可）' : 'タップ／ドラッグで配置';
-    this.status.append(el('div', { class: 'editor-line' }, el('span', { text: `${w.width}×${w.height} マス　` }), icon('coins', 12), el('span', { text: ` ${Math.floor(w.coins).toLocaleString('ja-JP')}　${selText}` })));
+    this.status.append(el('div', { class: 'editor-line' }, el('span', { class: 'nowrap', text: `${w.width}×${w.height} マス　` }), icon('coins', 12), el('span', { class: 'nowrap', text: ` ${Math.floor(w.coins).toLocaleString('ja-JP')}　` }), el('span', { text: selText })));
     const msgs = problems.map((p) => p.message);
     if (problems.length) this.status.append(el('div', { class: 'editor-line is-problem' }, icon('triangle-alert', 14), el('span', { text: ' ' + msgs.slice(0, 3).join(' / ') + (msgs.length > 3 ? ` ほか ${msgs.length - 3} 件` : '') })));
     else this.status.append(el('div', { class: 'editor-line is-ok' }, icon('check', 14), el('span', { text: ' 保存できる配置です' })));
     // 凡例（マスの文字の意味。「P2 って何？」への答え。1.0.3）
-    this.status.append(el('div', { class: 'editor-line editor-legend' }, el('span', { text: '凡例: P ポート（棚ロボがビンを降ろす場所）／K ピッキング／I 入荷ステーション／入・出 入荷口・出荷口／点線 待機スポット／左下の数字 置いてあるビンの数／赤い印 保存できない原因のマス' })));
+    // 項目ごとに span にして、折り返しは「／」の所でだけ起きるように（語の途中で切れていた。第 37 回）
+    const legend = '凡例: P ポート（棚ロボがビンを降ろす場所）／K ピッキング／I 入荷ステーション／入・出 入荷口・出荷口／点線 待機スポット／左下の数字 置いてあるビンの数／赤い印 保存できない原因のマス';
+    this.status.append(el('div', { class: 'editor-line editor-legend' }, ...legend.split('／').map((t, i, a) => el('span', { text: t + (i < a.length - 1 ? '／' : '') }))));
   }
 
   private setPreview(on: boolean): void {
