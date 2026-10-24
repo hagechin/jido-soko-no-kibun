@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 37
-- status: requested
+- status: reported
 - branch: release/1.0 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。release/1.0 には push しない）
 - commit: `release/1.0` の先端 `d09fd97` 以降（1.0.3 / ビルド 5 = Duo 対応 + レイアウトエディタの赤い印と凡例）
 - requested-at: 2026-10-24（第 37 回）
