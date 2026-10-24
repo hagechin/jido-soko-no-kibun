@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 38
-- status: requested
+- status: reported
 - branch: release/1.0 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。release/1.0 には push しない）
 - commit: `release/1.0` の先端（1.0.3 / ビルド 5 + 第 37 回の後の 3 件: 3D のビューをセーフエリアの下まで広げる + 帯にすりガラス、エディタの軽微な直し）
 - requested-at: 2026-10-25（第 38 回）
