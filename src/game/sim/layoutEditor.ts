@@ -97,26 +97,72 @@ export function parkOutside(w: WorldState): void {
   }
 }
 
-/** 保存できる配置か。空配列なら OK */
-export function validateLayout(w: WorldState): string[] {
-  const out: string[] = [];
-  if (!w.stacks.length) out.push(tr('スタックがありません'));
-  if (!w.ports.length) out.push(tr('ポートがありません'));
-  if (!w.stations.some((s) => s.kind === 'pick')) out.push(tr('ピッキングステーションがありません'));
-  if (!w.stations.some((s) => s.kind === 'inbound')) out.push(tr('入荷ステーションがありません'));
-  if (w.stacks.length && !railConnected(w)) out.push(tr('レール（スタックとポート）が 1 つにつながっていません'));
-  for (const p of w.ports) {
-    if (!isAdjacentToStack(w, p.x, p.z)) out.push(tr('ポート({0},{1}) が棚に隣接していません', p.x, p.z));
-    else if (!isFacingFloor(w, p.x, p.z)) out.push(tr('ポート({0},{1}) が床に面していません', p.x, p.z));
+/** 保存できない理由と、原因のマス（エディタで赤く印を付ける。原因の場所が無い理由は cells が空） */
+export interface LayoutProblem {
+  message: string;
+  cells: Vec2[];
+}
+
+/** 条件を満たすマスを 4 近傍でつないだ塊に分ける（大きい順） */
+function components(w: WorldState, pred: (x: number, z: number) => boolean): Vec2[][] {
+  const seen = new Set<number>();
+  const out: Vec2[][] = [];
+  for (let z = 0; z < w.height; z++)
+    for (let x = 0; x < w.width; x++) {
+      const k0 = z * w.width + x;
+      if (seen.has(k0) || !pred(x, z)) continue;
+      seen.add(k0);
+      const comp: Vec2[] = [{ x, z }];
+      for (let h = 0; h < comp.length; h++) {
+        for (const n of neighbors4(w, comp[h].x, comp[h].z)) {
+          const k = n.z * w.width + n.x;
+          if (seen.has(k) || !pred(n.x, n.z)) continue;
+          seen.add(k);
+          comp.push(n);
+        }
+      }
+      out.push(comp);
+    }
+  return out.sort((a, b) => b.length - a.length);
+}
+
+/** 保存できない理由（原因のマス付き）。空配列なら OK。1.0.3: 本体から離れたスタック・ポート、床に面していないポート・ステーション、分断された床に印を付ける */
+export function layoutProblems(w: WorldState): LayoutProblem[] {
+  const out: LayoutProblem[] = [];
+  const push = (message: string, cells: Vec2[] = []) => out.push({ message, cells });
+  if (!w.stacks.length) push(tr('スタックがありません'));
+  if (!w.ports.length) push(tr('ポートがありません'));
+  if (!w.stations.some((s) => s.kind === 'pick')) push(tr('ピッキングステーションがありません'));
+  if (!w.stations.some((s) => s.kind === 'inbound')) push(tr('入荷ステーションがありません'));
+  if (w.stacks.length) {
+    // レールの塊が 2 つ以上なら、いちばん大きい塊を本体とみなし、残りに印
+    const rails = components(w, (x, z) => isRailWalkable(cellAt(w, x, z)));
+    if (rails.length > 1) {
+      const apart = rails.slice(1).flat();
+      push(tr('レール（スタックとポート）が 1 つにつながっていません（赤い印の {0} マスが本体から離れています）', apart.length), apart);
+    }
   }
-  for (const s of w.stations) if (!isFacingFloor(w, s.x, s.z)) out.push(tr('{0}ステーション({1},{2}) が床に面していません', s.kind === 'pick' ? tr('ピッキング') : tr('入荷'), s.x, s.z));
-  if (!floorConnected(w)) out.push(tr('床の通路が分断されています（搬送ロボが行けない場所がある）'));
+  for (const p of w.ports) {
+    if (!isAdjacentToStack(w, p.x, p.z)) push(tr('ポート({0},{1}) が棚に隣接していません', p.x, p.z), [{ x: p.x, z: p.z }]);
+    else if (!isFacingFloor(w, p.x, p.z)) push(tr('ポート({0},{1}) が床に面していません', p.x, p.z), [{ x: p.x, z: p.z }]);
+  }
+  for (const s of w.stations) if (!isFacingFloor(w, s.x, s.z)) push(tr('{0}ステーション({1},{2}) が床に面していません', s.kind === 'pick' ? tr('ピッキング') : tr('入荷'), s.x, s.z), [{ x: s.x, z: s.z }]);
+  const floors = components(w, (x, z) => isFloorWalkable(cellAt(w, x, z)));
+  if (floors.length > 1) {
+    const cut = floors.slice(1).flat();
+    push(tr('床の通路が分断されています（搬送ロボが行けない場所がある。赤い印の {0} マス）', cut.length), cut);
+  }
   const slots = w.stacks.length * w.levels;
   const bins = Object.keys(w.bins).length;
-  if (bins > slots) out.push(tr('ビン {0} 個に対して棚のスロットが {1} しかありません', bins, slots));
+  if (bins > slots) push(tr('ビン {0} 個に対して棚のスロットが {1} しかありません', bins, slots));
   const shelves = w.robots.filter((r) => r.kind === 'shelf').length;
-  if (shelves > w.stacks.length + w.ports.length) out.push(tr('棚ロボ {0} 台を置けるレールがありません', shelves));
+  if (shelves > w.stacks.length + w.ports.length) push(tr('棚ロボ {0} 台を置けるレールがありません', shelves));
   return out;
+}
+
+/** 保存できる配置か。空配列なら OK（理由の文だけ。原因のマスは layoutProblems） */
+export function validateLayout(w: WorldState): string[] {
+  return layoutProblems(w).map((p) => p.message);
 }
 
 /** 床（搬送ロボが通れるマス）が 1 つにつながっているか */

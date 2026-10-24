@@ -1469,6 +1469,11 @@ body.has-modal .photo-panel {
 .editor-line.is-ok {
   color: var(--ok);
 }
+.editor-line.editor-legend {
+  color: var(--muted);
+  font-size: 11px;
+  flex-wrap: wrap;
+}
 .editor-actions {
   display: flex;
   gap: 8px;
