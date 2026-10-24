@@ -25,6 +25,9 @@ import { iconMarkup } from '../game/ui/icon';
       <div class="splash-title">箱庭！ディストリビューション</div>
       <div class="splash-sub">倉庫を準備しています…</div>
     </div>
+    <!-- 左右のセーフエリア（iPhone Duo の閉じた画面の縦のステータスバー、横向きのノッチ）: 3D は下で続き、上にすりガラスを重ねて OS の領域だと分かるようにする。タッチは通さない（1.0.3） -->
+    <div class="sa-glass sa-glass-l" aria-hidden="true"></div>
+    <div class="sa-glass sa-glass-r" aria-hidden="true"></div>
     <div id="app" class="app">
       <header id="hud" class="hud" aria-label="状況">
         <div class="hud-group">
