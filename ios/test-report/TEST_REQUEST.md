@@ -1,38 +1,34 @@
 # テスト依頼
 
-- round: 36
-- status: done
-- branch: release/1.1 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。release/1.1 には push しない）
-- commit: `release/1.1` の先端（1.1 / ビルド 6 = 1.1 の内容 + 第 35 回の Duo の直し。直しは release/1.0 の `f511f17` と同じ）
-- requested-at: 2026-10-23（第 36 回）
-- やりとりの約束: `ios/test-report/PROTOCOL.md`。項目の定義: `ios/TESTPLAN.md`（M59、M24〜M25d）
+- round: 37
+- status: requested
+- branch: release/1.0 （**試験の対象**。この依頼ファイルと報告は feature/photo-mode に置く。release/1.0 には push しない）
+- commit: `release/1.0` の先端 `d09fd97` 以降（1.0.3 / ビルド 5 = Duo 対応 + レイアウトエディタの赤い印と凡例）
+- requested-at: 2026-10-24（第 37 回）
+- やりとりの約束: `ios/test-report/PROTOCOL.md`。項目の定義: `ios/TESTPLAN.md`（M60、M59）
 
 ## 今回のねらい
 
-**第 35 回の NG の直しの確認（iPhone Duo）と、Duo でのフォトモード**（30 分）。Xcode 27.1 の Duo シミュレータ。対象を release/1.1 にしたのは、フォトモードが 1.1 側にしか無いため（Duo の直しは 1.0.3 と同じ内容）。
+**1.0.3 提出前の確認**（30 分）。新しいのはレイアウトエディタの「保存できない原因のマスに赤い印」と「凡例」、ポートの表示（「P2」→「P」+ 左下の数字）。Duo の直しは第 36 回で確認済みなので回帰だけ軽く。
 
-## 手順（第 35 回と同じ。ブランチだけ release/1.1）
+## 手順
 
-1. `git fetch origin release/1.1 && git checkout release/1.1 && git pull --ff-only origin release/1.1`
-2. Node 22 で `./ios/sync-web.sh` → `cd ios && xcodegen generate` → Xcode 27.1 でビルド。設定の「セーブ」の下が「アプリ 1.1 (6)・同梱 Web commit=<HEAD>」
-3. iPhone Duo のシミュレータ 1 台だけ。画像は `r36-*.png`
-4. 報告は **feature/photo-mode** に: `git checkout feature/photo-mode && git pull --ff-only origin feature/photo-mode` → `TEST_REPORT.md` の末尾に「# 第36回: release/1.1 `<commit>`（iPhone Duo の直し + フォト）」→ status を `reported` → `ios: round-36 … on release/1.1 <commit>` → `git push origin feature/photo-mode`
+1. `git fetch origin release/1.0 && git checkout release/1.0 && git pull --ff-only origin release/1.0`
+2. Node 22 で `./ios/sync-web.sh` → `cd ios && xcodegen generate` → **Xcode 27.1 で**ビルド。設定の「セーブ」の下が「アプリ 1.0.3 (5)・同梱 Web commit=<HEAD>」
+3. 項目 1〜4 は **iPhone 17e（縦）**で（エディタの操作はタップが要る）。項目 5 だけ iPhone Duo（外側の画面で可）。画像は `r37-*.png`
+4. 報告は **feature/photo-mode** に: `git checkout feature/photo-mode && git pull --ff-only origin feature/photo-mode` → `TEST_REPORT.md` の末尾に「# 第37回: release/1.0 `<commit>`（1.0.3 の確認）」→ status を `reported` → `ios: round-37 … on release/1.0 <commit>` → `git push origin feature/photo-mode`
 
 ## 項目
 
 | # | 項目 | 補足 |
 |---|---|---|
-| 1 | 外側 縦: シートの閉じるボタン | 強化パネル・設定を開く → シートが帯（右の縦のステータスバー）の手前（x ≈ 382）で終わり、右上の × が見えて押せる。画像 |
-| 2 | 外側 縦: モーダル | 設定 → 操作方法（または文字の大きさ）→ カードが帯の手前の範囲で中央、× が押せる |
-| 3 | 外側 縦: 眺めモードのミニ HUD | 眺める → 下の情報バーが帯の手前の範囲の中央で、右端の × が切れていない |
-| 4 | 外側 縦: コインのメニュー | HUD のコインをタップ → メニューが帯の手前で収まる |
-| 5 | 内側（951×669、タブレットのレイアウト）: HUD | 「4x」がオーダーの列に食い込まず、速度は 1 つのボタン（例「1x」）、倉庫名は無く、日付のアイコンが ★ の数に重ならない。強化パネルを開くと右のシートが帯の手前（x ≈ 867）で終わる |
-| 6 | 内側: フォトモード | 眺める → フォト。チップの列と下のバー（歯車・回す｜歩く・●・×）が帯の手前の範囲に収まり、● が中身の中央。チップをタップして選択肢が出る。● で撮れて「撮れました」が収まる。画像 |
-| 7 | フォトモード中の開閉 | 外側でフォトに入る → 開く → 内側でチップとバーが収まり直す → 閉じる → 外側に戻る。固まらない。画像 |
-| 8 | 開閉の回帰 | ゲーム中に開く／閉じるで続きが遊べる（第 35 回と同じ） |
-
-実機でしか見られない Split View は今回も不要。
+| 1 | M60 離れたスタック | `-demo` → 設定 → レイアウトエディタ（倉庫を停止して俯瞰で配置換え）。ツール「スタック」で倉庫の左上の隅（0,0）など本体から離れたマスに 1 つ置く → そのマスが赤く塗られ右上に「!」、下の行に「レール（スタックとポート）が 1 つにつながっていません（赤い印の 1 マスが本体から離れています）」、「保存して出荷を再開」が押せない（灰色）。ツール「撤去」でそのマスを消す → 印と文が消えて「保存できる配置です」、保存が押せる。画像: 印が出た状態 |
+| 2 | M60 囲まれたポート | ツール「スタック」で、どれかのポート（黄色の P）の周りの床（上下左右のうち床のマス）を全部スタックで埋める → **そのポート**に赤い印、文「ポート(x,z) が床に面していません」（または「棚に隣接していません」）。「元に戻す」で戻ると印が消える。画像 |
+| 3 | M60 凡例とポートの表示 | エディタの下に「凡例: P ポート（棚ロボがビンを降ろす場所）／K ピッキング／I 入荷ステーション／入・出 入荷口・出荷口／点線 待機スポット／左下の数字 置いてあるビンの数／赤い印 保存できない原因のマス」。ポートのマスは「P」だけ（「P2」のような表記が無い）。ビンが置いてあるポートがあれば左下に小さな数字。iPhone 縦で凡例が折り返して読める |
+| 4 | エディタの回帰 | 移動（範囲選択 → ドラッグ）、3D プレビュー、キャンセル（元に戻す）、保存して出荷を再開 → ロボが戻って出荷が続く |
+| 5 | Duo の回帰（外側の画面だけ） | iPhone Duo で、強化パネルの × が押せる、眺めモードのミニ HUD の × が切れていない（第 36 回と同じ） |
+| 6 | 自動テスト（§2） | Xcode 27.1、iPhone 17e で SUCCEEDED / FAILED |
 
 ## 報告してほしいこと
 
-- 第 35 回の NG 3 件（1・3・5）が直っているか、フォトモードの Duo での見え方。全部 OK なら「Duo OK」と一言
+- NG と気づき。全部 OK なら「1.0.3 提出可」と一言
