@@ -194,12 +194,14 @@ export class LayoutEditor {
     this.status.replaceChildren();
     const n = countSelection(w, this.selectedCells());
     const selText = this.selection.size ? tr('選択 {0} マス（スタック {1} / ポート {2} / ステーション {3} / 待機 {4}）。ドラッグで移動、Delete で撤去', this.selection.size, n.stacks, n.ports, n.stations, n.waitSpots) : this.tool === 'select' ? tr('ドラッグで範囲選択、設備をタップで選択') : this.tool === 'pan' ? tr('ドラッグで画面を動かす') : this.tool === 'erase' ? tr('タップ／ドラッグで撤去（ビンの入ったスタックは不可）') : tr('タップ／ドラッグで配置');
-    this.status.append(el('div', { class: 'editor-line' }, el('span', { text: tr('{0}×{1} マス　', w.width, w.height) }), icon('coins', 12), el('span', { text: ` ${Math.floor(w.coins).toLocaleString('ja-JP')}　${selText}` })));
+    this.status.append(el('div', { class: 'editor-line' }, el('span', { class: 'nowrap', text: tr('{0}×{1} マス　', w.width, w.height) }), icon('coins', 12), el('span', { class: 'nowrap', text: ` ${Math.floor(w.coins).toLocaleString('ja-JP')}　` }), el('span', { text: selText })));
     const msgs = problems.map((p) => p.message);
     if (problems.length) this.status.append(el('div', { class: 'editor-line is-problem' }, icon('triangle-alert', 14), el('span', { text: ' ' + msgs.slice(0, 3).join(' / ') + (msgs.length > 3 ? tr(' ほか {0} 件', msgs.length - 3) : '') })));
     else this.status.append(el('div', { class: 'editor-line is-ok' }, icon('check', 14), el('span', { text: tr(' 保存できる配置です') })));
     // 凡例（マスの文字の意味。「P2 って何？」への答え。1.0.3）
-    this.status.append(el('div', { class: 'editor-line editor-legend' }, el('span', { text: tr('凡例: P ポート（棚ロボがビンを降ろす場所）／K ピッキング／I 入荷ステーション／入・出 入荷口・出荷口／点線 待機スポット／左下の数字 置いてあるビンの数／赤い印 保存できない原因のマス') })));
+    // 項目ごとに span にして、折り返しは「／」の所でだけ起きるように（語の途中で切れていた。第 37 回）
+    const legend = tr('凡例: P ポート（棚ロボがビンを降ろす場所）／K ピッキング／I 入荷ステーション／入・出 入荷口・出荷口／点線 待機スポット／左下の数字 置いてあるビンの数／赤い印 保存できない原因のマス');
+    this.status.append(el('div', { class: 'editor-line editor-legend' }, ...legend.split(tr('／')).map((t, i, a) => el('span', { text: t + (i < a.length - 1 ? tr('／') : '') }))));
   }
 
   private setPreview(on: boolean): void {
