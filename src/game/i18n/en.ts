@@ -1088,4 +1088,9 @@ export const EN: Record<string, string> = {
   '、': ', ',
   '1 〜 7': '1 – 7',
   '1 〜 8': '1 – 8',
+  // 1.0.3: レイアウトエディタの赤い印と凡例
+  'レール（スタックとポート）が 1 つにつながっていません（赤い印の {0} マスが本体から離れています）': 'The rail (stacks and ports) is not one connected piece ({0} cells marked in red are apart from the main body)',
+  '床の通路が分断されています（搬送ロボが行けない場所がある。赤い印の {0} マス）': 'The floor is cut into separate areas (AMRs cannot reach some of it: {0} cells marked in red)',
+  '倉庫を止め、ロボは持っているビンを棚に戻して外で待機します。スタックは中身ごと動かせます。「保存して出荷を再開」で戻ります。マスの文字: P=ポート（棚ロボがビンを降ろす場所）、K=ピッキングステーション、I=入荷ステーション、左下の数字=置いてあるビンの数。保存できないときは原因のマス（本体から離れたスタック・ポート、床に面していないポート・ステーション、分断された床）に赤い印が付きます': 'Stops the warehouse; robots put the bins they hold back on shelves and wait outside. Stacks move with their contents. "Save and resume shipping" returns. Cell letters: P = port (where shelf robots drop bins), K = picking station, I = inbound station, number at bottom left = bins placed there. When the layout cannot be saved, the cells causing it (stacks or ports apart from the main body, ports or stations not facing the floor, cut-off floor) are marked in red',
+  '凡例: P ポート（棚ロボがビンを降ろす場所）／K ピッキング／I 入荷ステーション／入・出 入荷口・出荷口／点線 待機スポット／左下の数字 置いてあるビンの数／赤い印 保存できない原因のマス': 'Legend: P port (where shelf robots drop bins) / K picking / I inbound station / 入・出 inbound / outbound dock / dotted = wait spot / number at bottom left = bins placed / red = cells that block saving',
 };
