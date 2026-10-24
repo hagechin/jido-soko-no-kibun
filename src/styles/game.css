@@ -227,6 +227,31 @@ button {
 body.is-calm .view {
   --vx-r: var(--sa-right);
 }
+/* 左右のセーフエリアに重ねるすりガラス: 3D は下で続いて見え、帯が OS の領域だと分かる。幅 0 のときは何も出ない。タッチは遮る */
+.sa-glass {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  z-index: 34; /* ビューの上、撮影パネル（35）・エディタ（40）より下 */
+  pointer-events: auto;
+  background: rgba(20, 28, 38, 0.45);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+.sa-glass-l {
+  left: 0;
+  width: var(--sa-left);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.08); /* border だと幅 0 でも 1px 出る */
+}
+.sa-glass-r {
+  right: 0;
+  width: var(--sa-right);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+body.is-editing .sa-glass {
+  display: none; /* エディタは自分でセーフエリアを空けている */
+}
 .game-canvas {
   position: absolute;
   inset: 0;
