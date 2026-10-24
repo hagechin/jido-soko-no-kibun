@@ -252,6 +252,12 @@ body.is-calm .view {
 body.is-editing .sa-glass {
   display: none; /* エディタは自分でセーフエリアを空けている */
 }
+/* 開いた画面（幅 900px 以上のタブレット配置）では右のガラスは出さない: 画面が広く、帯の下に 3D が入らないので要らない（閉じた画面だけ） */
+@media (min-width: 900px) {
+  .sa-glass-r {
+    display: none;
+  }
+}
 .game-canvas {
   position: absolute;
   inset: 0;
