@@ -95,7 +95,15 @@ export class LayoutEditor {
     c.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', (e) => this.onKey(e));
-    window.addEventListener('resize', () => this.open && this.fit());
+    // 画面の大きさが変わったら合わせ直す（iPhone Duo の開閉・回転・Split View）。window の resize は新しいレイアウトが決まる前に来ることがあるので、
+    // stage の ResizeObserver（レイアウト後に大きさ付きで来る）を主にし、resize は 1 フレーム後の保険
+    const refit = () => {
+      if (!this.open) return;
+      const r = this.stage.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) this.fit();
+    };
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(refit).observe(this.stage);
+    window.addEventListener('resize', () => requestAnimationFrame(refit));
   }
 
   show(w: WorldState, host: EditorHost): void {

@@ -1375,3 +1375,11 @@ npm run preview   # http://localhost:4321 で確認
 
 - `.sa-glass-l` / `.sa-glass-r`（`index.astro`、fixed、幅 = 左右のセーフエリア）: `backdrop-filter: blur(14px) saturate(1.2)` + `rgba(20,28,38,0.45)`。3D は下で続いて見え、帯が OS の領域だと分かる。タッチは遮る（`pointer-events: auto`、`elementFromPoint` がガラス）。幅 0 の端末では出ない（枠線は border でなく inset の box-shadow。border だと幅 0 でも 1px 出た）。エディタ中は非表示（エディタは自分でセーフエリアを空ける）。z-index 34（撮影パネル 35・エディタ 40 より下）
 - 実機で見る点: ぼかしの負荷（WebGL の上の backdrop-filter。重ければ blur を外して暗色だけに）
+
+---
+
+## 第 39 回（Duo のストア用スクリーンショット、release/1.0 `3405392`）→ 10 枚 + エディタの合わせ直しを修正
+
+- `ios/screenshots/store-duo/`（feature/photo-mode）に外側 5 枚（1398×2034: 全景・眺めモード・強化・サイバーウィーク・コインのメニュー。すりガラスの帯に 9:41 と Wi-Fi が重なる）と内側 5 枚（縦 2007×2853: 全景・眺めモード・強化・サイバーウィーク、横 2853×2007: 全景）。App Store Connect の iPhone Duo の枠（任意。出すと「Duo に最適化」バッジ。2027 年 4 月から 27.1 SDK で必須）にそのまま使える
+- 妥協: サイバーウィークとコインのメニューは一時停止中（HUD の一時停止が黄色）。季節が外側は春・内側は冬。内側のレイアウトエディタは撮れず（下の不具合）
+- 直し（release/1.0）: **レイアウトエディタを開いたまま端末を開く／回すとマップが合い直さない**（`window` の resize が新しいレイアウトの前に来て古い大きさで fit していた）→ stage の `ResizeObserver` で fit、resize は 1 フレーム後の保険。headless で 466×678 → 951×669 → 669×951 → 466×678 とも収まる。191 件のテスト
