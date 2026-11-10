@@ -133,6 +133,18 @@ final class Bridge {
             return ["ids": Array(store.purchased).sorted()]
         case "entitlements":
             return ["ids": Array(store.purchased).sorted()]
+        case "notifyStatus":
+            // お知らせの通知（1.2）: OS の許可の状態
+            return ["status": await Notifier.status()]
+        case "notifyRequest":
+            return ["granted": await Notifier.request()]
+        case "notifySchedule":
+            // 予約をまるごと入れ替える（文面は Web 側が作る）
+            guard let items = p["items"] as? [[String: Any]] else { throw BridgeError.badParams }
+            return ["scheduled": await Notifier.schedule(items: items)]
+        case "notifyCancel":
+            Notifier.cancelAll()
+            return true
         default:
             throw BridgeError.unknownMethod(method)
         }

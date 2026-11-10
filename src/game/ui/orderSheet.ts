@@ -5,6 +5,7 @@ import { backpressureFactor, itemInStock, lateClockStart, lateLimitTicks, queued
 import type { Order, WorldState } from '../sim/types';
 import { $, el } from './layout';
 import { iconImg } from './icons';
+import { CLIENT_BY_ID } from '../data/clients';
 import { tr } from '../i18n';
 
 interface CardRefs {
@@ -60,13 +61,16 @@ export class OrderSheet {
   }
 
   private signature(w: WorldState, o: Order): string {
-    return o.lines.map((l) => `${l.item}:${l.qty}:${l.picked}:${itemInStock(w, l.item) ? 1 : 0}`).join('|');
+    return o.lines.map((l) => `${l.item}:${l.qty}:${l.picked}:${itemInStock(w, l.item) ? 1 : 0}`).join('|') + (o.contract !== undefined ? `#c${o.contract}` : '');
   }
 
   private buildCard(w: WorldState, o: Order, sig: string): CardRefs {
     const bar = el('div', { class: 'order-bar' });
     const time = el('span', { class: 'order-time' });
-    const head = el('div', { class: 'order-head' }, el('span', { class: 'order-no', text: `#${o.id}` }), time);
+    // 取引先の特注（1.2）: 番号の横に取引先の色の印
+    const client = o.contract !== undefined ? CLIENT_BY_ID[w.contracts?.list.find((c) => c.id === o.contract)?.client ?? ''] : undefined;
+    const mark = client ? el('span', { class: 'client-dot order-client', style: `background:${client.color}`, title: tr('{0}の特注', client.name) }) : null;
+    const head = el('div', { class: 'order-head' }, el('span', { class: 'order-no' }, `#${o.id}`, mark), time);
     const grid = el('div', { class: 'order-grid' });
     const cells = new Map<string, HTMLElement>();
     // ★ 未完了の行を先に（スマホの縮小表示は 12 個までしか見えないので、待っている商品が隠れないように）。済みは後ろへ

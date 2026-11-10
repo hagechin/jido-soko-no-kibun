@@ -2,7 +2,7 @@ import { icon, type IconName } from './icon';
 import { $, el } from './layout';
 import { tr } from '../i18n';
 
-export type PanelId = 'build' | 'upgrades' | 'inventory' | 'settings' | 'station' | 'debug' | 'robots' | 'port' | 'store' | 'achievements';
+export type PanelId = 'build' | 'upgrades' | 'inventory' | 'settings' | 'station' | 'debug' | 'robots' | 'port' | 'store' | 'achievements' | 'contracts' | 'hq';
 
 export class BottomBar {
   private sheet = $('sheet');
@@ -44,14 +44,15 @@ export class BottomBar {
   show(id: PanelId): void {
     const switched = this.current !== id;
     this.current = id;
-    const titles: Record<PanelId, string> = { build: tr('建設モード'), upgrades: tr('アップグレード'), inventory: tr('在庫'), settings: tr('設定'), station: tr('ステーション'), debug: tr('サンドボックス'), robots: tr('ロボ一覧'), port: tr('ポート'), store: tr('追加機能ストア'), achievements: tr('実績') };
+    const titles: Record<PanelId, string> = { build: tr('建設モード'), upgrades: tr('アップグレード'), inventory: tr('在庫'), settings: tr('設定'), station: tr('ステーション'), debug: tr('サンドボックス'), robots: tr('ロボ一覧'), port: tr('ポート'), store: tr('追加機能ストア'), achievements: tr('実績'), contracts: tr('取引先の依頼'), hq: tr('本社') };
     this.sheetTitle.textContent = titles[id];
     this.sheet.classList.toggle('is-compact', id === 'build');
     this.refresh();
     this.sheet.hidden = false;
     if (switched) this.sheetBody.scrollTop = 0; // 別のパネルに切り替えたら先頭から（描いたあとに戻す）
     for (const b of document.querySelectorAll<HTMLButtonElement>('.bar-btn[data-panel]')) {
-      b.classList.toggle('is-active', b.dataset.panel === id);
+      // 「依頼」のボタンは、同じパネルのタブ（本社・実績）を開いている間も点く
+      b.classList.toggle('is-active', b.dataset.panel === id || (b.dataset.panel === 'contracts' && (id === 'hq' || id === 'achievements')));
     }
     this.onPanelChange?.(id);
   }

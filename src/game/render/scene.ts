@@ -69,13 +69,6 @@ const COLORS = {
   drone: '#5fc9f8',
   droneDark: '#2c6f8f',
   rotor: '#2a2f36',
-  /** 金色スキン（サポーターパック）: 全ロボを金色に。種類の見分けは明るさで */
-  goldShelf: '#e2b53a',
-  goldDouble: '#c9931c',
-  goldAmr: '#d4a62a',
-  goldAmrDark: '#9c7514',
-  goldDrone: '#f0cc5c',
-  goldDroneDark: '#a67f1a',
   person: '#f6c6a8',
   shirtPick: '#2e8b57',
   shirtInbound: '#d2691e',
@@ -218,12 +211,9 @@ export class WarehouseRenderer {
   /** ロボの色（スキン）。setSkin で差し替える */
   private robotColors = { shelf: COLORS.shelfRobot, double: COLORS.doubleDecker, amr: COLORS.amr, amrDark: COLORS.amrDark, drone: COLORS.drone, droneDark: COLORS.droneDark };
 
-  /** ロボのスキン（サポーターパックの金色） */
-  setSkin(skin: 'standard' | 'gold'): void {
-    this.robotColors =
-      skin === 'gold'
-        ? { shelf: COLORS.goldShelf, double: COLORS.goldDouble, amr: COLORS.goldAmr, amrDark: COLORS.goldAmrDark, drone: COLORS.goldDrone, droneDark: COLORS.goldDroneDark }
-        : { shelf: COLORS.shelfRobot, double: COLORS.doubleDecker, amr: COLORS.amr, amrDark: COLORS.amrDark, drone: COLORS.drone, droneDark: COLORS.droneDark };
+  /** ロボの塗装（ui/cosmetics.ts の PAINTS）。null は標準の色 */
+  setRobotColors(c: { shelf: string; double: string; amr: string; amrDark: string; drone: string; droneDark: string } | null): void {
+    this.robotColors = c ? { ...c } : { shelf: COLORS.shelfRobot, double: COLORS.doubleDecker, amr: COLORS.amr, amrDark: COLORS.amrDark, drone: COLORS.drone, droneDark: COLORS.droneDark };
   }
 
   /** 3D ビューの背景と霧の色（UI テーマに合わせる） */

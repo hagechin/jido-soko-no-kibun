@@ -45,8 +45,72 @@
   --danger: #c74b3c;
   --ok: #3f8f4f;
 }
-:root[data-theme='sand'] .btn {
+/* 1.2: コインで買う倉庫テーマ（ui/cosmetics.ts の THEMES。季節の 4 色は実際の月にだけ店に並ぶ） */
+:root[data-theme='forest'] {
+  --bg: #14201a;
+  --panel: #1c2b23;
+  --panel-2: #26382e;
+  --line: #35503f;
+  --text: #eef6ef;
+  --muted: #9fbcaa;
+  --accent: #f2c94c;
+  --accent-2: #7bd389;
+}
+:root[data-theme='sakura'] {
+  --bg: #f9e4ea;
+  --panel: #fdf1f4;
+  --panel-2: #f6d9e1;
+  --line: #e6b9c6;
+  --text: #3a2229;
+  --muted: #8a6470;
+  --accent: #d6457a;
+  --accent-2: #5b8f3f;
+  --danger: #c74b3c;
+  --ok: #3f8f4f;
+}
+:root[data-theme='ramune'] {
+  --bg: #0d2a33;
+  --panel: #123844;
+  --panel-2: #1a4a59;
+  --line: #2a6577;
+  --text: #ecfbff;
+  --muted: #9ccbd6;
+  --accent: #ffe066;
+  --accent-2: #66e0f0;
+}
+:root[data-theme='momiji'] {
+  --bg: #2a1712;
+  --panel: #3a2118;
+  --panel-2: #4d2c1f;
+  --line: #6b3f2b;
+  --text: #fbf0e6;
+  --muted: #cfa68e;
+  --accent: #ff9f43;
+  --accent-2: #f2c94c;
+}
+:root[data-theme='snow'] {
+  --bg: #e8eff6;
+  --panel: #f5f8fb;
+  --panel-2: #dfe8f1;
+  --line: #c3d1df;
+  --text: #1f2c3a;
+  --muted: #627488;
+  --accent: #2f7fd1;
+  --accent-2: #1f9aa8;
+  --danger: #c74b3c;
+  --ok: #3f8f4f;
+}
+/* 明るいテーマ: ボタンの文字を地の色に合わせる */
+:root[data-theme='sand'] .btn,
+:root[data-theme='sakura'] .btn,
+:root[data-theme='snow'] .btn {
   color: var(--text);
+}
+:root[data-theme='sakura'] .btn.is-active,
+:root[data-theme='sakura'] .btn.is-primary,
+:root[data-theme='snow'] .btn.is-active,
+:root[data-theme='snow'] .btn.is-primary {
+  color: #fff;
 }
 * {
   box-sizing: border-box;
@@ -90,6 +154,12 @@ button {
   background: var(--accent);
   color: #1b1b1b;
   border-color: var(--accent);
+}
+.btn.is-primary {
+  background: var(--accent);
+  color: #1b1b1b;
+  border-color: var(--accent);
+  font-weight: 700;
 }
 .btn[disabled] {
   opacity: 0.45;
@@ -2179,3 +2249,150 @@ body.has-tutorial .banner {
     bottom: calc(var(--bar-h) * min(var(--ui-scale), 1.2) + var(--sa-bottom));
   }
 }
+
+/* ---------- 1.2: 取引先の依頼・本社（ui/contracts.ts） ---------- */
+/* パネルの上のタブ［依頼｜本社｜実績］ */
+.tab-row {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.tab-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 6px;
+}
+.tab-badge {
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 16px;
+}
+/* 下のバーの「依頼」のバッジ（受け取れる依頼・未着手の特注の数） */
+.bar-btn .ico {
+  position: relative;
+}
+.bar-badge {
+  position: absolute;
+  top: -6px;
+  right: -12px;
+  min-width: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+.client-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+.order-client {
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.contract-card,
+.client-row {
+  padding: 8px 10px;
+  margin: 0 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.contract-card.is-done {
+  border-color: var(--accent);
+  background: rgba(255, 214, 102, 0.12);
+}
+.contract-card.is-claimed,
+.client-row.is-locked {
+  opacity: 0.55;
+}
+.contract-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.contract-client {
+  font-weight: 600;
+}
+.contract-period,
+.client-level {
+  margin-left: auto;
+}
+.client-level {
+  font-weight: 700;
+}
+.contract-title {
+  margin: 4px 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.contract-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.contract-bar {
+  flex: 1 1 auto;
+}
+.contract-progress {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.contract-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.contract-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.reward-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.contract-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.contract-actions .buy-btn {
+  min-width: 72px;
+}
+.contract-claimed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.contract-note {
+  margin-top: 4px;
+  line-height: 1.4;
+}
+/* 見た目の店の見本 */
+.swatches {
+  display: inline-flex;
+  gap: 2px;
+  vertical-align: middle;
+}
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(128, 128, 128, 0.5);
+}
+

@@ -28,7 +28,7 @@ import { $, el, showToast, setToastsSuppressed } from './ui/layout';
 import { renderUpgrades } from './ui/upgrades';
 import { renderAchievements } from './ui/achievements';
 import { ACHIEVEMENT_BY_ID, mergeProfile, type AchievementProfile } from './sim/achievements';
-import { loadProfile, saveProfile, syncNativeProfile } from './ui/profile';
+import { loadProfile, playerRecord, saveProfile, savePlayer, syncNativeProfile } from './ui/profile';
 import { MEDALS } from './data/balance';
 import { renderInventory } from './ui/inventory';
 import { lastSavedText, renderSettings } from './ui/settings';
@@ -53,7 +53,14 @@ import { native, nativeTry } from './platform/native';
 import { hasFeature, initEntitlements, onEntitlementsChange } from './platform/entitlements';
 import { featureStatusNode, renderStore } from './ui/store';
 import { setLimitsExpanded } from './sim/limits';
-import { applyTheme, effectiveCosmetics, loadCosmetics, saveCosmetics } from './ui/cosmetics';
+import { applyTheme, effectiveCosmetics, loadCosmetics, ownedKey, PAINT_BY_ID, saveCosmetics, THEME_BY_ID, type CosmeticAccess } from './ui/cosmetics';
+import { CONTRACTS } from './data/balance';
+import { CLIENT_BY_ID, clientLevel } from './data/clients';
+import { acceptContract, claimContract, contractBadge, contractKeys, findContract, rerollContract, syncContracts } from './sim/contracts';
+import { dailySlots, offlineCapHours } from './sim/hq';
+import { recentPace } from './sim/offline';
+import { contractTitle, refreshContractProgress, renderContracts, renderHq, renderHqTabs, type HqTab } from './ui/contracts';
+import { enableNotifications, notifySetting, notifySupported, scheduleNotifications, secondsUntilTomorrow, setNotifySetting, type NotifyItem } from './ui/notify';
 import { cloudAvailable, cloudEnabled, cloudLoad, onCloudChanged, setCloudEnabled, shouldOfferCloud } from './platform/cloud';
 import { deserialize, type LoadResult } from './sim/save';
 import { formatDate } from './sim/calendar';
@@ -122,6 +129,11 @@ class Game {
   currentHint: Hint | null = null;
   /** プレイヤー全体の実績の記録（倉庫が替わっても残る） */
   profile: AchievementProfile = loadProfile();
+  /** 取引先の信用と、コインで買った見た目（プレイヤーの記録。1.2） */
+  private player = playerRecord();
+  private lastContractBadge = -1;
+  private lastContractSync = 0;
+  private lastNotifyRefresh = 0;
   /** iOS アプリ: 「アプリ 1.0 (12)・同梱 Web commit=abc1234 date=…」（sync-web.sh が書く BUILD_INFO。同梱が古くないかの確認用） */
   buildInfo = '';
   /** デバッグ: 計測 */
@@ -474,11 +486,81 @@ class Game {
     if (this.debug.enabled) this.bar.addButton('debug', 'bug', tr('デバッグ'));
     // ストア（iOS 版の買い切り）。購入状態が変わったら開いているパネルを描き直す
     this.bar.registerPanel('store', (body) => renderStore(body, { refresh: () => this.bar.refresh() }));
-    this.bar.registerPanel('achievements', (body) => renderAchievements(body, this.world, this.profile));
+    // 1.2: 「依頼」のパネルは上にタブ［依頼｜本社｜実績］
+    const hqTabs = (body: HTMLElement, cur: HqTab) => renderHqTabs(body, cur, (t) => this.bar.show(t), this.world.sandbox ? 0 : contractBadge(this.world));
+    this.bar.registerPanel('achievements', (body) => {
+      hqTabs(body, 'achievements');
+      renderAchievements(body, this.world, this.profile);
+    });
+    this.bar.registerPanel('contracts', (body) => {
+      hqTabs(body, 'contracts');
+      renderContracts(body, {
+        world: this.world,
+        trust: this.player.trust,
+        lockedRemaining: Math.max(0, CONTRACTS.unlockShipped - this.world.stats.totalShipped),
+        onAccept: (id) => {
+          const r = acceptContract(this.world, id);
+          showToast(r.ok ? (r.message ?? '') : r.reason, 4500, r.ok ? 'truck' : undefined);
+          if (r.ok) this.save();
+          this.bar.refresh();
+        },
+        onClaim: (id) => this.claimContractReward(id),
+        onReroll: (id) => {
+          const r = rerollContract(this.world, id);
+          showToast(r.ok ? (r.message ?? '') : r.reason, 3000, r.ok ? 'shuffle' : undefined);
+          if (r.ok) this.save();
+          this.bar.refresh();
+        },
+      });
+    });
+    this.bar.registerPanel('hq', (body) => {
+      hqTabs(body, 'hq');
+      const cur = effectiveCosmetics(this.cosmeticAccess());
+      renderHq(body, {
+        world: this.world,
+        access: this.cosmeticAccess(),
+        skin: cur.skin,
+        theme: cur.theme,
+        month: new Date().getMonth() + 1,
+        refresh: () => this.bar.refresh(),
+        onInvest: (id) => {
+          this.save();
+          if (id === 'slots') this.syncContractsNow(false); // 受注窓口: その日のうちに 1 件足す
+          if (id === 'offline') this.refreshNotifications();
+        },
+        setSkin: (skin) => {
+          saveCosmetics({ ...loadCosmetics(), skin });
+          this.applyCosmetics();
+          this.bar.refresh();
+        },
+        setTheme: (theme) => {
+          saveCosmetics({ ...loadCosmetics(), theme });
+          this.applyCosmetics();
+          this.bar.refresh();
+        },
+        buyCosmetic: (kind, id, price) => {
+          if (this.world.coins < price) return showToast(tr('コインが足りません（{0} 必要）', price));
+          const key = ownedKey(kind, id);
+          if (this.player.owned.includes(key)) return;
+          this.world.coins -= price;
+          this.player.owned.push(key);
+          savePlayer();
+          // 買ったらすぐ使う
+          saveCosmetics(kind === 'paint' ? { ...loadCosmetics(), skin: id } : { ...loadCosmetics(), theme: id });
+          this.applyCosmetics();
+          this.save();
+          showToast(tr('{0} を購入しました', (kind === 'paint' ? PAINT_BY_ID[id] : THEME_BY_ID[id])?.name ?? id), 3000, 'palette');
+          this.bar.refresh();
+        },
+        supporterHint: native.available ? tr('サポーターパック（設定 → 追加機能 → ストア）に入っています') : tr('iOS 版のサポーターパックに入っています'),
+      });
+    });
     // 起動時: 今の倉庫の記録を取り込み、ネイティブ側の記録ともそろえる
     if (mergeProfile(this.profile, this.world)) saveProfile(this.profile);
     void syncNativeProfile(this.profile).then((changed) => {
-      if (changed) saveProfile(this.profile);
+      if (!changed) return;
+      saveProfile(this.profile);
+      this.applyCosmetics(); // ネイティブ側の記録にあった見た目・信用が使えるようになったかもしれない
     });
     onEntitlementsChange(() => {
       setLimitsExpanded(hasFeature('limits'));
@@ -539,22 +621,10 @@ class Game {
             location.reload();
           },
         },
-        cosmetics: {
-          unlocked: hasFeature('cosmetics'),
-          skin: loadCosmetics().skin,
-          theme: loadCosmetics().theme,
-          setSkin: (skin) => {
-            saveCosmetics({ ...loadCosmetics(), skin });
-            this.applyCosmetics();
-            this.bar.refresh();
-          },
-          setTheme: (theme) => {
-            saveCosmetics({ ...loadCosmetics(), theme });
-            this.applyCosmetics();
-            this.bar.refresh();
-          },
-          hint: native.available ? tr('はサポーターパック（設定 → 追加機能 → ストア）で解放') : tr('は iOS 版のサポーターパックで解放'),
-        },
+        cosmetics: (() => {
+          const cur = effectiveCosmetics(this.cosmeticAccess());
+          return { open: () => this.bar.show('hq'), skinName: PAINT_BY_ID[cur.skin]?.name ?? '', themeName: THEME_BY_ID[cur.theme]?.name ?? '' };
+        })(),
         cloud: native.available
           ? {
               enabled: cloudEnabled(),
@@ -608,6 +678,25 @@ class Game {
             if (!st.isConnected) return clearInterval(timer);
             st.textContent = tr('BGM の状態: {0}', this.sound.status());
           }, 1000);
+          if (notifySupported()) {
+            // 1.2: お知らせの通知（iOS のローカル通知。新しい依頼と、お留守番の上限）
+            body.append(el('h4', { text: tr('通知') }));
+            const on = notifySetting() === 'on';
+            const nb = el('button', { class: `btn${on ? ' is-active' : ''}`, type: 'button' }, iconText('bell', on ? tr('オン') : tr('オフ'), 14));
+            nb.addEventListener('click', () => {
+              if (on) {
+                setNotifySetting('off');
+                this.bar.refresh();
+                return;
+              }
+              void enableNotifications().then((ok) => {
+                if (ok) this.refreshNotifications();
+                else showToast(tr('通知が許可されていません。iPhone の「設定 → 通知 → 箱庭！DS」で許可してください'), 6000, 'bell');
+                this.bar.refresh();
+              });
+            });
+            body.append(el('div', { class: 'settings-row' }, nb, el('span', { class: 'muted small', text: tr('新しい依頼が届いたときと、お留守番が上限に達したときに知らせます（1 日 1〜2 回まで）') })));
+          }
           this.calm.renderSettings(body);
         },
         saveNow: () => this.save(),
@@ -682,6 +771,90 @@ class Game {
     }
     this.tutorial = new Tutorial();
     this.startOnboarding(!!loaded?.ok);
+    // 1.2: 取引先の依頼を今日の日付に合わせる（「続きから再開しました」のあとに知らせる）
+    setTimeout(() => {
+      this.syncContractsNow();
+      this.refreshNotifications();
+    }, 2500);
+  }
+
+  private cosmeticAccess(): CosmeticAccess {
+    return { owned: this.player.owned, trust: this.player.trust };
+  }
+
+  /**
+   * 取引先の依頼を実際の日付に合わせる（起動・復帰・1 分ごと）。新しく届いたらお知らせ。
+   * 出荷が少ないうち（チュートリアルの間）とサンドボックスのプリセット倉庫には出さない
+   */
+  private syncContractsNow(announce = true): void {
+    const w = this.world;
+    if (w.sandbox || w.stats.totalShipped < CONTRACTS.unlockShipped) return;
+    const first = !w.contracts;
+    const r = syncContracts(w, contractKeys(new Date()));
+    if (!r.added) return;
+    if (announce && !this.calm.active) {
+      showToast(first ? tr('取引先から依頼が届くようになりました（下の「依頼」。毎日入れ替わります）') : tr('取引先から新しい依頼が {0} 件届きました（下の「依頼」）', r.added), 6000, 'handshake');
+      this.sound.notice();
+    }
+    if (this.bar.open === 'contracts') this.bar.refresh();
+    this.save();
+  }
+
+  /** 依頼の報酬を受け取る: コインは倉庫へ、信用はプレイヤーの記録へ。レベルが上がったら知らせる */
+  private claimContractReward(id: number): void {
+    const c = findContract(this.world, id);
+    if (!c) return;
+    const before = clientLevel(this.player.trust[c.client] ?? 0);
+    const r = claimContract(this.world, id, before);
+    if (!r.ok) return showToast(r.reason);
+    this.player.trust[r.client] = (this.player.trust[r.client] ?? 0) + r.trust;
+    savePlayer();
+    const client = CLIENT_BY_ID[r.client];
+    const after = clientLevel(this.player.trust[r.client]);
+    showToast(tr('{0}: +{1} コイン、信用 +{2}', client?.name ?? r.client, r.coins.toLocaleString('ja-JP'), r.trust), 3500, 'gift');
+    this.sound.coin();
+    nativeTry('haptic', { kind: 'success' });
+    if (after > before) {
+      const paint = PAINT_BY_ID[`client-${r.client}`];
+      showToast(tr('{0}の信用が Lv{1} になりました{2}', client?.name ?? r.client, after, after === CONTRACTS.paintLevel && paint ? tr('。ロボの塗装「{0}」が使えます（本社タブ）', paint.name) : tr('。この取引先の依頼の報酬が増えます')), 6000, 'party-popper');
+      this.sound.notice();
+    }
+    this.save();
+    this.bar.refresh();
+    this.maybeAskNotifications();
+  }
+
+  /** 通知の予約を入れ替える（設定がオンのとき。起動・背面に回るとき・5 分ごと）。文面はアプリの言語で作る */
+  refreshNotifications(): void {
+    if (!notifySupported() || notifySetting() !== 'on') return;
+    const w = this.world;
+    const items: NotifyItem[] = [];
+    if (recentPace(w).shipmentsPerMin > 0) {
+      const h = offlineCapHours(w);
+      items.push({ id: 'offline-cap', title: tr('お留守番が上限に達しました'), body: tr('倉庫は {0} 時間ぶん働きました。成果を受け取りましょう', h), inSec: h * 3600 });
+    }
+    if (!w.sandbox && w.stats.totalShipped >= CONTRACTS.unlockShipped) {
+      items.push({ id: 'contracts-daily', title: tr('新しい依頼が届いています'), body: tr('取引先から今日の依頼が {0} 件。逃しても損はありません', dailySlots(w)), inSec: secondsUntilTomorrow(9) });
+    }
+    scheduleNotifications(items);
+  }
+
+  /** 初めて依頼の報酬を受け取ったときに 1 度だけ「通知しますか」と聞く（iOS アプリ） */
+  private maybeAskNotifications(): void {
+    if (!notifySupported() || this.player.notifyAsked || notifySetting() !== null) return;
+    this.player.notifyAsked = true;
+    savePlayer();
+    const yes = el('button', { class: 'btn is-primary', type: 'button' }, iconText('bell', tr('通知する'), 14));
+    const no = el('button', { class: 'btn', type: 'button', text: tr('あとで') });
+    yes.addEventListener('click', () => {
+      this.modal.hide();
+      void enableNotifications().then((ok) => {
+        showToast(ok ? tr('通知をオンにしました（設定でいつでも切り替えられます）') : tr('通知が許可されていません。iPhone の「設定 → 通知 → 箱庭！DS」で許可してください'), 5000, 'bell');
+        if (ok) this.refreshNotifications();
+      });
+    });
+    no.addEventListener('click', () => this.modal.hide());
+    this.modal.show(tr('お知らせを通知しますか？'), el('p', { text: tr('新しい依頼が届いたときと、お留守番が上限に達したときに知らせます（1 日 1〜2 回まで）。設定でいつでも切り替えられます') }), el('div', { class: 'settings-row' }, yes, no));
   }
 
   /** 1.0.2: 初回は文字の大きさを選んでもらい、続けてチュートリアル（既存のセーブは出荷が少ないときだけ） */
@@ -795,6 +968,7 @@ class Game {
     if (hint) items.push({ node: item('lightbulb', tr('おすすめ'), hint.text), onPick: () => this.bar.toggle(hint.panel) });
     items.push({ node: item('hammer', tr('建設（B）'), tr('スタック・ポート・ピッカー・入荷ステーションを増やす。倉庫を広げる')), onPick: () => this.bar.toggle('build') });
     items.push({ node: item('trending-up', tr('強化（U）'), tr('ロボを買う・速くする、自動化AI、空ビンの追加')), onPick: () => this.bar.toggle('upgrades') });
+    items.push({ node: item('building-2', tr('本社への投資・見た目'), tr('出荷の報酬やお留守番の上限をずっと上げる。ロボの塗装と倉庫テーマ')), onPick: () => this.bar.show('hq') });
     this.popup.show(x, y, items, tr('コイン {0}: 出荷の報酬。何に使う？', Math.floor(this.world.coins).toLocaleString('ja-JP')), { column: true, below: true });
   }
 
@@ -832,6 +1006,7 @@ class Game {
     else if (code === 'KeyI') panel('inventory');
     else if (code === 'KeyS') panel('settings');
     else if (code === 'KeyA') panel('achievements');
+    else if (code === 'KeyC') panel('contracts');
     else if (code === 'KeyN') {
       this.calm.enter();
       e.preventDefault();
@@ -989,6 +1164,7 @@ class Game {
       this.rt.dirty = true;
       this.save();
     }
+    this.syncContractsNow(); // 留守の間に日付が変わっていれば、新しい依頼が届く
   }
 
   private async importSave(file: File): Promise<void> {
@@ -1015,6 +1191,7 @@ class Game {
     this.bar.close();
     this.catchUp = 0;
     this.resumeInterruptedEdit();
+    this.syncContractsNow(false);
     this.save();
   }
 
@@ -1059,12 +1236,12 @@ class Game {
     return ok;
   }
 
-  /** 見た目（サポーターパック）を反映。機能が無ければ標準 */
+  /** 見た目（ロボの塗装と倉庫テーマ）を反映。使えなくなったもの（返金など）は標準 */
   applyCosmetics(): void {
-    const c = effectiveCosmetics();
-    this.renderer.setSkin(c.skin);
+    const c = effectiveCosmetics(this.cosmeticAccess());
+    this.renderer.setRobotColors(PAINT_BY_ID[c.skin]?.colors ?? null);
     applyTheme(c.theme);
-    this.renderer.setBackdrop(c.theme === 'midnight' ? '#2a2638' : c.theme === 'sand' ? '#f3ead8' : '#dfe9f3');
+    this.renderer.setBackdrop(THEME_BY_ID[c.theme]?.backdrop ?? '#dfe9f3');
   }
 
   /** iCloud にサインインしているか（起動後に調べる。null = 未確認） */
@@ -1347,6 +1524,16 @@ class Game {
           }
           break;
         }
+        case 'contractDone': {
+          const c = findContract(this.world, e.id);
+          if (c) {
+            showToast(tr('依頼を達成: {0}（「依頼」で報酬を受け取れます）', contractTitle(c)), 5000, 'handshake');
+            this.sound.notice();
+            if (!this.catchingUp) nativeTry('haptic', { kind: 'success' });
+          }
+          if (this.bar.open === 'contracts') this.bar.refresh();
+          break;
+        }
         case 'truckArrived':
           this.renderer.effects.truckArrive(this.world);
           this.sound.truck();
@@ -1372,6 +1559,17 @@ class Game {
           break;
       }
     }
+  }
+
+  /** 下のバーの「依頼」のバッジ: 受け取れる依頼と、まだ受けていない特注の数 */
+  private updateContractBadge(): void {
+    const n = this.world.sandbox ? 0 : contractBadge(this.world);
+    if (n === this.lastContractBadge) return;
+    this.lastContractBadge = n;
+    const b = document.getElementById('contracts-badge');
+    if (!b) return;
+    b.hidden = n === 0;
+    b.textContent = String(n);
   }
 
   // ------------------------------------------------------------ ループ
@@ -1440,6 +1638,17 @@ class Game {
       if (this.world.events.length) {
         this.handleEvents(this.world.events);
         this.world.events = [];
+      }
+      // 1.2 取引先の依頼: 開いているパネルの進捗（1 秒ごと、数字とバーだけ）、バーのバッジ、日付の変わり目（1 分ごと）、通知の予約（5 分ごと）
+      if (ticks && this.bar.open === 'contracts' && this.world.tick % TICKS_PER_SECOND === 0) refreshContractProgress($('sheet-body'), this.world);
+      this.updateContractBadge();
+      if (now - this.lastContractSync > 60_000) {
+        this.lastContractSync = now;
+        this.syncContractsNow();
+      }
+      if (now - this.lastNotifyRefresh > 5 * 60_000) {
+        this.lastNotifyRefresh = now;
+        this.refreshNotifications();
       }
       this.alpha = this.world.speed > 0 ? this.acc / TICK_MS : 0;
       this.calm.update(this.world, now);
@@ -1512,7 +1721,10 @@ void (async () => {
   (window as unknown as { game: Game }).game = game;
   game.applyCosmetics();
   if (native.available) {
-    native.on('background', () => game.save(true)); // 背面に回るときは iCloud にも即送る
+    native.on('background', () => {
+      game.save(true); // 背面に回るときは iCloud にも即送る
+      game.refreshNotifications(); // 通知の予約を、いまの時刻から入れ直す
+    });
     // 前面に戻ったとき／電話などの割り込みが終わったときは BGM を立て直す
     // ★ 実機では戻ったあと AudioContext が running のまま無音になるので、前面復帰と割り込み終了では作り直す
     native.on('foreground', () => game.sound.onForeground());

@@ -625,6 +625,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
  * 取引先の依頼（1.2、SPEC-1.2 §2）。量は「直近の出荷ペース × 分数」で倉庫の実力に合わせる
  */
 export const CONTRACTS = {
+  /** 累計の出荷がこの件数になったら依頼が届き始める（チュートリアルの間は出さない。UI 側で見る） */
+  unlockShipped: 10,
   /** 毎日の依頼の件数（本社の受注窓口で増える）と毎週の件数 */
   dailySlots: 3,
   weeklySlots: 1,
@@ -639,9 +641,9 @@ export const CONTRACTS = {
   paceMinutes: { volume: 12, category: 12, fast: 6, clean: 5, bulk: 3 },
   weeklyScale: 8,
   minTarget: { volume: 8, category: 20, fast: 5, clean: 8, bulk: 4 },
-  /** 報酬のコイン: 収入ペース × この分数（下限はランクごと。毎週は weekly 分） */
-  rewardMinutes: { volume: 6, category: 6, fast: 6, clean: 6, bulk: 8 },
-  weeklyRewardMinutes: 40,
+  /** 報酬のコイン: 収入ペース × この分数（下限はランクごと。毎週は weekly 分）。メガDC で毎日 3 件 ≒ 1 時間ぶんの収入 */
+  rewardMinutes: { volume: 20, category: 20, fast: 20, clean: 20, bulk: 30 },
+  weeklyRewardMinutes: 120,
   rewardFloorByRank: [150, 400, 1000, 2500, 6000],
   trust: { daily: 10, bulk: 15, weekly: 40 },
   /** スピードの依頼の秒数（ランクごと。注文票の時計と同じ「表示されてから」） */

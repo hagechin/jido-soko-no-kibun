@@ -20,7 +20,7 @@ export function offlineReportNode(r: OfflineReport): Node {
     r.cappedBy === 'cyberWeek'
       ? tr('サイバーウィークの直前で止めました（本番の週は自分で遊ぶ週です。留守番はここまで）。えらい目に遭う準備はいいですか？')
       : r.cappedBy === 'max'
-        ? tr('留守番は最長 8 時間ぶんまでです。')
+        ? tr('留守番は最長 {0} 時間ぶんまでです（本社の「留守番体制」で延ばせます）。', r.capHours)
         : r.shipped === 0
           ? tr('自動化が無いと留守中は何も出荷されません（オーダーは溜まるだけ）。')
           : '';

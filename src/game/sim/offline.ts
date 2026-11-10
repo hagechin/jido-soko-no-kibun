@@ -10,7 +10,7 @@ import { calendarFromTick } from './calendar';
 import { forecastRestock, inboundSettings } from './inbound';
 import { changeReputation } from './economy';
 import { contractsOffline } from './contracts';
-import { offlineCapMs } from './hq';
+import { offlineCapHours, offlineCapMs } from './hq';
 import type { WorldState } from './types';
 import { tr } from '../i18n';
 
@@ -19,6 +19,8 @@ export interface OfflineReport {
   elapsedMs: number;
   /** 上限や サイバーウィークで止めたか */
   cappedBy: 'none' | 'max' | 'cyberWeek';
+  /** 上限の時間（本社の「留守番体制」で延びる） */
+  capHours: number;
   shipped: number;
   coins: number;
   stockouts: string[];
@@ -80,7 +82,7 @@ export function applyOffline(w: WorldState, elapsedMs: number): OfflineReport {
   const coins = Math.round(pace.coinsPerMin * minutes);
   const items = Math.floor(pace.itemsPerMin * minutes);
 
-  const report: OfflineReport = { elapsedMs: (ticks / TICKS_PER_SECOND) * 1000, cappedBy, shipped, coins, stockouts: [], events: [], trucks: 0 };
+  const report: OfflineReport = { elapsedMs: (ticks / TICKS_PER_SECOND) * 1000, cappedBy, capHours: offlineCapHours(w), shipped, coins, stockouts: [], events: [], trucks: 0 };
 
   // 暦を進め、途中のイベントと週替わりを数える
   const startTick = w.tick;

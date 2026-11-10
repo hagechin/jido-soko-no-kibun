@@ -3,7 +3,6 @@ import { iconText } from './icon';
 import { saveQuality, settingsFor, type QualityLevel } from '../render/quality';
 import { DIFFICULTY, DIFFICULTY_ORDER, ECONOMY_MODES, ECONOMY_ORDER, INBOUND_FREQ, INBOUND_FREQ_ORDER, INBOUND_LOAD, INBOUND_LOAD_ORDER, type DifficultyId, type EconomyId, type InboundFreqId, type InboundLoadId } from '../data/balance';
 import { el, showToast } from './layout';
-import { THEMES, type Skin, type Theme } from './cosmetics';
 import type { LocaleSetting } from '../i18n';
 import { tr } from '../i18n';
 import { TEXT_SIZES, type TextSize } from './textSize';
@@ -54,7 +53,7 @@ export interface SettingsContext {
   /** 解放済み機能の一覧 */
   featureStatus?: () => HTMLElement;
   /** 見た目（サポーターパック）: unlocked でなければ案内だけ */
-  cosmetics?: { unlocked: boolean; skin: Skin; theme: Theme; setSkin: (s: Skin) => void; setTheme: (t: Theme) => void; hint: string };
+  cosmetics?: { open: () => void; skinName: string; themeName: string };
   /** 言語（反映は再読み込み後） */
   language?: { setting: LocaleSetting; set: (s: LocaleSetting) => void };
   /** iCloud 同期（iOS 版のみ） */
@@ -183,29 +182,13 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     if (ctx.featureStatus) body.append(ctx.featureStatus());
   }
   if (ctx.cosmetics) {
+    // 1.2: 見た目の選択と購入は「依頼 → 本社」のタブにまとめた（塗装・テーマが増えたので）
     const c = ctx.cosmetics;
     body.append(el('h4', { text: tr('見た目') }));
-    if (!c.unlocked) body.append(el('p', { class: 'muted small', text: tr('金色ロボスキンと倉庫カラーテーマ{0}', c.hint) }));
-    else {
-      const skinRow = el('div', { class: 'settings-row' });
-      for (const [id, label] of [
-        ['standard', tr('標準')],
-        ['gold', tr('金色')],
-      ] as [Skin, string][]) {
-        const b = el('button', { class: `btn${c.skin === id ? ' is-active' : ''}`, type: 'button', text: tr('ロボ: {0}', label) });
-        b.addEventListener('click', () => c.setSkin(id));
-        skinRow.append(b);
-      }
-      body.append(skinRow);
-      const themeRow = el('div', { class: 'settings-row' });
-      for (const t of THEMES) {
-        const b = el('button', { class: `btn${c.theme === t.id ? ' is-active' : ''}`, type: 'button', text: t.name, title: t.desc });
-        b.addEventListener('click', () => c.setTheme(t.id));
-        themeRow.append(b);
-      }
-      body.append(themeRow);
-      body.append(el('p', { class: 'muted small', text: THEMES.find((t) => t.id === c.theme)?.desc ?? '' }));
-    }
+    const b = el('button', { class: 'btn', type: 'button' }, iconText('palette', tr('ロボの塗装と倉庫テーマを選ぶ'), 14));
+    b.addEventListener('click', () => c.open());
+    body.append(el('div', { class: 'settings-row' }, b));
+    body.append(el('p', { class: 'muted small', text: tr('いま: ロボ {0}・テーマ {1}。コインで買える見た目や、取引先の信用で解放される塗装もあります', c.skinName, c.themeName) }));
   }
   if (ctx.language) {
     const lg = ctx.language;
