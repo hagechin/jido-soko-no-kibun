@@ -56,7 +56,7 @@ import { setLimitsExpanded } from './sim/limits';
 import { applyTheme, effectiveCosmetics, loadCosmetics, ownedKey, PAINT_BY_ID, saveCosmetics, THEME_BY_ID, type CosmeticAccess } from './ui/cosmetics';
 import { CONTRACTS } from './data/balance';
 import { CLIENT_BY_ID, clientLevel } from './data/clients';
-import { acceptContract, claimContract, contractBadge, contractKeys, findContract, rerollContract, syncContracts } from './sim/contracts';
+import { acceptContract, claimContract, contractKeys, findContract, rerollContract, syncContracts } from './sim/contracts';
 import { dailySlots, offlineCapHours } from './sim/hq';
 import { recentPace } from './sim/offline';
 import { contractTitle, refreshContractProgress, renderContracts, renderHq, renderHqTabs, type HqTab } from './ui/contracts';
@@ -132,6 +132,8 @@ class Game {
   /** 取引先の信用と、コインで買った見た目（プレイヤーの記録。1.2） */
   private player = playerRecord();
   private lastContractBadge = -1;
+  /** 依頼パネルで一度見た「未着手の特注」（バッジに数えない。受け取れる依頼はずっと数える） */
+  private seenOffers = new Set<number>();
   private lastContractSync = 0;
   private lastNotifyRefresh = 0;
   /** iOS アプリ: 「アプリ 1.0 (12)・同梱 Web commit=abc1234 date=…」（sync-web.sh が書く BUILD_INFO。同梱が古くないかの確認用） */
@@ -487,7 +489,8 @@ class Game {
     // ストア（iOS 版の買い切り）。購入状態が変わったら開いているパネルを描き直す
     this.bar.registerPanel('store', (body) => renderStore(body, { refresh: () => this.bar.refresh() }));
     // 1.2: 「依頼」のパネルは上にタブ［依頼｜本社｜実績］
-    const hqTabs = (body: HTMLElement, cur: HqTab) => renderHqTabs(body, cur, (t) => this.bar.show(t), this.world.sandbox ? 0 : contractBadge(this.world));
+    // タブのバッジは受け取れる依頼の数だけ（バーのボタンのバッジは、まだ見ていない特注も数える）
+    const hqTabs = (body: HTMLElement, cur: HqTab) => renderHqTabs(body, cur, (t) => this.bar.show(t), this.world.sandbox ? 0 : (this.world.contracts?.list.filter((c) => c.state === 'done').length ?? 0));
     this.bar.registerPanel('achievements', (body) => {
       hqTabs(body, 'achievements');
       renderAchievements(body, this.world, this.profile);
@@ -1563,7 +1566,10 @@ class Game {
 
   /** 下のバーの「依頼」のバッジ: 受け取れる依頼と、まだ受けていない特注の数 */
   private updateContractBadge(): void {
-    const n = this.world.sandbox ? 0 : contractBadge(this.world);
+    const list = this.world.sandbox ? [] : (this.world.contracts?.list ?? []);
+    // 依頼パネルを開いている間に見えた特注は「見た」ことにする
+    if (this.bar.open === 'contracts') for (const c of list) if (c.state === 'offered') this.seenOffers.add(c.id);
+    const n = list.filter((c) => c.state === 'done' || (c.state === 'offered' && !this.seenOffers.has(c.id))).length;
     if (n === this.lastContractBadge) return;
     this.lastContractBadge = n;
     const b = document.getElementById('contracts-badge');

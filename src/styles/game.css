@@ -2383,6 +2383,25 @@ body.has-tutorial .banner {
   margin-top: 4px;
   line-height: 1.4;
 }
+/* 明るいテーマでは、白の半透明で描いているバーとカードの地が見えないので暗い半透明に */
+:root[data-theme='sand'] .ach-bar,
+:root[data-theme='sakura'] .ach-bar,
+:root[data-theme='snow'] .ach-bar {
+  background: rgba(0, 0, 0, 0.14);
+}
+:root[data-theme='sand'] .contract-card,
+:root[data-theme='sand'] .client-row,
+:root[data-theme='sakura'] .contract-card,
+:root[data-theme='sakura'] .client-row,
+:root[data-theme='snow'] .contract-card,
+:root[data-theme='snow'] .client-row {
+  background: rgba(0, 0, 0, 0.035);
+}
+:root[data-theme='sand'] .contract-card.is-done,
+:root[data-theme='sakura'] .contract-card.is-done,
+:root[data-theme='snow'] .contract-card.is-done {
+  background: rgba(255, 190, 60, 0.2);
+}
 /* 見た目の店の見本 */
 .swatches {
   display: inline-flex;
