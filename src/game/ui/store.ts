@@ -116,7 +116,7 @@ export function renderStore(body: HTMLElement, ctx: StoreContext): void {
         btn.setAttribute('disabled', 'true');
       } else {
         btn.textContent = p.price;
-        btn.title = tr('{0} を購入', p.title);
+        btn.title = tr('{0} を購入', meta.name);
         btn.addEventListener('click', async () => {
           btn.setAttribute('disabled', 'true');
           btn.textContent = '…';
@@ -124,7 +124,7 @@ export function renderStore(body: HTMLElement, ctx: StoreContext): void {
             const r = await native.call<{ state: string }>('purchase', { id: p.id }, 10 * 60_000);
             if (r.state === 'purchased') {
               setOwnedProducts([...ownedProducts(), p.id]);
-              showToast(tr('{0} を購入しました', p.title), 3000, 'party-popper');
+              showToast(tr('{0} を購入しました', meta.name), 3000, 'party-popper');
             } else if (r.state === 'pending') showToast(tr('購入は承認待ちです（ファミリーの承認など）。完了すると自動で反映されます'), 4000);
             else showToast(tr('購入をキャンセルしました'));
           } catch (e) {
@@ -134,7 +134,8 @@ export function renderStore(body: HTMLElement, ctx: StoreContext): void {
           ctx.refresh();
         });
       }
-      list.append(el('div', { class: 'shop-row store-row' }, el('div', { class: 'shop-label' }, el('div', { text: p.title || meta.name }), el('div', { class: 'muted small', text: p.description || meta.desc })), btn));
+      // 名前と説明はアプリの言語（設定で切り替えられる）に合わせて辞書から出す。StoreKit の表示名は App Store の言語になり、アプリの言語と食い違うことがある。価格だけ StoreKit
+      list.append(el('div', { class: 'shop-row store-row' }, el('div', { class: 'shop-label' }, el('div', { text: meta.name }), el('div', { class: 'muted small', text: meta.desc })), btn));
     }
   };
   list.append(el('p', { class: 'muted small', text: tr('読み込み中…') }));

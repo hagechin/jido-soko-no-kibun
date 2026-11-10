@@ -7,7 +7,8 @@
       "familyShareable" : true,
       "internalID" : "1001",
       "localizations" : [
-        { "description" : "ドローン搬送ロボ（大きな倉庫向け）とダブルデッカー棚ロボ（序盤から活躍）", "displayName" : "特別ロボパック", "locale" : "ja" }
+        { "description" : "ドローン搬送ロボ（大きな倉庫向け）とダブルデッカー棚ロボ（序盤から活躍）", "displayName" : "特別ロボパック", "locale" : "ja" },
+        { "description" : "Drone AMRs and double-decker shelf robots", "displayName" : "Special Robots Pack", "locale" : "en_US" }
       ],
       "productID" : "jp.hatte.hakoniwa.ds.robots",
       "referenceName" : "Special Robots",
@@ -18,7 +19,8 @@
       "familyShareable" : true,
       "internalID" : "1002",
       "localizations" : [
-        { "description" : "ロボ上限 80/120、積載 Lv4、段数 12、倉庫 64×48", "displayName" : "上限突破パック", "locale" : "ja" }
+        { "description" : "ロボ上限 80/120、積載 Lv4、段数 12、倉庫 64×48", "displayName" : "上限突破パック", "locale" : "ja" },
+        { "description" : "80/120 robots, cargo Lv4, 12 levels, 64×48", "displayName" : "Limit Breaker Pack", "locale" : "en_US" }
       ],
       "productID" : "jp.hatte.hakoniwa.ds.limits",
       "referenceName" : "Limit Breaker",
@@ -29,7 +31,8 @@
       "familyShareable" : true,
       "internalID" : "1003",
       "localizations" : [
-        { "description" : "コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断", "displayName" : "サンドボックスモード", "locale" : "ja" }
+        { "description" : "コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断", "displayName" : "サンドボックスモード", "locale" : "ja" },
+        { "description" : "Coins, presets, time jumps, Robot MAX, more", "displayName" : "Sandbox Mode", "locale" : "en_US" }
       ],
       "productID" : "jp.hatte.hakoniwa.ds.sandbox",
       "referenceName" : "Sandbox",
@@ -40,7 +43,8 @@
       "familyShareable" : true,
       "internalID" : "1004",
       "localizations" : [
-        { "description" : "全部入り ＋ 金色ロボスキン ＋ 倉庫カラーテーマ", "displayName" : "サポーターパック", "locale" : "ja" }
+        { "description" : "全部入り ＋ 金色ロボスキン ＋ 倉庫カラーテーマ", "displayName" : "サポーターパック", "locale" : "ja" },
+        { "description" : "All packs + gold robot skin + color themes", "displayName" : "Supporter Pack", "locale" : "en_US" }
       ],
       "productID" : "jp.hatte.hakoniwa.ds.supporter",
       "referenceName" : "Supporter",

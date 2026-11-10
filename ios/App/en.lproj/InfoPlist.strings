@@ -1,0 +1,3 @@
+/* 英語の端末で出る名前と、写真の保存の許可ダイアログの文（1.1）。日本語は ja.lproj、既定は project.yml の info */
+"CFBundleDisplayName" = "Hakoniwa! DS";
+"NSPhotoLibraryAddUsageDescription" = "Used to save the photos you take in Photo Mode to your photo library.";
