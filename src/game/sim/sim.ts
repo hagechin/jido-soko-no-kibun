@@ -8,6 +8,7 @@ import { onNewWeek, updateInbound } from './inbound';
 import { updateEvents } from './events';
 import { checkRankUp } from './rank';
 import { updateOrders } from './orders';
+import { updateContracts } from './contracts';
 import { updateStations } from './pickers';
 import { updatePlanning } from './planner';
 import { updateAchievements } from './achievements';
@@ -27,6 +28,7 @@ export function stepSim(w: WorldState, rt: Runtime): void {
   if (newWeek) onNewWeek(w);
   updateInbound(w);
   updateOrders(w);
+  updateContracts(w);
   updateAutomation(w, rt);
   for (const r of w.robots) {
     executeMovement(w, rt, r);

@@ -3,6 +3,8 @@ import { difficultyOf } from './orders';
 import { REPUTATION, REWARD, TICKS_PER_SECOND } from '../data/balance';
 import { activeEvents } from '../data/seasons';
 import { coinPerItemAt, economyOf } from './pricing';
+import { onContractShipment } from './contracts';
+import { salesFactor } from './hq';
 import type { Order, WorldState } from './types';
 import { tr } from '../i18n';
 
@@ -44,7 +46,8 @@ export function rewardFor(w: WorldState, o: Order, eventMult = 1): RewardBreakdo
   const base = items * coinPerItem(w);
   const repMult = reputationMultiplier(w.reputation);
   const bonus = speedBonus(leadSeconds);
-  const total = Math.round(base * repMult * bonus * eventMult * difficultyOf(w).coinFactor * economyOf(w).coinFactor);
+  // 本社の営業部（1.2）: 出荷の報酬に掛かる
+  const total = Math.round(base * repMult * bonus * eventMult * difficultyOf(w).coinFactor * economyOf(w).coinFactor * salesFactor(w));
   return { items, base, repMult, bonus, eventMult, total, leadSeconds };
 }
 
@@ -83,5 +86,6 @@ export function shipOrder(w: WorldState, o: Order, stationId: number): void {
     w.stats.shippedByItem[l.item] = (w.stats.shippedByItem[l.item] ?? 0) + l.qty;
     w.stats.shippedThisWeek[l.item] = (w.stats.shippedThisWeek[l.item] ?? 0) + l.qty;
   }
+  onContractShipment(w, o);
   w.events.push({ type: 'shipped', orderId: o.id, coins: r.total, bonus: r.bonus, stationId });
 }

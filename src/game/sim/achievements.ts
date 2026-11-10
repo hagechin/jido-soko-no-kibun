@@ -66,6 +66,8 @@ export function achievementValue(w: WorldState, id: string): number {
       return st.reputationZeroCount ?? 0;
     case 'jam':
       return simMinutes(st.jamTicks ?? 0);
+    case 'contracts':
+      return w.contracts?.completed ?? 0;
     case 'absent':
       return (st.offlineMsTotal ?? 0) / 86_400_000;
     default:

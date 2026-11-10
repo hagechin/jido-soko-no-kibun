@@ -612,6 +612,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'fleet', name: tr('ロボの台数'), desc: tr('棚ロボと搬送ロボの合計'), unit: 'count', tiers: [{ value: 10, label: tr('10 台') }, { value: 30, label: tr('30 台') }, { value: 80, label: tr('80 台') }] },
   { id: 'trucks', name: tr('入荷トラック'), desc: tr('到着したトラックの回数'), unit: 'count', tiers: [{ value: 50, label: tr('50 回') }, { value: 500, label: tr('500 回') }, { value: 5_000, label: tr('5,000 回') }] },
   { id: 'special', name: tr('特別ロボ'), desc: tr('ドローンとダブルデッカー（iOS 版の特別ロボパック）'), unit: 'step', tiers: [{ value: 1, label: tr('ドローン 1 台') }, { value: 2, label: tr('両方 1 台ずつ') }, { value: 3, label: tr('ドローン 4・ダブルデッカー 4') }] },
+  { id: 'contracts', name: tr('取引先の依頼'), desc: tr('達成した依頼の累計（毎日・毎週）'), unit: 'count', tiers: [{ value: 10, label: tr('10 件') }, { value: 50, label: tr('50 件') }, { value: 200, label: tr('200 件') }] },
   // ネガティブ称号
   { id: 'hoarder', name: tr('ため込みすぎ'), desc: tr('同時に溜まったオーダーの最大件数'), unit: 'count', negative: true, tiers: [{ value: 50, label: tr('50 件') }, { value: 500, label: tr('500 件') }, { value: 10_000, label: tr('1 万件') }] },
   { id: 'stockout', name: tr('欠品王'), desc: tr('欠品でピックが止まった回数の累計'), unit: 'count', negative: true, tiers: [{ value: 100, label: tr('100 回') }, { value: 1_000, label: tr('1,000 回') }, { value: 10_000, label: tr('1 万回') }] },
@@ -620,6 +621,52 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'jam', name: tr('大渋滞'), desc: tr('地上の搬送ロボの半分以上が横付け待ちだった時間の累計'), unit: 'simMin', negative: true, tiers: [{ value: 10, label: tr('10 分') }, { value: 60, label: tr('1 時間') }, { value: 600, label: tr('10 時間') }] },
   { id: 'absent', name: tr('放置王'), desc: tr('お留守番レポートになった実時間の合計'), unit: 'realDays', negative: true, tiers: [{ value: 1, label: tr('1 日') }, { value: 7, label: tr('1 週間') }, { value: 30, label: tr('1 か月') }] },
 ];
+/**
+ * 取引先の依頼（1.2、SPEC-1.2 §2）。量は「直近の出荷ペース × 分数」で倉庫の実力に合わせる
+ */
+export const CONTRACTS = {
+  /** 毎日の依頼の件数（本社の受注窓口で増える）と毎週の件数 */
+  dailySlots: 3,
+  weeklySlots: 1,
+  /** 信用 → 取引先のレベル（添字 + 1 がレベル）。レベルごとに報酬 +levelRewardBonus */
+  trustLevels: [0, 30, 90, 200, 400],
+  levelRewardBonus: 0.1,
+  /** この取引先のレベルでロボの塗装が解放 */
+  paintLevel: 3,
+  /** 出荷ペースの下限: ランクの基本の需要（評判 50・抑制なし）のこの割合 */
+  paceFloorFactor: 0.5,
+  /** 量: ペース × この分数（毎週は × weeklyScale） */
+  paceMinutes: { volume: 12, category: 12, fast: 6, clean: 5, bulk: 3 },
+  weeklyScale: 8,
+  minTarget: { volume: 8, category: 20, fast: 5, clean: 8, bulk: 4 },
+  /** 報酬のコイン: 収入ペース × この分数（下限はランクごと。毎週は weekly 分） */
+  rewardMinutes: { volume: 6, category: 6, fast: 6, clean: 6, bulk: 8 },
+  weeklyRewardMinutes: 40,
+  rewardFloorByRank: [150, 400, 1000, 2500, 6000],
+  trust: { daily: 10, bulk: 15, weekly: 40 },
+  /** スピードの依頼の秒数（ランクごと。注文票の時計と同じ「表示されてから」） */
+  fastLimitSecByRank: [45, 45, 60, 75, 90],
+  /** 特注: 件数の上限、注文が入る間隔、1 件の行数の上限、入荷トラックに積む量の倍率 */
+  bulk: { maxOrders: 30, intervalTicks: sec(4), firstDelayTicks: sec(6), maxLines: 3, stockFactor: 1.1 },
+  /** 種類の出やすさ（毎日）。特注は 1 日 1 件まで */
+  kindWeights: { volume: 2, category: 3, fast: 2, clean: 2, bulk: 3 },
+  /** 入れ替えの値段: 報酬コイン × 倍率（下限あり） */
+  rerollCostFactor: 0.6,
+  rerollMinCost: 100,
+} as const;
+
+/** 本社への投資（1.2、SPEC-1.2 §3）。倉庫ごとの恒久強化。値段は経済モードの設備の倍率が掛かる */
+export const HQ = {
+  /** 営業部: 出荷の報酬 +perLevel。値段は base × growth^段 */
+  sales: { levels: 12, perLevel: 0.02, baseCost: 50_000, growth: 2.2 },
+  /** 渉外部: 依頼の報酬コイン +perLevel */
+  relations: { perLevel: 0.1, costs: [30_000, 100_000, 300_000, 1_000_000, 3_000_000] },
+  /** 受注窓口: 毎日の依頼 +1 件 */
+  slots: { costs: [150_000, 1_500_000] },
+  /** 留守番体制: お留守番の上限（時間）。hours[段] */
+  offline: { hours: [8, 10, 12, 16, 20, 24], costs: [20_000, 60_000, 200_000, 600_000, 2_000_000] },
+} as const;
+
 /** 完全自動化の段: 90 分以内で銀、45 分以内で金（sim 分） */
 export const AUTOMATION_TIERS_MIN = { silver: 90, gold: 45 };
 /** 大渋滞: 地上の搬送ロボのうち横付け待ちがこの割合以上（台数 2 以上）なら渋滞として数える */

@@ -165,6 +165,8 @@ export interface Order {
   penalized: boolean;
   /** 欠品で止まったことを数えた（stats.stockouts は 1 オーダー 1 回） */
   stockout?: boolean;
+  /** 取引先の特注（依頼の id）。注文票に取引先の印を付ける */
+  contract?: number;
 }
 
 export interface Pallet {
@@ -251,6 +253,48 @@ export interface SeasonState {
   pendingReport: CyberWeekRecord | null;
 }
 
+/** 取引先の依頼（1.2、SPEC-1.2 §2） */
+export type ContractKind = 'volume' | 'category' | 'fast' | 'clean' | 'bulk';
+export type ContractState = 'offered' | 'active' | 'done' | 'claimed';
+
+export interface Contract {
+  id: number;
+  period: 'daily' | 'weekly';
+  /** この依頼が出た日（YYYY-MM-DD）か週（W + 月曜の日付） */
+  key: string;
+  client: string;
+  kind: ContractKind;
+  target: number;
+  progress: number;
+  /** fast: この秒数以内 */
+  limitSec?: number;
+  /** offered は「受ける」待ち（特注だけ）。done は達成して報酬の受け取り待ち */
+  state: ContractState;
+  /** 基本の報酬（受け取るときに取引先のレベルと渉外部の倍率が掛かる） */
+  reward: { coins: number; trust: number };
+  /** bulk: これから入る特注の注文（行のリスト）と、次の 1 件が入る tick */
+  pending?: { item: string; qty: number }[][];
+  nextOrderTick?: number;
+}
+
+export interface ContractsState {
+  /** いまの依頼を作った日・週（UI が渡した実際の日付） */
+  dayKey: string;
+  weekKey: string;
+  list: Contract[];
+  nextId: number;
+  /** 達成した累計（実績用） */
+  completed: number;
+}
+
+/** 本社への投資の段（1.2、SPEC-1.2 §3） */
+export interface HqState {
+  sales: number;
+  relations: number;
+  slots: number;
+  offline: number;
+}
+
 export type AmrPriority = 'balanced' | 'pick' | 'restock';
 
 export interface Automation {
@@ -281,6 +325,10 @@ export interface WorldState {
   nextTruckTick?: number;
   /** サンドボックスのプリセット倉庫（実績はプレイヤー全体の記録に入れない） */
   sandbox?: boolean;
+  /** 取引先の依頼（1.2。古いセーブには無い。日付は UI が syncContracts で渡す） */
+  contracts?: ContractsState;
+  /** 本社への投資（1.2。古いセーブには無い = すべて 0 段） */
+  hq?: HqState;
   /** 解放したアチーブメント: id → 達した段（1 = 銅 …）と tick。古いセーブは migrate で静かに初期化 */
   achievements?: Record<string, { tier: number; at: number }>;
   width: number;
@@ -332,4 +380,5 @@ export type SimEvent =
   | { type: 'eventEnd'; id: string }
   | { type: 'cyberWeekReport'; record: CyberWeekRecord }
   | { type: 'pick'; stationId: number; item: string; count: number }
-  | { type: 'achievement'; id: string; tier: number };
+  | { type: 'achievement'; id: string; tier: number }
+  | { type: 'contractDone'; id: number };

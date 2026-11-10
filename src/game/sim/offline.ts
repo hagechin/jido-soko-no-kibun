@@ -1,6 +1,6 @@
 /**
  * 放置中の進行（§10.2）。ロボを 1 台ずつ再計算せず、直近 10 分のペースからまとめて計算する。
- *  - 上限 8 時間
+ *  - 上限 8 時間（本社の「留守番体制」で 24 時間まで延びる）
  *  - サイバーウィークは放置では消化しない（直前で止める）
  *  - 戻ってきたら「お留守番レポート」
  */
@@ -9,6 +9,8 @@ import { eventById, weekIndex, activeEvents } from '../data/seasons';
 import { calendarFromTick } from './calendar';
 import { forecastRestock, inboundSettings } from './inbound';
 import { changeReputation } from './economy';
+import { contractsOffline } from './contracts';
+import { offlineCapMs } from './hq';
 import type { WorldState } from './types';
 import { tr } from '../i18n';
 
@@ -54,8 +56,9 @@ export function nextCyberWeekStartTick(w: WorldState): number {
 export function applyOffline(w: WorldState, elapsedMs: number): OfflineReport {
   let ms = Math.max(0, elapsedMs);
   let cappedBy: OfflineReport['cappedBy'] = 'none';
-  if (ms > OFFLINE.maxOfflineMs) {
-    ms = OFFLINE.maxOfflineMs;
+  const cap = offlineCapMs(w);
+  if (ms > cap) {
+    ms = cap;
     cappedBy = 'max';
   }
   let ticks = Math.floor((ms / 1000) * TICKS_PER_SECOND);
@@ -121,6 +124,7 @@ export function applyOffline(w: WorldState, elapsedMs: number): OfflineReport {
   w.coins += coins;
   w.stats.totalCoins += coins;
   w.stats.totalShipped += shipped;
+  contractsOffline(w, shipped, items); // 取引先の依頼: 件数とカテゴリの個数だけ進む
   if (shipped === 0 && minutes > 5 && w.orders.length) changeReputation(w, -Math.min(10, Math.floor(minutes / 10)), tr('留守中にオーダーが溜まった'));
   // 溜まっていたオーダーは「留守中に処理された」扱いにはせず、遅延ペナルティだけ避ける
   for (const o of w.orders) {
