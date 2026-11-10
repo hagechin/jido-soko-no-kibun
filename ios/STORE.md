@@ -93,6 +93,7 @@ Saves sync through iCloud.
 No network, no account, no ads. Works offline. Japanese and English.
 ```
 
+- **英語の名前**: Hakoniwa! Distribution（起動画面と同じ。ホーム画面の名前は英語の端末で `Hakoniwa! DS`、`App/en.lproj/InfoPlist.strings`）
 - **英語のサブタイトル**: Build and watch an automated warehouse
 - **英語のキーワード**: `warehouse,logistics,simulation,idle,automation,robot,tycoon,AMR,picking,sandbox`
 
@@ -153,6 +154,17 @@ No network, no account, no ads. Works offline. Japanese and English.
 | `jp.hatte.hakoniwa.ds.sandbox` | Sandbox | サンドボックスモード | コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断 | ¥500 |
 | `jp.hatte.hakoniwa.ds.supporter` | Supporter | サポーターパック | 全部入り ＋ 金色ロボスキン ＋ 倉庫カラーテーマ | ¥1,200 |
 
+**English のローカライズ（1.1 で追加。各商品 → 「App Store のローカリゼーション」→ 「English (U.S.)」を追加）**。表示名 30 文字・説明 45 文字に収めてある。`Products.storekit` の `en_US` と同じ:
+
+| 商品 ID | Display Name | Description |
+|---|---|---|
+| `jp.hatte.hakoniwa.ds.robots` | Special Robots Pack | Drone AMRs and double-decker shelf robots |
+| `jp.hatte.hakoniwa.ds.limits` | Limit Breaker Pack | 80/120 robots, cargo Lv4, 12 levels, 64×48 |
+| `jp.hatte.hakoniwa.ds.sandbox` | Sandbox Mode | Coins, presets, time jumps, Robot MAX, more |
+| `jp.hatte.hakoniwa.ds.supporter` | Supporter Pack | All packs + gold robot skin + color themes |
+
+- 商品のローカライズを足すと、その商品は「審査待ち」になり、**1.1 のバージョンと一緒に審査に出す**（バージョンのページの「App 内課金とサブスクリプション」で 4 本を選ぶ）。Apple の購入確認シートの商品名はこのローカライズから出る
+- アプリのストア画面の商品名と説明は、1.1 からアプリの辞書（アプリの言語）で出す。App Store 側の表示名は使わない（アプリの言語を設定で切り替えられるので、端末の言語と食い違うことがある）。価格は StoreKit のまま
 - 各商品に審査用スクリーンショット（ストア画面 `r4-m8-store-ios27.png` のような、商品が並んだ画面）を付ける
 - ファミリー共有: オン（`Products.storekit` と同じ）
 - 「購入を復元」ボタンはストア画面にある（審査ガイドライン 3.1.1）
@@ -176,6 +188,21 @@ iCloud 同期は「設定 → iCloud 同期」でオン/オフできます。端
 サンドボックスモードを購入（Sandbox 環境）すると、プリセット倉庫の読み込みと時間ジャンプが使えます。
 
 通信: App Store（課金）と iCloud 以外にネットワーク接続はありません。
+```
+
+英語版（1.1 から。日本語の下に続けて貼る）:
+
+```
+No account is needed. The app is playable right after launch. It supports Japanese and English
+(it follows the device language; Settings → Language switches it).
+
+In-app purchases: bottom bar → Settings (gear) → Extras → Store. Four non-consumables are listed,
+with "Restore Purchases" on the same screen.
+
+Photo library: write-only access (NSPhotoLibraryAddUsageDescription) is requested only when the user
+saves a picture of their own warehouse taken in Photo Mode (Calm Mode → Photo → shutter → Save).
+
+Network: none except the App Store (purchases) and iCloud key-value storage (optional save sync).
 ```
 
 - 連絡先: 名前・電話・メール（審査中に連絡が来ることがある）
@@ -227,7 +254,7 @@ xcrun simctl io booted screenshot ios/screenshots/01-main.png
 2. `./ios/sync-web.sh` → `ios/Web/BUILD_INFO` の commit がそのブランチの先端 → `cd ios && xcodegen generate`
 3. 実機で（1.1）: 起動（M1）、既存のセーブが残っている（M3）、設定の「セーブ」の下の表示が「アプリ 1.1 (6)」、M24〜M25d（フォトモード。特に実機でしか見られない 3 件: 写真の保存を許可しなかったときの「設定を開く」が本アプリの設定ページに行く、「現像中…」の表示、ボケ オンのプレビューのカクつき・発熱）、M57（眺めモードの WALK）、M58（英語。iPhone の言語を English にして起動）、M56（チュートリアル 5/6 で強化を開くと見出しの下に 1 行）、M59（iPhone Duo: 4 姿勢・開閉・パネルの閉じるボタン。実機があれば）、M60（レイアウトエディタの赤い印と凡例）。1.0.2 の M55・M51〜M54 は軽く
 4. Product → Archive → Distribute → App Store Connect にアップロード
-5. App Store Connect → アプリ → 「＋」で新しいバージョン（1.1）→ ビルドを選ぶ → 「このバージョンの新機能」に上の文面（日本語と English の両方のローカライズに）→ 審査に提出。1.1 は English のローカライズを追加する（説明・サブタイトル・キーワードは §2 の英語版。スクリーンショットは日本語のものを流用可）。フォトモードの写真保存で `NSPhotoLibraryAddUsageDescription` を使うので、審査メモに「写真はユーザーが撮った倉庫の画像の保存のみ」と一言
+5. App Store Connect → アプリ → 「＋」で新しいバージョン（1.1）→ ビルドを選ぶ → 「このバージョンの新機能」に上の文面（日本語と English の両方のローカライズに）→ 審査に提出。1.1 は English のローカライズを追加する（名前・説明・サブタイトル・キーワードは §2 の英語版。スクリーンショットは `ios/screenshots/store-en/` の英語のもの。無ければ日本語のものが流用される）。**アプリ内課金 4 本にも English のローカライズを足し、このバージョンと一緒に審査に出す**（§3）。審査メモは §4 の英語版を足す。フォトモードの写真保存で `NSPhotoLibraryAddUsageDescription` を使うので、審査メモに「写真はユーザーが撮った倉庫の画像の保存のみ」と一言
 6. 審査が通ったらリリースのブランチに `v1.1` のタグを打ち、`PROGRESS.md` に記録。Web 版（main）にも同じ内容を反映
 
 
