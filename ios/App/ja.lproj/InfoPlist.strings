@@ -1,0 +1,3 @@
+/* project.yml の info と同じ文（日本語）。英語は en.lproj */
+"CFBundleDisplayName" = "箱庭！DS";
+"NSPhotoLibraryAddUsageDescription" = "フォトモードで撮った写真をカメラロールに保存するために使います";

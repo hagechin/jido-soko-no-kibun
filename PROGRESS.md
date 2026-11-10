@@ -1634,3 +1634,24 @@ npm run preview   # http://localhost:4321 で確認
 - `ios/screenshots/store-duo/`（feature/photo-mode）に外側 5 枚（1398×2034: 全景・眺めモード・強化・サイバーウィーク・コインのメニュー。すりガラスの帯に 9:41 と Wi-Fi が重なる）と内側 5 枚（縦 2007×2853: 全景・眺めモード・強化・サイバーウィーク、横 2853×2007: 全景）。App Store Connect の iPhone Duo の枠（任意。出すと「Duo に最適化」バッジ。2027 年 4 月から 27.1 SDK で必須）にそのまま使える
 - 妥協: サイバーウィークとコインのメニューは一時停止中（HUD の一時停止が黄色）。季節が外側は春・内側は冬。内側のレイアウトエディタは撮れず（下の不具合）
 - 直し（release/1.0）: **レイアウトエディタを開いたまま端末を開く／回すとマップが合い直さない**（`window` の resize が新しいレイアウトの前に来て古い大きさで fit していた）→ stage の `ResizeObserver` で fit、resize は 1 フレーム後の保険。headless で 466×678 → 951×669 → 669×951 → 466×678 とも収まる。191 件のテスト
+
+---
+
+## 1.1 の提出準備: iOS 側の英語の抜けを埋める（release/1.1）
+
+- 再確認（release/1.1 `8f9f565`）: release/1.0 の先端 `c0e2e85` までを含む。全 200 件・tsc・build OK
+- **ストア画面の商品名が App Store 側の言語のまま**: `store.ts` が StoreKit の `displayName` / `description` を優先していた。App Store Connect の商品は日本語だけなので、英語の人には日本語で出る。アプリの言語は設定で切り替えられ、端末の言語（= StoreKit の言語）と食い違うこともある。→ 名前と説明は常にアプリの辞書（`PRODUCT_ORDER`）から。価格だけ StoreKit。購入のトーストも同じ名前
+- **写真の保存の許可ダイアログとホーム画面の名前が日本語だけ**: `ios/App/en.lproj/InfoPlist.strings`（`Hakoniwa! DS`、`Used to save the photos you take in Photo Mode to your photo library.`）と `ja.lproj/InfoPlist.strings`（今までと同じ文）を追加。XcodeGen は `App` の下の `.lproj` をそのまま拾う（`CFBundleLocalizations` は ja / en のまま）
+- `Products.storekit` に `en_US` のローカライズ（表示名 30・説明 45 文字以内）。App Store Connect の 4 商品にも English (U.S.) を足して 1.1 と一緒に審査へ（`STORE.md` §3 に表、§7 の手順 5 に追記）。審査メモの英語版（§4）、英語の名前 `Hakoniwa! Distribution`（§2）
+- TESTPLAN M58b（ホーム画面の名前・許可ダイアログ・ストアの 4 商品・購入確認シート・アプリと端末の言語が違うとき）
+- 第 40 回で Opus に確認と英語のストア用スクリーンショット（`ios/screenshots/store-en/`）を依頼
+
+---
+
+## ★ リテンションの案（`PLAN-RETENTION.md`。未実装）
+
+- 相談「リテンションが弱いので、長く遊べる機能を考えないと」。診断: 目標は 1〜2 時間で使い切る（自動化 30 分、メガDC 1 時間前後、イベント一巡 72 分）。自動化の完成がプレイヤーの仕事の終わりで、お留守番のコインに使い道が無く、2 年目以降は繰り返し
+- 案: A 取引先の依頼（実際の日付で毎日 3 件・毎週 1 件、逃しても損なし）、B 通知（iOS のローカル通知、任意）、C 本社への投資と見た目の購入（既存のロードマップ）、D 年次決算と需要の伸び、E チャレンジ倉庫（常設と週替わり）、F 図鑑、G ウィジェット、H 複数倉庫
+- おすすめ: 1.1 はそのまま提出 → 1.2「取引先と本社」= A ＋ C ＋ B → 1.3「決算とチャレンジ」= D ＋ E ＋ F → 1.5 / 2.0 に H
+- 未決: App Store Connect の 1 日後・7 日後・28 日後のどこが弱いか（1 日後が低いなら初回体験の手直しが先）、通知を入れるか、需要の伸びを入れるか
+
