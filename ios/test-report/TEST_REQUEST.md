@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 41
-- status: requested
+- status: reported
 - branch: release/1.1（パート 1）と claude/nifty-feynman-opfzeb（パート 2）。**この依頼ファイル・報告・画像は feature/photo-mode に置く**。試験の対象の 2 つのブランチには push しない
 - commit: パート 1 = `release/1.1` の先端 `c5a614b` 以降（1.1 / ビルド 6）。パート 2 = `claude/nifty-feynman-opfzeb` の先端 `dce6ff5` 以降（1.2 の開発版。バージョンの表示は 1.1 (6) のまま）
 - requested-at: 2026-11-11（第 41 回）
