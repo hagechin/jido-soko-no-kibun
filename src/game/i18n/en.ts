@@ -1235,4 +1235,6 @@ export const EN: Record<string, string> = {
   '信用が貯まると取引先のレベルが上がり、依頼の報酬が増え、Lv3 でその取引先の色のロボ塗装が使えます。信用と買った見た目は、倉庫を作り直しても残ります': 'As trust grows the client levels up: its jobs pay more, and at Lv3 you get a robot paint in that client\'s colors. Trust and the looks you buy stay even if you start a new warehouse',
   '「本社」タブ: コインで本社に投資（出荷の報酬、依頼の報酬、依頼の件数、お留守番の上限）。ロボの塗装と倉庫テーマもここで選び、買えます。季節のテーマは実際のその月にだけ店に並びます': 'HQ tab: invest coins in headquarters (shipping rewards, job rewards, number of daily jobs, away-time cap). Choose and buy robot paints and warehouse themes here too. Seasonal themes are in the store only during those real-world months',
   'ビン容量 {0}（最大）': 'Bin capacity {0} (max)',
+  '実績「{0}」{1}: {2}': 'Achievement "{0}" – {1}: {2}',
+  '称号「{0}」{1}: {2}': 'Title "{0}" – {1}: {2}',
 };

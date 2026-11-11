@@ -1520,7 +1520,7 @@ class Game {
           if (mergeProfile(this.profile, this.world)) saveProfile(this.profile);
           if (def && !known) {
             const medal = MEDALS[Math.min(e.tier, MEDALS.length) - 1];
-            showToast(`${def.negative ? '称号' : '実績'}「${def.name}」${medal}: ${def.tiers[e.tier - 1]?.label ?? ''}`, 5000, e.tier >= 5 ? 'moon' : e.tier >= 4 ? 'gem' : 'medal');
+            showToast(def.negative ? tr('称号「{0}」{1}: {2}', def.name, medal, def.tiers[e.tier - 1]?.label ?? '') : tr('実績「{0}」{1}: {2}', def.name, medal, def.tiers[e.tier - 1]?.label ?? ''), 5000, e.tier >= 5 ? 'moon' : e.tier >= 4 ? 'gem' : 'medal');
             this.sound.notice();
             nativeTry('haptic', { kind: 'success' });
             if (this.bar.open === 'achievements') this.bar.refresh();
