@@ -1,63 +1,97 @@
 # テスト依頼
 
-- round: 40
-- status: reported
-- branch: release/1.1 （**試験と撮影の対象**。この依頼ファイル・報告・画像は feature/photo-mode に置く。release/1.1 には push しない）
-- commit: `release/1.1` の先端 `ee034e0` 以降（1.1 / ビルド 6）
-- requested-at: 2026-11-10（第 40 回）
-- やりとりの約束: `ios/test-report/PROTOCOL.md`。撮り方の基本: `ios/STORE.md` §6（第 22 回・第 39 回と同じ要領）
+- round: 41
+- status: requested
+- branch: release/1.1（パート 1）と claude/nifty-feynman-opfzeb（パート 2）。**この依頼ファイル・報告・画像は feature/photo-mode に置く**。試験の対象の 2 つのブランチには push しない
+- commit: パート 1 = `release/1.1` の先端 `c5a614b` 以降（1.1 / ビルド 6）。パート 2 = `claude/nifty-feynman-opfzeb` の先端 `dce6ff5` 以降（1.2 の開発版。バージョンの表示は 1.1 (6) のまま）
+- requested-at: 2026-11-11（第 41 回）
+- やりとりの約束: `ios/test-report/PROTOCOL.md`。手順のパスはリポジトリのルートからの書き方（作業ディレクトリが `ios` のときは `ios/` を外して読む）
 
 ## 今回のねらい
 
-**1.1 の提出前の最後の確認と、英語のストア用スクリーンショット**（70 分）。1.1 で英語に対応するので、App Store Connect に English のローカライズを足す。その前に iOS 側の英語の抜けを 2 つ直した（A）。あわせて英語の商品ページ用の画像を撮る（B）。1.1 の目玉のフォトモードは日本語の画像にも無いので 1 枚ずつ足す（C）。
+2 部構成（合計 70〜80 分）。**パート 1 を先に済ませる。パート 2 が途中で止まったら、そこまでを報告に書いて push**（黙って止めない）。
 
-直したもの（`ee034e0`）:
+- **パート 1（20〜25 分）**: 第 40 回の気づきを直した。確認と、直した画面のストア用の画像の撮り直し。これで 1.1 を提出する
+- **パート 2（45〜55 分）**: 1.2「取引先と本社」の初回の確認。Swift に通知（`ios/App/Notifier.swift`）を足したので、まずビルドが通るか
 
-- ストア画面（設定 → 追加機能 → ストア）の 4 商品の名前と説明を、StoreKit の表示名ではなくアプリの辞書から出す（アプリの言語に合う。価格は StoreKit のまま）
-- `ios/App/en.lproj/InfoPlist.strings` / `ja.lproj/InfoPlist.strings` を追加（ホーム画面の名前 `Hakoniwa! DS`、写真の保存の許可ダイアログの英文）
-- `Products.storekit` に `en_US` のローカライズ
+第 40 回の報告への返事:
 
-## 手順
+- 購入確認シートの日本語は見立てどおり試験環境だけ。App Store Connect の 4 商品に English (U.S.) を足す（人の作業）
+- アプリの言語を一度選ぶと端末の言語に従わないのは仕様。TESTPLAN M58b に「自動に戻す」を追記した
+- 言語を変えた再読み込みでチュートリアルが出るのは「終えていなければ続きから」の仕様
+- 下のバーの「Upgrade」とパネルの題「Upgrades」はそのまま（ロボ一覧の動詞のボタンと同じ語）
 
-1. `git fetch origin release/1.1 && git checkout release/1.1 && git pull --ff-only origin release/1.1` → `./ios/sync-web.sh` → `cd ios && xcodegen generate` → Xcode 27.1 でビルド
-   - **`xcodegen generate` の後、プロジェクトに `InfoPlist.strings`（ja / en の 2 言語）が入っていること**を最初に確認。入っていなければ（XcodeGen が `.lproj` を拾わなかったら）そこで止めて、その旨を報告（`project.yml` 側を直す）
-2. シミュレータは iPhone 17 Pro Max（6.9"、1320×2868）と iPad Pro 13-inch (M4)（2064×2752）。ステータスバーは `xcrun simctl status_bar <udid> override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3`（終わったら `clear`）
-3. A はシミュレータの**端末の言語**を English にして行う（設定 App → General → Language & Region。ホーム画面の名前と許可ダイアログは端末の言語で決まる）。B の撮影は端末の言語が English のまま `simctl launch … -demo`
-4. 報告は feature/photo-mode に: 画像を add、`TEST_REPORT.md` の末尾に「# 第40回: release/1.1 `<commit>`（1.1 の英語の確認とストア用スクリーンショット）」→ status を `reported` → `ios: round-40 …` → push
+---
 
-## A. 確認（TESTPLAN M58b、15 分。iPhone だけで可）
+## パート 1: release/1.1 `c5a614b`
+
+### 手順
+
+1. `git fetch origin release/1.1 && git checkout release/1.1 && git pull --ff-only origin release/1.1` → `./ios/sync-web.sh` → `cd ios && xcodegen generate` → ビルド（Xcode 27.2 で可）
+2. iPhone 17 Pro Max と iPad Pro 13-inch (M4)。ステータスバーは 9:41 の上書き（第 40 回と同じ）。`simctl launch … -demo`
+
+### 確認（10 分）
 
 | # | 見るところ | 期待 |
 |---|---|---|
-| A1 | ホーム画面のアプリ名（端末 English） | `Hakoniwa! DS`。途中で切れない（「…」にならない） |
-| A2 | 設定 → Extras → Store | 4 商品の名前と説明が英語（Special Robots Pack / Limit Breaker Pack / Sandbox Mode / Supporter Pack）。価格が出る。「Restore Purchases」がある |
-| A3 | 1 商品を購入（StoreKit のローカル設定） | Apple の購入確認シートの商品名が英語。購入後のトーストが `Purchased Special Robots Pack` のような英語で、行が「Purchased」になる |
-| A4 | アプリの言語だけ日本語に（設定 → Language → 日本語） | ストア画面の 4 商品が日本語に変わる。English に戻すと英語 |
-| A5 | フォトモードで初めて「保存」（写真の許可を消してから: `xcrun simctl privacy <udid> reset photos-add jp.hatte.hakoniwa.ds`） | 許可ダイアログの説明が英語（Used to save the photos you take in Photo Mode to your photo library.） |
-| A6 | 端末の言語を日本語に戻して起動 | アプリ名「箱庭！DS」、許可ダイアログの説明が日本語、ストア画面が日本語（今までどおり） |
-| A7 | 既存の自動テスト（Unit / UI） | 全部通る |
+| A1 | 季節のバナー（iPhone、日本語と English） | 日本語は「新生活シーズン。家電・日用品が売れる」が**1 行**（語の途中で折り返さない）。English は 2 行。右上の照準ボタンに重ならない |
+| A2 | 眺めモードのミニ HUD（English） | 日付とコインの間に隙間がある（`Year 1 · May W2  ⊙ 124,820`） |
+| A3 | 実績のパネル（English、`-demo`） | 題が `Achievements`。「In a sandbox preset warehouse…」の注記が**出ない**。距離の段が `100 km – Tokyo to Mt. Fuji`（括弧が二重でない） |
+| A4 | 強化のパネル（`-demo`） | ビン容量の行が `Bin capacity 60 (max)` / 「ビン容量 60（最大）」（矢印なし。数字は倉庫による） |
+| A5 | フォトモードの左下の歯車 | 設定を出している間は黄色く点灯（暗い地に暗いアイコンでない）。隠すと暗い地に白 |
+| A6 | iPad: 設定 → セーブの「本体に保存」の説明 | `Files › On My iPad › …` /「このiPad内」（iPhone では iPhone のまま） |
+| A7 | サイバーウィークの予告（見られれば。11 月 1〜3 週） | `Weeks to Cyber Week: 2` の形（`in 1 weeks` でない） |
+| A8 | 起動直後（`-demo`） | 実績のトーストが並ばない |
 
-## B. 英語のストア用スクリーンショット（40 分）
+### 撮り直し（10〜15 分）
 
-保存先 `ios/screenshots/store-en/`。名前は `01-overview-iphone.png` / `01-overview-ipad.png` のように「番号-内容-端末」。端末の言語 English、`-demo`（メガDC）、原寸。トースト・ダイアログ・「SB」バッジ・一時停止の黄色が写っていないものを選ぶ（数枚ずつ撮って選ぶ）。iPhone と iPad の両方で:
+端末の言語 English、`-demo`、原寸。第 40 回と同じ選び方（トースト・ダイアログ・SB・一時停止の黄色・**Dynamic Island の黒い楕円**が無いもの）。同じ名前で上書き:
 
-| # | 画面 | 操作 |
-|---|---|---|
-| 1 | 倉庫の全景（ロボが動いている、注文票が並ぶ） | 起動直後。照準でリセット、2x |
-| 2 | 眺めモード（AUTO カメラが寄っている。ミニ HUD だけ） | 下のバーの炎 → 数秒待つ |
-| 3 | フォトモード（下にチップの列。「Focal length」か「Effect」の選択肢が開いている状態） | 眺めモード → Photo → チップをタップ |
-| 4 | フォトモードで歩く視点（棚の間。パネルは最小表示でも可） | Walk に切り替えて棚の通路へ |
-| 5 | 強化パネル（Upgrades） | 「Upgrades」 |
-| 6 | サイバーウィークの赤い帯の全景 | サンドボックス → サイバーウィーク本番へ → 全景（一時停止していない状態で撮れれば） |
-| 7 | 実績（Achievements）の一覧 | 設定から |
+| ファイル（`ios/screenshots/store-en/`） | 理由 |
+|---|---|
+| `01-overview-iphone.png` | バナーの幅が変わった |
+| `02-view-mode-iphone.png`・`02-view-mode-ipad.png` | ミニ HUD の隙間 |
+| `05-upgrades-iphone.png`・`05-upgrades-ipad.png` | ビン容量の行 |
+| `07-achievements-iphone.png`・`07-achievements-ipad.png` | 題・距離の段・注記なし・楕円なし |
 
-## C. 日本語のフォトモードの画像（10 分）
+余裕があれば日本語の `ios/screenshots/store/01-overview-iphone.png` も（バナーが 1 行になる）。
 
-端末の言語を日本語に戻して、B の 3 と 4 を iPhone と iPad で 1 枚ずつ。保存先は `ios/screenshots/store/`、名前は `10-photo-iphone.png` / `10-photo-ipad.png` / `11-photo-walk-iphone.png` / `11-photo-walk-ipad.png`。
+---
+
+## パート 2: claude/nifty-feynman-opfzeb `dce6ff5`（1.2 の開発版）
+
+1.2 で足したもの（仕様は `SPEC-1.2.md`、項目は `ios/TESTPLAN.md` M61〜M70）:
+
+- 下のバーの「実績」が「依頼」（握手のアイコン）に替わり、パネルの上にタブ［依頼｜本社｜実績］
+- 取引先 5 社から毎日 3 件・毎週 1 件の依頼（実際の日付で入れ替わる）。達成 →「受け取る」でコインと信用
+- 本社への投資 4 部門、見た目の店（ロボの塗装 10 種・倉庫テーマ 8 種）
+- お知らせの通知（端末内のローカル通知。`Notifier.swift`、ブリッジ `notifyStatus` / `notifyRequest` / `notifySchedule` / `notifyCancel`）
+
+### 手順
+
+1. `git fetch origin claude/nifty-feynman-opfzeb && git checkout claude/nifty-feynman-opfzeb && git pull --ff-only origin claude/nifty-feynman-opfzeb` → `./ios/sync-web.sh` → `cd ios && xcodegen generate` → ビルド
+   - **ビルドが通らなければ、エラーの全文を報告に書いてパート 2 はそこまで**（`Notifier.swift` はクラウド側でビルドしていない）
+2. iPhone 17 Pro Max（端末の言語は日本語）。`simctl launch … -demo`。**`-demo` は起動のたびにセーブを作り直す**ので、状態を残して起動し直す確認（B7）は `-demo` を付けずに起動する
+3. コインが要る項目は、設定 → 追加機能 → サンドボックス画面でコインを足してよい（SB のバッジが出ても可）
+4. 終わったら `git checkout feature/photo-mode` に戻って報告
+
+### 確認
+
+| # | 項目 | 操作 | 期待 |
+|---|---|---|---|
+| B1 | ビルドと自動テスト | ビルド、Unit / UI | 通る |
+| B2 | M61 依頼が届く | `-demo` で起動して数秒待つ | 「取引先から依頼が届くようになりました」のトースト。下のバーの握手のボタン → 題「取引先の依頼」、タブ［依頼｜本社｜実績］、今日の依頼 3 件・今週の依頼 1 件、その下に取引先 5 社。画像 `r41-B2-contracts.png`（iPhone）と iPad でも 1 枚 |
+| B3 | M62 進みと受け取り | 依頼パネルを開いたまま 2x〜4x で待つ（「N 件出荷する」などが進む） | 数字とバーが開いたまま進む。達成で「依頼を達成: …」、カードが黄色い枠、「受け取る」、バーのボタンに赤いバッジ。受け取るとコインが増えトースト「〇〇: +N コイン、信用 +10」、カードは「受け取り済み」、取引先の信用のバーが伸びる |
+| B4 | M63 特注 | 「特注 N 件を全部出荷する」の「受ける」（無ければ B5 の入れ替えで出るまで替える） | 受ける前に中身（商品 ×個数）が見える。受けると入荷トラックが来て、注文票に取引先の色の丸が付いた注文が入る（画像 `r41-B4-orders.png`）。全部出荷で達成 |
+| B5 | M64 入れ替え | 達成前の依頼の右のシャッフルのボタン | コインが減り、別の種類の依頼に替わる。今週の依頼と進行中の特注には無い |
+| B6 | M66 本社への投資 | 依頼 → 本社タブ。留守番体制（2 万）などを買う | コインが減り「〇〇 に投資しました」、段と「いま → 次」が変わる。受注窓口（15 万）を買うと今日の依頼が 4 件になる。HUD のコイン → 「本社への投資・見た目」でも本社タブが開く |
+| B7 | M67 見た目の店 | 本社タブの下。フォレスト（10 万）とモノクロ（8 万）を買う | 買うとすぐ変わる（画面が深い緑、ロボが白と灰色、3D の背景）。「使う」で標準に戻せ、「使用中」が点く。金色・ミッドナイト・サンドは `-demo`（全機能の上書き）なので使える。季節のテーマはモミジだけ値段が出て、ほかは「季節外」（11 月）。**`-demo` を付けずに起動し直しても選んだ見た目のまま**。画像 `r41-B7-forest.png` |
+| B8 | M69 通知 | 初めて「受け取る」を押す | 「お知らせを通知しますか？」が 1 度だけ出る →「通知する」→ OS の許可ダイアログ → 許可 →「通知をオンにしました」。設定 → 通知 が「オン」。**`-demo` で起動していると「10 秒後にテスト通知」のボタンが出る** → 押してすぐホーム画面に戻る → 10 秒ほどで通知のバナー「新しい依頼が届いています」（画像 `r41-B8-notification.png`）。アプリを前面にしたまま待った場合は出ない。設定でオフにできる。固まらない・落ちない |
+| B9 | M70 英語 | 端末の言語を English にして `-demo` | 依頼（Jobs）・HQ・取引先の名前（Marufuku Foods ほか）・塗装とテーマの名前・トーストが英語。日本語が残っていない。iPhone の幅でカードの文字が切れない。画像 `r41-B9-jobs-en.png` |
+| B10 | Duo（余裕があれば） | iPhone Duo の外側で依頼パネルを開く | パネルと × が右の帯に隠れない。バーのバッジが見える |
 
 ## 報告してほしいこと
 
-- A1〜A7 の OK / NG（NG は画像つき）。A1 は名前が切れていないかをホーム画面の画像で
-- 撮れた画像の一覧（ピクセル数も）、撮れなかった画面とその理由
-- 英語の画面で、文字が切れている・はみ出している・日本語が残っているところがあれば（撮影のついでに気づいた範囲で）
-- 「1.1 提出可」かどうかの一言
+- パート 1: A1〜A8 の OK / NG、撮り直した画像の一覧（ピクセル数）。**「1.1 提出可」のままかどうか**
+- パート 2: B1〜B10 の OK / NG（NG は画像つき）。ビルドの警告やエラー。触ってみての感想（依頼の量は多すぎないか、報酬は見合うか、分かりにくい言葉、押しにくいボタン）
+- できなかった項目とその理由
