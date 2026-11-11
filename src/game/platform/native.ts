@@ -80,3 +80,15 @@ export function nativeTry(method: string, params: Record<string, unknown> = {}):
   if (!native.available) return;
   native.call(method, params).catch(() => {});
 }
+
+/** iPad で動いているか（WKWebView は iPad でも Mac の UA を名乗ることがあるので、タッチ点の数も見る） */
+export function isIPad(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && (navigator.maxTouchPoints ?? 0) > 1);
+}
+
+/** 文中の「iPhone」を、iPad では「iPad」に（ファイル App の「このiPhone内」「On My iPhone」など。第 40 回） */
+export function forDevice(text: string): string {
+  return isIPad() ? text.replace(/iPhone/g, 'iPad') : text;
+}
+

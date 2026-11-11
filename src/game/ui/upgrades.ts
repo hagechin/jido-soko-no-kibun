@@ -80,7 +80,9 @@ export function renderUpgrades(body: HTMLElement, ctx: UpgradeContext): void {
   const lim = limitsFor(w);
   const lvLocked = w.levels >= maxLevelsForRank(w) && w.levels < lim.maxLevels ? tr('ランク{0}で解放', w.rank + 2) : undefined;
   body.append(row(w.levels >= lim.maxLevels ? tr('棚の段数 {0}（MAX）', w.levels) : tr('棚の段数 {0} → {1}', w.levels, w.levels + 1), lvCost, () => upgradeLevels(w), ctx, tr('全スタックに +1 段。保管量が増える代わりに掘り出しが発生する{0}', limitHint(w.levels >= lim.maxLevels, tr('段数 {0} まで', LIMITS.expanded.maxLevels))), lvLocked));
-  body.append(row(tr('ビン容量 {0} → {1}', w.binCapacity, w.binCapacity + 10), binCapacityUpgradeCost(w), () => upgradeBinCapacity(w), ctx, tr('1 ビンに入る個数')));
+  // 最大まで上げたら「→ 次の値」は出さない（MAX なのに矢印が出ていた。第 40 回）
+  const binCost = binCapacityUpgradeCost(w);
+  body.append(row(binCost === null ? tr('ビン容量 {0}（最大）', w.binCapacity) : tr('ビン容量 {0} → {1}', w.binCapacity, w.binCapacity + 10), binCost, () => upgradeBinCapacity(w), ctx, tr('1 ビンに入る個数')));
   const binsLeft = Math.max(0, freeBinSlots(w) - reservedSlots(w));
   body.append(row(tr('空ビン 1 個'), price(w, BIN.emptyBinCost), binsLeft > 0 ? () => buyEmptyBin(w) : null, ctx, tr('空きのあるスタックの頂上に置く（買えるのはあと {0} 個。掘り出し用に {1} スロットは空けておく）', binsLeft, reservedSlots(w))));
   // おすすめのビン数までまとめ買い（★ 倉庫を広げてスタックを増やした後、1 個ずつ買う手間を省く）

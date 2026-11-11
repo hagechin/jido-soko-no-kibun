@@ -1,4 +1,5 @@
 import { iconText } from './icon';
+import { forDevice } from '../platform/native';
 /** 設定パネル: セーブ・新規開始・画質（書き出し／読み込みは M10、眺めモードの fps は M10） */
 import { saveQuality, settingsFor, type QualityLevel } from '../render/quality';
 import { DIFFICULTY, DIFFICULTY_ORDER, ECONOMY_MODES, ECONOMY_ORDER, INBOUND_FREQ, INBOUND_FREQ_ORDER, INBOUND_LOAD, INBOUND_LOAD_ORDER, type DifficultyId, type EconomyId, type InboundFreqId, type InboundLoadId } from '../data/balance';
@@ -231,7 +232,7 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
     if (ctx.saveLocal) {
       const loc = el('button', { class: 'btn', type: 'button' }, iconText('save', tr('本体に保存（ファイル App）')));
       loc.addEventListener('click', () => ctx.saveLocal!());
-      body.append(el('div', { class: 'settings-row' }, loc), el('p', { class: 'muted small', text: tr('ファイル App の「このiPhone内 › 箱庭！DS」に hako-dis-save-日時.json を置きます。読み込みは「ファイルから読み込み」でそのファイルを選ぶ') }));
+      body.append(el('div', { class: 'settings-row' }, loc), el('p', { class: 'muted small', text: forDevice(tr('ファイル App の「このiPhone内 › 箱庭！DS」に hako-dis-save-日時.json を置きます。読み込みは「ファイルから読み込み」でそのファイルを選ぶ')) }));
     }
     const ex = el('button', { class: 'btn', type: 'button' }, iconText('upload', ctx.saveLocal ? tr('共有（AirDrop・iCloud など）') : tr('ファイルに書き出し')));
     ex.addEventListener('click', () => ctx.exportSave!());
