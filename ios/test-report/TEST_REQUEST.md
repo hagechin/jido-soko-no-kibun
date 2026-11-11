@@ -1,7 +1,7 @@
 # テスト依頼
 
 - round: 40
-- status: requested
+- status: reported
 - branch: release/1.1 （**試験と撮影の対象**。この依頼ファイル・報告・画像は feature/photo-mode に置く。release/1.1 には push しない）
 - commit: `release/1.1` の先端 `ee034e0` 以降（1.1 / ビルド 6）
 - requested-at: 2026-11-10（第 40 回）

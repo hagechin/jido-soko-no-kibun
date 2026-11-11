@@ -1654,6 +1654,20 @@ npm run preview   # http://localhost:4321 で確認
 - 案: A 取引先の依頼（実際の日付で毎日 3 件・毎週 1 件、逃しても損なし）、B 通知（iOS のローカル通知、任意）、C 本社への投資と見た目の購入（既存のロードマップ）、D 年次決算と需要の伸び、E チャレンジ倉庫（常設と週替わり）、F 図鑑、G ウィジェット、H 複数倉庫
 - おすすめ: 1.1 はそのまま提出 → 1.2「取引先と本社」= A ＋ C ＋ B → 1.3「決算とチャレンジ」= D ＋ E ＋ F → 1.5 / 2.0 に H
 - 未決: App Store Connect の 1 日後・7 日後・28 日後のどこが弱いか（1 日後が低いなら初回体験の手直しが先）、通知を入れるか、需要の伸びを入れるか
+## 第 40 回（1.1 の英語の確認とストア用スクリーンショット、release/1.1 `ee034e0`）→ 1.1 提出可 + 英語の細かい直し
+
+- Opus の報告（Xcode 27.2 / iOS 27.2。27.1 は Mac に無くなっていた）: XcodeGen が `InfoPlist.strings`（ja / en）を拾う、ホーム画面の名前 `Hakoniwa! DS`（切れない）、ストア画面の 4 商品が英語、アプリの言語の切り替えでストアも切り替わる、写真の許可ダイアログが英語、端末を日本語に戻すと「箱庭！DS」と日本語の文、自動テスト 17 件 OK。**1.1 提出可**
+- NG は試験環境だけ: 購入確認シートの商品名が日本語（`Products.storekit` の `_locale: ja_JP`。本番は App Store Connect の商品のローカライズから出る）。**提出前に 4 商品へ English (U.S.) を足す**（`STORE.md` §3）
+- 画像: `ios/screenshots/store-en/` に英語 14 枚（iPhone 1320×2868・iPad 2064×2752 × 全景・眺め・フォト・フォト歩く・強化・サイバーウィーク・実績）、`ios/screenshots/store/` に日本語のフォトモード 4 枚（10・11）。`07-achievements-iphone.png` だけ Dynamic Island の黒い楕円が写っている
+- 直し（release/1.1。文言と CSS だけ）:
+  - 英語: 「Cyber Week in 1 weeks」→「Weeks to Cyber Week: 1」、設定の「…themes unlocks with」→ unlock、パネルの題「Achievement」→「Achievements」、距離の段「100 km (Tokyo to Yamanashi)」→「100 km – Tokyo to Mt. Fuji」ほか（括弧の二重と、海外で伝わりにくい地名）、ビルドの行などの全角の空白
+  - 眺めモードのミニ HUD: 英語で日付とコインが詰まる（半角の空白が flex の中で消えていた）→ `white-space: pre`
+  - 強化: ビン容量が最大のとき「40 → 50」と矢印が出る →「ビン容量 60（最大）」
+  - 季節のバナー: `left: 50%` の絶対配置で幅が半分に頭打ちになり、スマホで語の途中で折り返す → `width: max-content` + `max-width: calc(100% - 124px)`（440 幅で日本語 1 行 282px、英語 2 行 316px。右上の照準ボタンに重ならない）
+  - フォトモードの設定の歯車: `.photo-min .btn` の暗い地が `is-active` に勝って暗い地に暗いアイコン → 出している間は点灯
+  - iPad: 「このiPhone内」「On My iPhone」を iPad では iPad に（`platform/native.ts` の `forDevice`）
+- 直さないもの: 言語を変えた再読み込みでチュートリアルが続きから出る（終えていなければ続きから、は仕様）。アプリの言語を一度選ぶと端末の言語に従わない（仕様。TESTPLAN M58b に「自動に戻す」を追記）。下のバーの「Upgrade」とパネルの題「Upgrades」（ロボ一覧の動詞のボタンと同じ語なのでそのまま）。フォトモードのチップの列が右で切れる（横スクロール）
+- 確認: 全 200 件・tsc・build、headless（440×956、日本語と英語）でバナー・ビン容量・実績の題と距離・ミニ HUD・歯車。エラー 0
 
 ---
 

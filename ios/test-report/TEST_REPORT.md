@@ -3370,3 +3370,133 @@ iPhone 18 Pro Max で、アプリを起動してから連続で撮影しまし�
 1. **（中）レイアウトエディタを開いたまま端末を開く／回すと、マップの大きさが合い直さない。** 内側の画面でマップの右と下が切れたままになります（`r39-editor-inner-clipped.png`）。サブエージェントの見立てでは、`src/game/ui/layoutEditor.ts` の `fit()` が `window` の `resize` で呼ばれるものの、新しいレイアウトが決まる前に `stage.getBoundingClientRect()` を読んでいるようです。stage に `ResizeObserver` を付けるか、`resize` の 1 フレーム後（`requestAnimationFrame`）に合わせ直すと直りそうです。閉じた画面のままなら問題ありません。iPad の Split View やウィンドウの大きさ変更でも同じことが起きるかもしれません。
 2. （参考）何も触らずに 90 秒たつと「眺めモードにする？」が出ます。内側の画面はタップが届かないので、撮影では開く直前に外側をタップしてから開きました。
 3. （参考）外側の画面では、約半分の撮影でカメラの穴（帯の上の黒い丸）が写りました。写っていないものを選んでいます。
+
+# 第40回: release/1.1 `ee034e0`（1.1 の英語の確認とストア用スクリーンショット）
+
+- 実施日: 2026-11-11
+- 対象: ブランチ `release/1.1` の先端 `ee034e0`（`1.1: iOS 側の英語の抜け …`）。`ios/Web/BUILD_INFO`: `commit=ee034e0 date=2026-11-11T09:32:51Z node=v22.14.0`
+- 準備: `git checkout release/1.1 && git pull --ff-only origin release/1.1` → Node 22.14.0 で `./ios/sync-web.sh` → `cd ios && xcodegen generate` → `xcodebuild build`（BUILD SUCCEEDED）。報告は feature/photo-mode に戻ってから追記（release/1.1 には push していません）。
+  - **`xcodegen generate` の後、プロジェクトに `InfoPlist.strings`（ja / en の 2 言語）が入っていました**（`PBXVariantGroup` に `ja.lproj/InfoPlist.strings` と `en.lproj/InfoPlist.strings`、Resources に入る）。ビルドした `.app` にも `en.lproj` / `ja.lproj` があり、en の中身は `CFBundleDisplayName = Hakoniwa! DS`、`NSPhotoLibraryAddUsageDescription = Used to save the photos you take in Photo Mode to your photo library.`。アプリは 1.1 (6)。
+- 実行環境:
+  - **Xcode 27.2 (27B52)**。この Mac には Xcode 27.1 が無くなっていたので、依頼の 27.1 ではなく 27.2 でビルド・テストしました。
+  - **iPhone 17 Pro Max (iOS 27.2)** と **iPad Pro 13-inch (M4) (iOS 27.2)**。既存の iPhone 17 Pro Max は iOS 26.x、iPad Pro 13 (M4) は iOS 18.x しかなく（iOS 26.0 未満は入らない）、iOS 27.1 のランタイムは iPhone Duo 専用で作れなかったので、iOS 27.2 で新しく作りました。
+  - ステータスバーは `simctl status_bar … override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3`（終わってから `clear`）。端末の言語は `defaults write -g AppleLanguages` で切り替えてから再起動しました。
+  - A1〜A6 は Xcode の Run で起動（スキームのローカル StoreKit 構成）。B・C は `simctl launch … -demo`。
+- 設定の「セーブ」の下の表示: 「**アプリ 1.1 (6)・同梱 Web commit=ee034e0 date=2026-11-11T09:32:51Z node=v22.14.0**」（`r40-0-version.png`、iPad）。
+
+## 結果まとめ（第40回）
+
+| # | 項目 | 結果 |
+|---|---|---|
+| A1 | ホーム画面のアプリ名（端末 English） | **OK**（`Hakoniwa! DS`、切れない） |
+| A2 | 設定 → Extras → Store が英語 | **OK** |
+| A3 | 購入（購入確認シート・トースト・行） | **NG（テスト環境のみ）**: 購入確認シートの商品名が日本語「特別ロボパック」。トースト・行は英語で OK |
+| A4 | アプリの言語だけ日本語 ⇄ English | **OK** |
+| A5 | 写真の許可ダイアログ（英語） | **OK** |
+| A6 | 端末を日本語に戻す | **OK**（ただし、A4 でアプリの言語を明示的に English にした後は、端末を日本語にしてもアプリは English のまま。下の「気づき」2） |
+| A7 | 自動テスト（Unit / UI） | **TEST すべてパス**（単体 15 + UI 2 = 17 件、失敗 0） |
+| B | 英語のストア用スクリーンショット | **iPhone 7 枚・iPad 7 枚、全部撮れた** |
+| C | 日本語のフォトモードの画像 | **iPhone 2 枚・iPad 2 枚、撮れた** |
+
+**1.1 提出可**と考えます。A3 の NG は Xcode のローカル StoreKit 構成（`Products.storekit` の `_locale: ja_JP`）によるもので、本番の購入シートは App Store Connect の商品のローカライズから出ます。提出前に **App Store Connect の 4 商品に English (U.S.) の表示名・説明を入れること**（`STORE.md` にある英語）が条件です。
+
+## A. 確認（iPhone 17 Pro Max）
+
+### A1 ホーム画面のアプリ名: OK
+- 端末 English で、ホーム画面（2 ページ目）のアイコンの名前は `Hakoniwa! DS`。「…」で切れていません（`r40-A1-home.png`、切り抜き `r40-A1-home-crop.png`）。
+
+### A2 ストア画面: OK
+- 設定 → Extras → `Store (special robots, limit breaker, sandbox)` → 「Extras Store」（`r40-A2-store-en.png`）。
+- 説明文: `One-time purchases (no ads, no consumables). Family Sharing supported. After reinstalling, use "Restore Purchases".`
+- **Special Robots Pack** ¥600 — Drone AMRs (fly over the shelves; shine in big warehouses) and double-decker shelf robots (hold 2 bins; do the work of two shelf robots even in narrow aisles, useful from the start)
+- **Limit Breaker Pack** ¥500 — Robot limits 80/120, cargo Lv4, 12 shelf levels, 64×48 warehouse
+- **Sandbox Mode** ¥500 — Coins, preset warehouses, time jumps, Robot MAX and stall diagnosis from Settings
+- **Supporter Pack** ¥1,200 — All three above + gold robot skin + warehouse color themes
+- `Restore Purchases` あり。文字の切れなし。
+
+### A3 購入: NG（購入確認シートの商品名だけ日本語。テスト環境のみ）
+- ¥600 をタップ → ボタンが「…」→ 約 10 秒で Apple の購入確認シート。**商品名が `特別ロボパック`（日本語）**で、それ以外（Hakoniwa! DS / In-App Purchase / ¥600 / One-time charge / For testing purposes only… / Purchase）は英語（`r40-A3-sheet.png`）。
+- Purchase → 「You're all set. Your purchase was successful. [Environment: Xcode]」（`r40-A3-success-alert.png`）→ OK → トースト **`Purchased Special Robots Pack`**（`r40-A3-toast.png`）。行は `✓ Purchased`（押せない）、Unlocked features の「Special robots (drone, double-decker)」に緑のチェック（`r40-A3-purchased.png`）。
+- **原因の見立て:** `ios/App/Products.storekit` の `en_US` のローカライズは 4 商品とも入っていますが、ファイルの `settings._locale` が **`ja_JP`**（ストアフロント `JPN`）なので、Xcode のローカル StoreKit は端末の言語によらず ja の表示名を出すようです。本番には関係しません。テストでも英語のシートを見たいなら、Xcode の StoreKit 構成エディタ（Editor → Default Localization / Storefront）で en_US にした構成を別に用意するのがよさそうです（今回は repo を触っていないので未確認）。
+
+### A4 アプリの言語の切り替え: OK
+- 設定 → Language → `日本語` でページが再読み込みされ、ストアが日本語に: 特別ロボパック（購入済み）／上限突破パック ¥500「ロボ上限 80/120 台、積載 Lv4、棚 12 段、倉庫 64×48」／サンドボックスモード ¥500「コイン・プリセット倉庫・時間ジャンプ・ロボ MAX・停滞診断を設定から使える」／サポーターパック ¥1,200「上の 3 つ全部 ＋ 金色ロボスキン ＋ 倉庫カラーテーマ」／購入を復元（`r40-A4-store-ja.png`）。
+- English に戻すと英語に戻り、Special Robots Pack は Purchased のまま（`r40-A4-store-en-again.png`）。
+- （軽微）言語を変えて再読み込みすると、チュートリアル「チュートリアル 1 / 6」がもう一度出ました。
+
+### A5 写真の許可ダイアログ: OK
+- `simctl privacy … reset photos-add jp.hatte.hakoniwa.ds`（アプリは落ちなかった）→ Calm → Photo → 撮影 →「Save to Camera Roll」。
+- ダイアログ: `Allow "Hakoniwa! DS" to add photos and videos to your photo library?`、説明 **`Used to save the photos you take in Photo Mode to your photo library.`**、Don't Allow / Allow（`r40-A5-permission.png`）。
+- Allow → `✓ Saved`「Saved to Camera Roll」（`r40-A5-saved.png`）。
+
+### A6 端末を日本語に戻す: OK
+- ホーム画面のアプリ名 **`箱庭！DS`**（切れない。`r40-A6-home.png`）。
+- **アプリは English のままでした**: A4 で「English」を選んでいたので、設定 → Language は `English` が選ばれた状態。選択肢は「Auto (device setting) / 日本語 / English」。**Auto** にすると日本語になり、言語の欄は「自動（端末の設定）」（セーブは保たれた）。
+- ストア画面: 特別ロボパック（購入済み）／上限突破パック ¥500／サンドボックスモード ¥500／サポーターパック ¥1,200／購入を復元（`r40-A6-store-ja.png`。この 1 枚は Dynamic Island の黒い楕円が写っています）。
+- 許可ダイアログ（許可を消してから）: `"箱庭！DS"に写真ライブラリへ写真やビデオを追加することを許可しますか?`、説明 **`フォトモードで撮った写真をカメラロールに保存するために使います`**、許可しない / 許可（`r40-A6-permission.png`）→ 許可 →「保存しました」。
+
+### A7 自動テスト: すべてパス
+- `xcodebuild test -scheme HakoniwaDS -destination 'platform=iOS Simulator,id=<iPhone 17 Pro Max (iOS 27.2)>'`（Xcode 27.2）: HakoniwaDSTests 15 件（Bridge 3・CloudStore 3・SaveStore 2・SchemeHandler 3・StoreManager 4）、HakoniwaDSUITests 2 件（`testLaunchShowsTheWarehouseHud`・`testTimeAdvancesWhileRunning`）、**失敗 0**。
+- 以前と同じく、テストが終わった後に xcodebuild が終了しなかったので、約 8 分待ってから止めました（そのため「** TEST SUCCEEDED **」の行は出ていません。全スイートの passed は出ています）。テストは A1〜A6 の後に実行しました（StoreKit の取引が消えるため）。
+
+## B. 英語のストア用スクリーンショット（`ios/screenshots/store-en/`）
+
+端末 English・アプリの言語 English、`-demo`（メガDC）、縦、原寸。各画面 2〜9 枚から、トースト・ダイアログ・ヒント・「SB」バッジ・一時停止の黄色が写っていないものを選びました。
+
+| # | ファイル | ピクセル | 内容 |
+|---|---|---|---|
+| 1 | `01-overview-iphone.png` | 1320×2868 | 倉庫の全景（照準でリセット、2x、Y1 Apr W2）。注文票 #7〜#9、季節のバナー「Fresh-start season. Appliances and household goods sell」 |
+| 1 | `01-overview-ipad.png` | 2064×2752 | 同（Y1 Apr W2、注文票 #6〜#10、ロボとドローンが動く） |
+| 2 | `02-view-mode-iphone.png` | 1320×2868 | 眺めモード（AUTO カメラが棚に寄る）。ミニ HUD だけ |
+| 2 | `02-view-mode-ipad.png` | 2064×2752 | 同 |
+| 3 | `03-photo-mode-iphone.png` | 1320×2868 | フォトモード（Orbit）。「Focal length」の選択肢が開いている（35mm、Bokeh Off、Effect Film） |
+| 3 | `03-photo-mode-ipad.png` | 2064×2752 | フォトモード（Orbit）。「Effect」の選択肢が開いている（Film。24mm、Bokeh Off） |
+| 4 | `04-photo-walk-iphone.png` | 1320×2868 | Walk。床の高さで棚の脇、頭上にビンを運ぶドローン。チップの列は閉じている |
+| 4 | `04-photo-walk-ipad.png` | 2064×2752 | Walk。床の高さで棚の列の前の通路、手前にビンを運ぶロボ |
+| 5 | `05-upgrades-iphone.png` | 1320×2868 | Upgrades パネル（Warehouse・Robots） |
+| 5 | `05-upgrades-ipad.png` | 2064×2752 | Upgrades パネル（Recommended・Warehouse・Robots・Special robots、Y1 Jul W1） |
+| 6 | `06-cyber-week-iphone.png` | 1320×2868 | 本物のサイバーウィーク（Y1 Nov W4、1x）。「Cyber Week is on!」と赤い縁 |
+| 6 | `06-cyber-week-ipad.png` | 2064×2752 | 同（Y1 Nov W4、1x、秋の地面） |
+| 7 | `07-achievements-iphone.png` | 1320×2868 | 実績の一覧「Achievements (9 / 19 earned)」 |
+| 7 | `07-achievements-ipad.png` | 2064×2752 | 実績の一覧「Achievements (8 / 19 earned)」 |
+
+撮れなかった画面: なし。
+
+妥協した点:
+- **サイバーウィーク:** サンドボックスの「To Cyber Week (Nov W4)」を使うと HUD に「SB」バッジが出たので使わず、`-demo` で起動し直して 4x〜2x で 1 年目の 11 月 4 週まで進め、1x で動かしたまま撮りました（一時停止の黄色なし）。サイバーウィークは毎年 11 月 4 週にあるので、第 39 回より早く撮れます（約 13〜18 分）。
+- **iPhone の Dynamic Island:** iPhone 17 Pro Max のシミュレータでは、`simctl io screenshot` の約 7 割に Dynamic Island の黒い楕円が写りました（既存の `store/` の日本語の画像には写っていない）。写っていないものを選びましたが、**`07-achievements-iphone.png` だけは、楕円もトーストも無い候補がなく、楕円が写ったもの**を使っています。気になるなら撮り直します。
+- 注文票の左に、注文の溜まりの小さな赤いバッジ（「+N slow ×1.x」）が写っているものがあります（06 など）。
+- iPhone の Upgrades には、黄色い「Recommended: Orders are piling up…」の枠がパネルの一部として出ています。
+- フォトモードは既定の F2.8 だと全体がぼけるので、Bokeh Off にしました。
+- iPad のステータスバーの左に「Wed Nov 11  Hakoniwa! DS」と出ます（iPadOS 27 のウィンドウのタイトル）。電池のアイコンに充電の稲妻が出ます（シミュレータの表示）。
+
+## C. 日本語のフォトモードの画像（`ios/screenshots/store/`）
+
+端末の言語を日本語に戻し、アプリの言語は「自動（端末の設定）」、`-demo`、縦、原寸。
+
+| ファイル | ピクセル | 内容 |
+|---|---|---|
+| `10-photo-iphone.png` | 1320×2868 | フォトモード（回す）。焦点距離の選択肢が開いている（35mm、ボケ オフ、エフェクト フィルム）。棚とロボ、ドローン 2 台、トラック、春の花びら |
+| `10-photo-ipad.png` | 2064×2752 | フォトモード（回す）。倉庫全体を斜め上から。焦点距離の選択肢が開いている（24mm） |
+| `11-photo-walk-iphone.png` | 1320×2868 | 歩く。通路の高さで棚のすぐ前、棚の上にロボ |
+| `11-photo-walk-ipad.png` | 2064×2752 | 歩く。通路の入口の床の高さ。両側に色とりどりの棚の列、奥へ続く通路 |
+
+- 歩く視点は、通路の奥まで入るとカメラが棚の下に入ったり柱で遮られたりするので、通路の入口から撮りました。
+- フォトモードの PNG は 4〜9 MB と大きめです（細かい模様が多いため。スクリーンショットなので PNG のまま）。
+
+## 気づき（第40回）
+
+1. **（中・提出前の作業）** A3 のとおり、ローカル StoreKit 構成では購入シートが日本語になります。本番では App Store Connect の各商品のローカライズが使われるので、**4 商品に English (U.S.) の表示名・説明を足すのを忘れずに**。テストでも英語のシートを見たいなら、`Products.storekit` の既定のロケール（`_locale: ja_JP`）を en_US にした構成をもう 1 つ用意する手があります。
+2. **（参考・仕様の確認）** アプリの言語で一度「English」/「日本語」を選ぶと、その後に端末の言語を変えても、アプリは選んだ言語のままです（「Auto (device setting)」に戻せば端末に従う）。意図どおりだと思いますが、TESTPLAN M58b の「端末が日本語でアプリだけ English」「端末が English でアプリを日本語」を順に試すと、A6 の前にアプリの言語を Auto に戻す手順が要ります。
+3. **（軽微・英語）** 撮影のついでに気づいた英語の表示:
+   - 眺めモードのミニ HUD で、日付とコインの間に隙間がない（「Year 1 · May W2⊙124,820」。`02-view-mode-*.png`）。
+   - サイバーウィークの予告が「Cyber Week in 1 weeks」（1 week のはず）。
+   - 設定 → Appearance「Gold robot skin and warehouse color themes **unlocks** with the Supporter Pack…」（unlock のはず）。
+   - 実績パネルの見出しが単数の「Achievement」で、一覧の見出しは「Achievements (8 / 19 earned)」。距離の段階が「Bronze (100 km (Tokyo to Yamanashi))」と括弧が二重で、「Tokyo to Yamanashi」「Japan end to end」は海外の人には伝わりにくいかもしれません。
+   - iPad の設定 → Save の説明が「… in Files › On My iPhone › Hakoniwa! DS」（iPad では On My iPad）。
+   - 設定のビルドの行「Build: b3ddd50887 2026-11-11 09:32　Debug screen: …」に全角の空白（U+3000）。
+   - Upgrades の「Bin capacity 40 → 50」が MAX（押せない）なのに矢印で出ている。下のバーのボタンは「Upgrade」、パネルの題は「Upgrades」。
+   - 英語で日本語が残っているところは、購入シートの商品名（A3）以外には見つかりませんでした。
+4. **（軽微・日本語）** 季節のバナーの赤い枠が iPhone では幅 118pt と細く、「新生活シーズン。家 / 電・日用品が売れる」と語の途中で折り返します。
+5. **（軽微）** フォトモードのチップの列は右端で切れます（「Logo On」「ロゴ あり」）。横にスクロールする列なので仕様だと思います。フォトモードの左下の設定の歯車は、暗いボタンに暗いアイコンで見えにくいです。
+6. （参考）A6 の後のストア画面の「解放済みの機能」に 4 つとも出ていたのは、B で `-demo`（機能の上書き）で起動した後だったためと見ています（購入は特別ロボパックだけ）。
