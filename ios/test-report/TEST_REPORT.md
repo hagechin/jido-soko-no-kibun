@@ -3500,3 +3500,172 @@ iPhone 18 Pro Max で、アプリを起動してから連続で撮影しまし�
 4. **（軽微・日本語）** 季節のバナーの赤い枠が iPhone では幅 118pt と細く、「新生活シーズン。家 / 電・日用品が売れる」と語の途中で折り返します。
 5. **（軽微）** フォトモードのチップの列は右端で切れます（「Logo On」「ロゴ あり」）。横にスクロールする列なので仕様だと思います。フォトモードの左下の設定の歯車は、暗いボタンに暗いアイコンで見えにくいです。
 6. （参考）A6 の後のストア画面の「解放済みの機能」に 4 つとも出ていたのは、B で `-demo`（機能の上書き）で起動した後だったためと見ています（購入は特別ロボパックだけ）。
+
+# 第41回: release/1.1 `c5a614b` ＋ claude/nifty-feynman-opfzeb `dce6ff5`（1.1 の直しの確認・撮り直しと、1.2 の初回の確認）
+
+- 実施日: 2026-11-11
+- 実行環境: **Xcode 27.2 (27B52)**、iPhone 17 Pro Max (iOS 27.2)、iPad Pro 13-inch (M4) (iOS 27.2)、iPhone Duo (iOS 27.2、B10 だけ)。ステータスバーは第 40 回と同じく 9:41 に上書き（終わってから `clear`）。端末の言語は `defaults write -g AppleLanguages` で切り替えて再起動。
+- パート 1: `git checkout release/1.1 && git pull --ff-only`（`c5a614b`）→ Node 22.14.0 で `./ios/sync-web.sh` → `xcodegen generate` → `xcodebuild build`（BUILD SUCCEEDED）。設定の表示「**App 1.1 (6) · bundled web commit=c5a614b date=2026-11-11T11:37:27Z**」。
+- パート 2: `claude/nifty-feynman-opfzeb` の `dce6ff5` を別の作業ツリー（`git worktree`、終わってから削除）に取り出して同じ手順 → BUILD SUCCEEDED。設定の表示「**アプリ 1.1 (6)・同梱 Web commit=dce6ff5 date=2026-11-11T12:02:43Z node=v22.14.0**」。
+- 報告は feature/photo-mode に戻ってから追記（試験の対象の 2 つのブランチには push していません）。報告用の画像（`r41-*.png`）は容量のため長辺 1434 px に縮めています（ストア用の画像は原寸）。
+- **途中でマシンの負荷が非常に高くなりました**（シミュレータ 4 台とテストを同時に動かしたため。load average 900 超）。その間に試した B8 と B10 が失敗したので、台数を減らしてやり直しています（下の各項目）。
+
+## 結果まとめ（第41回）
+
+| # | 項目 | 結果 |
+|---|---|---|
+| A1 | 季節のバナー（iPhone） | **OK** |
+| A2 | 眺めモードのミニ HUD の隙間 | **OK** |
+| A3 | 実績のパネル（題・注記なし・距離の段） | **OK** |
+| A4 | ビン容量の行（最大） | **OK** |
+| A5 | フォトモードの歯車 | **OK** |
+| A6 | iPad の「本体に保存」の説明 | **OK** |
+| A7 | サイバーウィークの予告 | **OK**（`Weeks to Cyber Week: 2`） |
+| A8 | 起動直後の実績のトースト | **OK**（並ばない） |
+| 撮り直し | ストア用 7 枚（＋日本語の全景 1 枚） | **全部撮れた** |
+| B1 | 1.2 のビルドと自動テスト | **OK**（ビルドは警告 1 件だけ。テスト 17 件パス。ただし StoreKit のテストが 2 回止まった。下を参照） |
+| B2 | M61 依頼が届く | **OK** |
+| B3 | M62 進みと受け取り | **OK** |
+| B4 | M63 特注 | **OK** |
+| B5 | M64 入れ替え | **OK** |
+| B6 | M66 本社への投資 | **OK** |
+| B7 | M67 見た目の店 | **OK**（3D の背景の変化だけ見分けにくい） |
+| B8 | M69 通知 | **OK**（1 回目は高負荷で OS の許可ダイアログが出ず、シミュレータの再起動後に OK） |
+| B9 | M70 英語 | **OK**（「依頼を達成」のトーストだけ見られていない） |
+| B10 | Duo の外側 | **OK** |
+
+**パート 1 の判定: 「1.1 提出可」のまま**です（App Store Connect の 4 商品の English (U.S.) は第 40 回のとおり人の作業）。
+
+## パート 1: release/1.1 `c5a614b`
+
+### A1 季節のバナー: OK
+- English（iPhone）: `Fresh-start season. Appliances and household goods sell` が 2 行（文字の枠 216×36 pt）。バナーは x 62–378、照準ボタン（`Reset camera`）は x 388 からで重ならない（`r41-A1-banner-en.png`）。
+- 日本語（アプリの言語を日本語にして）: `新生活シーズン。家電・日用品が売れる` が **1 行**（236×18 pt）。バナーは x 88–352 で、語の途中で折り返さず、照準ボタンにも重ならない（`r41-A1-banner-ja.png`）。確認の後、言語は「Auto」に戻しました。
+
+### A2 ミニ HUD: OK
+- iPhone: `Year 1 · Apr W2  ⊙ 59,297`。日付とコインが別のラベルで、間に隙間がある（`r41-A2-minihud.png`）。
+- iPad: `Year 1 · Apr W2 ⊙ 73,402`、続けて `AUTO`・`Photo`・`×`。隙間はあるが、スペース 1 つ分くらいと狭め（`r41-A2-ipad-hud.png`）。
+
+### A3 実績のパネル: OK
+- 題は `Achievements`、見出しは `Achievements (7 / 19 earned)`（iPad は 6 / 19）。
+- 「In a sandbox preset warehouse…」の注記は無い（一番下の「Absentee」までスクロールして確認）。出ている注記は `Measured in game time (fast-forward does not help). Distance: 1 cell = 1 m. Some achievements go beyond gold to platinum and "to the Moon". Medals are kept as your player record, even after a new game or loading a save`。
+- 距離の段は `This warehouse: 1.9 km → next: 100 km – Tokyo to Mt. Fuji`（括弧は二重でない）（`r41-A3-achievements.png`、iPad `r41-A3-ipad-achievements.png`）。
+
+### A4 ビン容量: OK
+- `Bin capacity 40 (max)`。矢印は無く、ボタンは押せない MAX（`r41-A4-upgrades.png`、iPad も同じ `r41-A4-ipad-upgrades.png`）。この倉庫の最大は 40 でした。
+
+### A5 フォトモードの歯車: OK
+- 設定のチップの列を出している間は黄色く点灯（`r41-A5-gear-on.png`）。隠すと暗い地に白いアイコン（`r41-A5-gear-off.png`）。
+
+### A6 iPad の「本体に保存」: OK
+- English: `Puts hako-dis-save-<date>.json in Files › On My iPad › Hakoniwa! DS. To load it, use "Import from file" and pick that file`（ボタンは `Save on this device (Files app)`）（`r41-A6-ipad-save.png`）。
+- 日本語: `ファイル App の「このiPad内 › 箱庭！DS」に hako-dis-save-日時.json を置きます。読み込みは「ファイルから読み込み」でそのファイルを選ぶ`（ボタンは `本体に保存（ファイル App）`）（`r41-A6-ipad-save-ja.png`）。
+
+### A7 サイバーウィークの予告: OK
+- `-demo` から 4x で約 10 分。`Y1 Nov W2` に `Weeks to Cyber Week: 2`（`r41-A7-countdown.png`。画像には「Switch to calm mode?」のトーストも写っています）。W3 の「1」の文は見ていません。
+
+### A8 起動直後のトースト: OK
+- 3〜4 秒までは読み込み中で何も出ない。6 秒で 2 つ（`Fresh-start season. Appliances and household goods sell` と `Resumed from your save`）がふつうに重なって出て、8 秒で季節の 1 つ、10 秒以降は無し（`r41-A8-toasts-6s.png`、`r41-A8-toasts-23s.png`）。実績のトーストは、遊んでいる途中に 1 つ（`Achievement "Weekly shipments" – Gold: 120 orders`）出ただけでした。
+
+### 撮り直した画像
+
+端末 English、`-demo`、原寸。トースト・ダイアログ・SB・一時停止の黄色・Dynamic Island の黒い楕円が無いもの（楕円は画素で確かめた）。同じ名前で上書き:
+
+| ファイル | ピクセル | 内容 |
+|---|---|---|
+| `store-en/01-overview-iphone.png` | 1320×2868 | 全景（2x、Y1 Apr W1）。注文票 #4〜#6、季節のバナーが 2 行 |
+| `store-en/02-view-mode-iphone.png` | 1320×2868 | 眺めモード（AUTO カメラが棚・ドローン・ステーションに寄る）。ミニ HUD に隙間 |
+| `store-en/02-view-mode-ipad.png` | 2064×2752 | 眺めモード。ミニ HUD だけ |
+| `store-en/05-upgrades-iphone.png` | 1320×2868 | 強化パネル（`Bin capacity 40 (max)`） |
+| `store-en/05-upgrades-ipad.png` | 2064×2752 | 強化パネル |
+| `store-en/07-achievements-iphone.png` | 1320×2868 | 実績のパネル（`Achievements`、注記なし、楕円なし） |
+| `store-en/07-achievements-ipad.png` | 2064×2752 | 実績のパネル |
+| `store/01-overview-iphone.png`（日本語） | 1320×2868 | 全景（2x、1年4月1週）。バナー「新生活シーズン。家電・日用品が売れる」が 1 行 |
+
+- iPad の 05・07 には季節の赤いバナーが写っています（ずっと出ているもの。02 には無い）。iPad の右下に、ウィンドウの大きさを変える灰色の弧（OS の表示）が小さく写ります。
+
+## パート 2: claude/nifty-feynman-opfzeb `dce6ff5`（1.2 の開発版）
+
+### B1 ビルドと自動テスト: OK（ただし StoreKit のテストが 2 回止まった）
+- **ビルド: BUILD SUCCEEDED。** `Notifier.swift` のエラー・警告は無し。警告は `'UIRequiresFullScreen' has been deprecated starting in iOS 26.0 and will be ignored in a future release` の 1 件だけです（1.1 からあるもの）。
+- **自動テスト: 3 回目で 17 件すべてパス**（HakoniwaDSTests 15、HakoniwaDSUITests 2、失敗 0。iPhone 17 Pro Max、端末の言語は日本語、再起動の直後）。ログに `Error finishing transaction: StoreKitServiceError … environment: "XcodeTest"` が 1 回出るのは以前と同じです。いつものとおり、終わった後に xcodebuild が終了しないので止めました。
+- **1 回目と 2 回目は `StoreManagerTests.testPurchaseUnlocksSandboxAndNotifies` で止まりました**（1 回目はテスト用に新しく作った iPhone 17 Pro（高負荷の最中）で約 25 分、2 回目は iPhone 17 Pro Max（端末 English）で 7 分以上）。2 回目の画面には OS の「**Sign in to Apple Account**」のダイアログが出ていて、テストの購入がローカルの StoreKit ではなく本物のストアに向かったように見えます（`r41-B1-test-hang.png`）。
+  - 比べるため、2 回目と同じシミュレータ・同じ状態で release/1.1 のテストを流すと、StoreKit の 4 件は通りました（UI テスト 2 件は端末が English のため失敗。下の「気づき」4）。
+  - 1.2 の Swift の変更は `Notifier.swift` の追加と `Bridge.swift` の 4 つの case だけで、`StoreManager`・`project.yml`・`Products.storekit` は 1.1 と同じです。なので 1.2 のコードが原因とは考えにくく、シミュレータの状態（高負荷、その前の Xcode の StoreKit の取引、端末の言語の切り替え）による一時的なものと見ていますが、確かめきれていません。次の回でもう一度見ます。
+
+### B2 M61 依頼が届く: OK
+- `-demo` で起動して約 10 秒で、トーストが 2 つ: 「**取引先から依頼が届くようになりました（下の「依頼」。毎日入れ替わります）**」と「設定に「文字の大きさ」を追加しました（下のバーの「設定」の先頭）」（`r41-B2-toast.png`）。
+- 下のバーの握手のボタン（赤いバッジ「1」）→ 題「**取引先の依頼**」、タブ［依頼｜本社｜実績］（`r41-B2-contracts.png`、下へスクロール `r41-B2-contracts-2.png`）。
+  - 今日の依頼 3 件: コトリ雑貨 Lv1「特注 7 件を全部出荷する」60,000・信用 +15／ポポ玩具「おもちゃを 55 個出荷する」40,000・信用 +10／まるふく食品「30 件出荷する」40,000・信用 +10
+  - 今週の依頼: まるふく食品「表示から 90 秒以内の出荷を 110 件」240,000・信用 +40
+  - 取引先 5 社: まるふく食品（食品・飲料）、ツバメ文具（文具・本）、デンデン電機（電子機器・家電）、コトリ雑貨（雑貨・衣料）、ポポ玩具（おもちゃ）。どれも Lv1・信用 0 / 30・「Lv3 でロボの塗装」
+- iPad（端末 English）: 題 `Client Jobs`、タブ `Jobs | HQ | Achievements`、同じ依頼が英語で出る。文字の切れ・日本語の残りなし（`r41-B2-contracts-ipad.png`、`r41-B2-contracts-ipad-clients.png`）。
+
+### B3 M62 進みと受け取り: OK
+- パネルを開いたまま 4x で、数字とバーが進む（おもちゃ 7 → 25 → 45 → 55 / 55、30 件 3 → 8 → 13 → 18）。
+- 達成でカードが黄色い枠になり「受け取る」が出て、下のバーのボタンとタブに赤いバッジ。「依頼を達成: …」のトーストは撮り逃しました（B9 で英語でも見られなかった。「気づき」3）。
+- 受け取ると「ポポ玩具: +40,000 コイン、信用 +10」（コイン 86,632 → 133,376）、「まるふく食品: +40,000 コイン、信用 +10」、「コトリ雑貨: +60,000 コイン、信用 +15」。カードは「受け取り済み」になり、信用のバーが伸びる（まるふく 10/30、コトリ 15/30、ポポ 10/30）。
+- 今週の依頼を受け取ると「まるふく食品の信用が Lv2 になりました。この取引先の依頼の報酬が増えます」と出て、信用は 50 / 90、「依頼の報酬 +10%・Lv3 でロボの塗装」になる。
+
+### B4 M63 特注: OK
+- 受ける前から中身が見える: 「植物 ×5、帽子 ×9、傘 ×9、時計 ×1、ギター ×4、マグカップ ×7。受けると入荷トラックが商品を運んできて、特注の注文が順に入ります。空ビンを用意しておくと安心です」。
+- 受けると「特注を受けました。入荷トラックが商品を運んできます（空ビンが要ります）」。説明は「注文票に取引先の色の印が付きます。日付が変わると、残りはふつうの注文になります」に変わり、注文票 #21 に緑の丸（コトリ雑貨）が付いた（`r41-B4-orders.png`）。
+- 4x で、受けてから 7 / 7 の達成まで実時間で約 45 秒。
+
+### B5 M64 入れ替え: OK
+- 受注窓口を買って増えた 4 件目、デンデン電機「遅延なしで 30 件続けて出荷する」160,000 の入れ替え（96,000）→「別の依頼に入れ替えました」、コイン 265,524 → 175,723、ツバメ文具「表示から 90 秒以内の出荷を 35 件」150,000 に替わる。次の入れ替えは 90,000。
+- 今週の依頼と、受けた後の特注には入れ替えのボタンが無い。
+
+### B6 M66 本社への投資: OK
+- HUD のコイン → メニュー「コイン 415,868: 出荷の報酬。何に使う？」→「本社への投資・見た目」で本社タブが開く。
+- 留守番体制: 「留守番体制 に投資しました（10 時間）」、1 / 5 段、「いま 10 時間 → 次 12 時間」、次は 60,000。
+- 受注窓口: 「受注窓口 に投資しました（4 件）」、1 / 2 段、「いま 4 件 → 次 5 件」、次は 1,500,000。今日の依頼が 4 件になった（`r41-B6-hq-before.png`、`r41-B6-hq-after.png`）。
+
+### B7 M67 見た目の店: OK（3D の背景の変化だけ見分けにくい）
+- モノクロ（80,000）:「モノクロ を購入しました」→ すぐ「使用中」、ロボが白と灰色に。
+- フォレスト（100,000）:「フォレスト を購入しました」→ 画面の色が深い緑に（`r41-B7-forest.png`）。標準の「使う」で戻せて、またフォレストにもできる。
+- 金色・ミッドナイト・サンドは「使う」（`-demo` の上書き）。季節のテーマはモミジだけ 150,000（「いま店に並んでいます（10・11 月）」）、サクラ・ラムネ・スノーは「季節外」。
+- **`-demo` を付けずに起動し直しても、フォレストとモノクロ、依頼の状態はそのまま**（`r41-B7-relaunch-persist.png`）。
+- 3D の背景は茶色い地面でしたが、ゲーム内の季節（秋）の色かもしれず、フォレストで変わったのかは見分けられませんでした。
+
+### B8 M69 通知: OK（1 回目は失敗し、シミュレータの再起動後に OK）
+- **1 回目（高負荷の最中）:** 最初の「受け取る」でアプリのダイアログ「**お知らせを通知しますか？**」（「新しい依頼が届いたときと、お留守番が上限に達したときに知らせます（1 日 1〜2 回まで）。設定でいつでも切り替えられます」／［通知する］［あとで］）。「通知する」を押しても **OS の許可ダイアログが出ず**、設定 → 通知は「オフ」のまま（`r41-B8-after-tsuchi.png`）。アプリは `Requesting authorization with options 6` を出し、`usernotificationsd` も `Forwarding requestAuthorization: jp.hatte.hakoniwa.ds` と受け取っていますが、その先の応答がありませんでした。再インストールしても同じでした。
+- **2 回目（シミュレータを再起動して再インストール）:**
+  1. 「受け取る」→ アプリのダイアログ（`r41-B8-app-dialog.png`）→「通知する」→ **すぐに OS のダイアログ**「“箱庭！DS”は通知を送信します。よろしいですか?」（許可しない／許可）（`r41-B8-os-permission.png`）→ 許可。
+  2. 「通知をオンにしました」のトーストは見られませんでした（許可を押す操作でアプリが一度裏に回ったため。その間に出て消えたのかもしれません）。
+  3. 設定 → 通知が「**オン**」になり、「**10 秒後にテスト通知**」のボタンが出る（`r41-B8-settings-on.png`）。
+  4. ボタンを押してすぐホーム画面へ → 約 13〜20 秒後にバナー「**新しい依頼が届いています**」「取引先から今日の依頼が 3 件。逃しても損はありません」（`r41-B8-notification.png`）。
+  5. 設定で「オフ」にでき、テスト通知のボタンが消える。ログに `Removing all pending notification requests` / `Removing all delivered notifications`（`r41-B8-settings-off.png`）。固まる・落ちるは無し。
+- 「お知らせを通知しますか？」は 1 度だけで、B9 の英語の回（同じ端末、`-demo` で起動し直し）では出ませんでした。
+
+### B9 M70 英語: OK（「依頼を達成」のトーストだけ見られていない）
+- 端末 English・アプリの言語 Auto、`-demo`。**日本語が残っているところは無く、iPhone の幅で文字は切れませんでした**（言語の選択肢の「日本語」だけは言語名なので日本語）。
+- 起動のトースト: `Clients now send you jobs (see Jobs below; they change every day)`（2 行で収まる）（`r41-B9-toast-05.png`）。
+- 依頼のパネル: 題 `Client Jobs`、タブ `Jobs`（バッジ）・`HQ`・`Achievements`。`Today's jobs`「They change every day. Nothing is lost if you skip them. When one is complete, tap Collect for the reward and trust with that client」。カードは `Popo Toys Lv1 · Today`「Ship 55 units of toys」、`Marufuku Foods`「Ship 30 orders」、`Kotori Goods`「Ship all 7 special orders」（`Accept`）、今週は「Ship 110 orders within 90 s of appearing」。取引先は Marufuku Foods / Tsubame Stationery / Denden Electric / Kotori Goods / Popo Toys（`r41-B9-jobs-en.png`、`-2`、`-3`）。
+- 本社タブ: `Sales (0 / 12)`「Shipping rewards increase. Now +0% → next +2%」、`Client Relations (0 / 5)`、`Order Desk (0 / 2)`「More daily jobs. Now 3 → next 4」、`Night Shift (0 / 5)`「Raises the cap on away time. Now 8 h → next 10 h」。塗装は Standard / Gold / 取引先 5 社の色（`Unlocks at Lv3`）/ Mono / Pastel / Neon。テーマは Standard / Midnight / Sand / Forest / Sakura・Ramune・Snow（`Out of season`）/ Momiji（150,000）（`r41-B9-hq-en.png`、`-2`、`-3`）。
+- トースト: `Popo Toys: +40,000 coins, trust +10` ほか（`r41-B9-collect-toast-en.png`）、`Trust with Marufuku Foods reached Lv2. Jobs from this client now pay more`（2 行で収まる）（`r41-B9-collect-toast-en-2.png`）。
+- 設定: `Notifications`、`Off`、「Notifies you when new jobs arrive and when away time reaches its cap (at most once or twice a day)」（`r41-B9-settings-notif-en.png`）。
+
+### B10 Duo の外側: OK
+- 閉じた状態の外側（466×678 pt、縦）。アプリの中身は x 382 pt まで、帯は x 382〜466。
+- 依頼のパネルの ×（閉じる）は {331,104} 44×45 で右端 375 pt、帯に隠れない。題・タブ（右端 371）・カード・入れ替えのボタン（右端 360〜361）も帯の手前（`r41-B10-duo-panel.png`）。
+- パネルを閉じて 4x で約 65 秒 → 依頼のボタン {216,598} の右上に赤いバッジ「1」がはっきり見える（`r41-B10-duo-badge.png`）。
+- 1 回目は高負荷で Duo のシミュレータが応答しなくなり（`simctl launch` が返らない）、Duo だけを起動し直して確認しました。
+
+## 1.2 を触ってみての感想
+- **依頼の量:** 1 日 3 件＋週 1 件はちょうどいい。ただ 4x だと数分で全部終わるので、もう少し手応えがあってもよさそうです（特注 7 件が 1 分かからない）。
+- **報酬:** 依頼の報酬（4〜6 万）は出荷 1 回（数百〜1,600）よりずっと大きく、魅力があります。入れ替えは報酬の 6 割（96,000）で少し高く感じます。受注窓口の 2 段目の 1,500,000 はかなり遠い。
+- **分かりにくい言葉:** 「信用」と HUD の星（評判）の違い。「表示から 90 秒以内の出荷」は説明文を読まないと分からない。注文票の左の「抑制 × 1.3」も初見では意味が分からない。HUD のトレイのアイコンと数字（13 → 2230 → 1910）も何の数か分かりませんでした。
+- **押しやすさ:** ボタンは高さ 45 pt で押しやすい。ただ、スクロールした直後のタップが 1 回効かないことがありました（モノクロの購入、依頼のボタン、速度のボタン）。
+
+## 気づき（第41回）
+
+1. **（中）依頼のパネルの一番下の「受け取る」が下のバーに隠れる**（iPhone、English）。「受け取る」がパネルの下の端（y ≈ 849〜894）にあると下のバーの下になり、押すと下のバーの「Calm Mode」に当たって眺めモードになりました。スクロールしてから押せば受け取れます。パネルの中身の下に、下のバーの高さぶんの余白があるとよさそうです。
+2. **（中）通知の許可が返ってこないとき、アプリに何の反応もない**（B8 の 1 回目）。OS 側の不調でしたが、「通知する」を押した後に何も起きず、設定の「オフ」を押し直しても無反応に見えます。しばらく返事が無ければ「設定 App で許可してください」と出す、などがあると親切です。
+3. **（軽微）「依頼を達成: …」のトーストを見られませんでした**（日本語でも英語でも）。依頼のパネルを開いたまま達成したときは出ない作りか、出ている時間がとても短いのかもしれません（英語の回は約 1 秒おきに撮った）。カードの黄色い枠と「受け取る」は出ます。
+4. **（軽微・テスト）UI テスト 2 件は端末の言語が日本語のときだけ通ります。** HUD の日付を `^[0-9]+年.*[0-9]+週$` で探しているので、端末が English だと「Y1 Apr W1」になって失敗します（release/1.1 で確認）。`app.launchArguments` に `-AppleLanguages (ja)` を足すと、端末の言語によらず通ると思います。
+5. **（軽微）受け取り済みのカードの金額が、信用のレベルが上がった後に書き換わる**（週 240,000 → 264,000、まるふく 40,000 → 44,000）。実際に受け取った額と違って見えます。
+6. **（軽微）バージョンの表示が 1.1 (6) のまま**（依頼に書いてあるとおり。1.2 の提出前に上げる）。
+7. （参考）設定の下の方の `Build: 89e16736cc 2026-11-11 11:37` のハッシュは、git の commit と別のもの（同梱 Web の commit は上の行の `commit=c5a614b`）。紛らわしければ表記を変えてもよさそうです。
+8. （参考）iPad の保存の説明が「Export to file」を指していますが、ボタンの名前は「Share (AirDrop, iCloud, …)」（日本語も「ファイルに書き出し」と「共有」）。
+9. （参考）注文が溜まると、注文票の左の赤い丸が 4 行（`+7 / slow / × / 1.3`）に詰まって最初の注文票を右へ押します。全景を 2x で 30 秒以上回すと必ず写るので、撮影は起動直後に撮りました。
