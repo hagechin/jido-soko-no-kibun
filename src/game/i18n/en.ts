@@ -1095,4 +1095,6 @@ export const EN: Record<string, string> = {
   '凡例: P ポート（棚ロボがビンを降ろす場所）／K ピッキング／I 入荷ステーション／入・出 入荷口・出荷口／点線 待機スポット／左下の数字 置いてあるビンの数／赤い印 保存できない原因のマス': 'Legend: P port (where shelf robots drop bins) / K picking / I inbound station / In・Out inbound / outbound dock / dotted = wait spot / number at bottom left = bins placed / red = cells that block saving',
   '／': ' / ',
   'ビン容量 {0}（最大）': 'Bin capacity {0} (max)',
+  '実績「{0}」{1}: {2}': 'Achievement "{0}" – {1}: {2}',
+  '称号「{0}」{1}: {2}': 'Title "{0}" – {1}: {2}',
 };
