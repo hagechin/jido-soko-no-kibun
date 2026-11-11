@@ -285,7 +285,9 @@ body.is-editing .sa-glass {
   border-radius: 999px;
   font-weight: 700;
   pointer-events: none;
-  max-width: calc(100% - 24px);
+  /* left: 50% の絶対配置は幅が「残り半分」で頭打ちになり、スマホで語の途中で折り返していた（第 40 回）。中身の幅で取り、右上の照準ボタンのぶんだけ空ける */
+  width: max-content;
+  max-width: calc(100% - 124px);
   text-align: center;
   text-wrap: balance; /* 2 行になるとき 1 文字だけ落ちないように */
 }
@@ -1429,6 +1431,10 @@ body.has-modal .photo-panel {
   display: inline-flex;
   align-items: center;
 }
+/* 日付とコインの間の空白を潰さない（英語は半角の空白なので、flex の中で消えて詰まっていた。第 40 回） */
+.mini-hud .mini-text span {
+  white-space: pre;
+}
 .mini-hud .mini-btn {
   pointer-events: auto;
   min-height: var(--tap);
@@ -1794,6 +1800,11 @@ kbd.key {
 }
 .photo-min .btn {
   background: rgba(20, 28, 38, 0.75);
+}
+/* 設定の歯車: 出している間は点灯（暗い地に暗いアイコンで見えにくかった。第 40 回） */
+.photo-min .photo-min-btn.is-active {
+  background: var(--accent);
+  color: #1d2733;
 }
 .photo-min-hint {
   text-align: center;

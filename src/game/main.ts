@@ -49,7 +49,7 @@ import { LayoutEditor } from './ui/layoutEditor';
 import { beginEdit, finishEdit } from './sim/layoutEditor';
 import { helpNode } from './ui/help';
 import { BackgroundTicker, loadBackgroundSetting, saveBackgroundSetting } from './ui/background';
-import { native, nativeTry } from './platform/native';
+import { forDevice, native, nativeTry } from './platform/native';
 import { hasFeature, initEntitlements, onEntitlementsChange } from './platform/entitlements';
 import { featureStatusNode, renderStore } from './ui/store';
 import { setLimitsExpanded } from './sim/limits';
@@ -572,7 +572,7 @@ class Game {
         saveLocal: native.available
           ? () => {
               void saveSaveFileLocal(this.world)
-                .then((name) => showToast(tr('ファイル App の「このiPhone内 › 箱庭！DS」に保存しました: {0}', name), 5000, 'check'))
+                .then((name) => showToast(forDevice(tr('ファイル App の「このiPhone内 › 箱庭！DS」に保存しました: {0}', name)), 5000, 'check'))
                 .catch((e) => showToast(tr('保存できませんでした: {0}', e instanceof Error ? e.message : String(e)), 4000, 'triangle-alert'));
             }
           : undefined,
