@@ -1237,4 +1237,6 @@ export const EN: Record<string, string> = {
   'ビン容量 {0}（最大）': 'Bin capacity {0} (max)',
   '実績「{0}」{1}: {2}': 'Achievement "{0}" – {1}: {2}',
   '称号「{0}」{1}: {2}': 'Title "{0}" – {1}: {2}',
+  '10 秒後にテスト通知': 'Test notification in 10 s',
+  '10 秒後に通知します。ホーム画面に戻って待ってください': 'A notification will fire in 10 seconds. Go to the Home Screen and wait',
 };

@@ -136,6 +136,8 @@ class Game {
   private seenOffers = new Set<number>();
   private lastContractSync = 0;
   private lastNotifyRefresh = 0;
+  /** テスト通知を出した直後（この時刻までは予約を入れ直さない。入れ直すとテスト通知が消える） */
+  private notifyTestUntil = 0;
   /** iOS アプリ: 「アプリ 1.0 (12)・同梱 Web commit=abc1234 date=…」（sync-web.sh が書く BUILD_INFO。同梱が古くないかの確認用） */
   buildInfo = '';
   /** デバッグ: 計測 */
@@ -699,6 +701,16 @@ class Game {
               });
             });
             body.append(el('div', { class: 'settings-row' }, nb, el('span', { class: 'muted small', text: tr('新しい依頼が届いたときと、お留守番が上限に達したときに知らせます（1 日 1〜2 回まで）') })));
+            // デモ起動（-demo）のときだけ: 通知が実際に出るかの確認用。10 秒後に 1 件。押したらホームに戻って待つ（その間は予約を入れ直さない）
+            if (on && (native.info as { demo?: boolean } | null)?.demo) {
+              const tb = el('button', { class: 'btn', type: 'button' }, iconText('timer', tr('10 秒後にテスト通知'), 14));
+              tb.addEventListener('click', () => {
+                this.notifyTestUntil = Date.now() + 40_000;
+                nativeTry('notifySchedule', { items: [{ id: 'test', title: tr('新しい依頼が届いています'), body: tr('取引先から今日の依頼が {0} 件。逃しても損はありません', dailySlots(this.world)), inSec: 10 }] });
+                showToast(tr('10 秒後に通知します。ホーム画面に戻って待ってください'), 4000, 'bell');
+              });
+              body.append(el('div', { class: 'settings-row' }, tb));
+            }
           }
           this.calm.renderSettings(body);
         },
@@ -830,6 +842,7 @@ class Game {
   /** 通知の予約を入れ替える（設定がオンのとき。起動・背面に回るとき・5 分ごと）。文面はアプリの言語で作る */
   refreshNotifications(): void {
     if (!notifySupported() || notifySetting() !== 'on') return;
+    if (Date.now() < this.notifyTestUntil) return;
     const w = this.world;
     const items: NotifyItem[] = [];
     if (recentPace(w).shipmentsPerMin > 0) {
