@@ -310,6 +310,7 @@ export function claimContract(w: WorldState, id: number, clientLevel: number): R
   const coins = contractCoins(w, c, clientLevel);
   addCoins(w, coins);
   c.state = 'claimed';
+  c.claimedCoins = coins;
   return { ok: true, coins, trust: c.reward.trust, client: c.client };
 }
 

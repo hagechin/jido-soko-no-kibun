@@ -86,6 +86,6 @@ export function shipOrder(w: WorldState, o: Order, stationId: number): void {
     w.stats.shippedByItem[l.item] = (w.stats.shippedByItem[l.item] ?? 0) + l.qty;
     w.stats.shippedThisWeek[l.item] = (w.stats.shippedThisWeek[l.item] ?? 0) + l.qty;
   }
-  onContractShipment(w, o);
   w.events.push({ type: 'shipped', orderId: o.id, coins: r.total, bonus: r.bonus, stationId });
+  onContractShipment(w, o); // 「依頼を達成」は「出荷！」の後に知らせる
 }

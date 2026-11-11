@@ -8,7 +8,8 @@ final class LaunchUITests: XCTestCase {
 
     private func launchFresh() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-resetSave"] // 残っているセーブに左右されないよう、新規開始で起動
+        // 残っているセーブに左右されないよう新規開始で起動。HUD の日付を日本語の形で探すので、端末の言語によらず日本語で起動する（第 41 回）
+        app.launchArguments = ["-resetSave", "-AppleLanguages", "(ja)", "-AppleLocale", "ja_JP"]
         app.launch()
         return app
     }

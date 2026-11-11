@@ -694,11 +694,7 @@ class Game {
                 this.bar.refresh();
                 return;
               }
-              void enableNotifications().then((ok) => {
-                if (ok) this.refreshNotifications();
-                else showToast(tr('通知が許可されていません。iPhone の「設定 → 通知 → 箱庭！DS」で許可してください'), 6000, 'bell');
-                this.bar.refresh();
-              });
+              this.requestNotifications();
             });
             body.append(el('div', { class: 'settings-row' }, nb, el('span', { class: 'muted small', text: tr('新しい依頼が届いたときと、お留守番が上限に達したときに知らせます（1 日 1〜2 回まで）') })));
             // デモ起動（-demo）のときだけ: 通知が実際に出るかの確認用。10 秒後に 1 件。押したらホームに戻って待つ（その間は予約を入れ直さない）
@@ -826,12 +822,12 @@ class Game {
     savePlayer();
     const client = CLIENT_BY_ID[r.client];
     const after = clientLevel(this.player.trust[r.client]);
-    showToast(tr('{0}: +{1} コイン、信用 +{2}', client?.name ?? r.client, r.coins.toLocaleString('ja-JP'), r.trust), 3500, 'gift');
+    showToast(tr('{0}: +{1} コイン、信用 +{2}', client?.name ?? r.client, r.coins.toLocaleString('ja-JP'), r.trust), 3500, 'gift', false, true);
     this.sound.coin();
     nativeTry('haptic', { kind: 'success' });
     if (after > before) {
       const paint = PAINT_BY_ID[`client-${r.client}`];
-      showToast(tr('{0}の信用が Lv{1} になりました{2}', client?.name ?? r.client, after, after === CONTRACTS.paintLevel && paint ? tr('。ロボの塗装「{0}」が使えます（本社タブ）', paint.name) : tr('。この取引先の依頼の報酬が増えます')), 6000, 'party-popper');
+      showToast(tr('{0}の信用が Lv{1} になりました{2}', client?.name ?? r.client, after, after === CONTRACTS.paintLevel && paint ? tr('。ロボの塗装「{0}」が使えます（本社タブ）', paint.name) : tr('。この取引先の依頼の報酬が増えます')), 6000, 'party-popper', false, true);
       this.sound.notice();
     }
     this.save();
@@ -855,6 +851,24 @@ class Game {
     scheduleNotifications(items);
   }
 
+  /**
+   * 通知をオンにする（OS の許可を取る）。OS の返事がしばらく無いときは案内を出す:
+   * 許可のダイアログが出ないまま無反応に見えることがあった（第 41 回。OS 側の不調）
+   */
+  private requestNotifications(): void {
+    let answered = false;
+    const denied = tr('通知が許可されていません。iPhone の「設定 → 通知 → 箱庭！DS」で許可してください');
+    window.setTimeout(() => {
+      if (!answered) showToast(tr('通知の許可を待っています。ダイアログが出ないときは、iPhone の「設定 → 通知 → 箱庭！DS」で許可してから、もう一度オンにしてください'), 7000, 'bell', false, true);
+    }, 8000);
+    void enableNotifications().then((ok) => {
+      answered = true;
+      showToast(ok ? tr('通知をオンにしました（設定でいつでも切り替えられます）') : denied, 5000, 'bell', false, true);
+      if (ok) this.refreshNotifications();
+      if (this.bar.open === 'settings') this.bar.refresh();
+    });
+  }
+
   /** 初めて依頼の報酬を受け取ったときに 1 度だけ「通知しますか」と聞く（iOS アプリ） */
   private maybeAskNotifications(): void {
     if (!notifySupported() || this.player.notifyAsked || notifySetting() !== null) return;
@@ -864,10 +878,7 @@ class Game {
     const no = el('button', { class: 'btn', type: 'button', text: tr('あとで') });
     yes.addEventListener('click', () => {
       this.modal.hide();
-      void enableNotifications().then((ok) => {
-        showToast(ok ? tr('通知をオンにしました（設定でいつでも切り替えられます）') : tr('通知が許可されていません。iPhone の「設定 → 通知 → 箱庭！DS」で許可してください'), 5000, 'bell');
-        if (ok) this.refreshNotifications();
-      });
+      this.requestNotifications();
     });
     no.addEventListener('click', () => this.modal.hide());
     this.modal.show(tr('お知らせを通知しますか？'), el('p', { text: tr('新しい依頼が届いたときと、お留守番が上限に達したときに知らせます（1 日 1〜2 回まで）。設定でいつでも切り替えられます') }), el('div', { class: 'settings-row' }, yes, no));
@@ -1543,7 +1554,7 @@ class Game {
         case 'contractDone': {
           const c = findContract(this.world, e.id);
           if (c) {
-            showToast(tr('依頼を達成: {0}（「依頼」で報酬を受け取れます）', contractTitle(c)), 5000, 'handshake');
+            showToast(tr('依頼を達成: {0}（「依頼」で報酬を受け取れます）', contractTitle(c)), 6000, 'handshake', false, true);
             this.sound.notice();
             if (!this.catchingUp) nativeTry('haptic', { kind: 'success' });
           }

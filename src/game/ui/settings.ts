@@ -234,7 +234,7 @@ export function renderSettings(body: HTMLElement, ctx: SettingsContext): void {
       const ps = el('button', { class: 'btn', type: 'button' }, iconText('clipboard', tr('クリップボードから読み込み')));
       ps.addEventListener('click', () => ctx.pasteSave!());
       body.append(el('div', { class: 'settings-row' }, cp, ps));
-      body.append(el('p', { class: 'muted small', text: tr('「ファイルに書き出し」は共有シート（ファイルに保存・AirDrop）。シートが出ないときはクリップボード経由で、メモなどに貼り付けて保管できます') }));
+      body.append(el('p', { class: 'muted small', text: tr('「共有」は共有シート（ファイルに保存・AirDrop）。シートが出ないときはクリップボード経由で、メモなどに貼り付けて保管できます') }));
     }
   }
   if (ctx.cloud) {

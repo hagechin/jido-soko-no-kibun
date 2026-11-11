@@ -1239,4 +1239,9 @@ export const EN: Record<string, string> = {
   '称号「{0}」{1}: {2}': 'Title "{0}" – {1}: {2}',
   '10 秒後にテスト通知': 'Test notification in 10 s',
   '10 秒後に通知します。ホーム画面に戻って待ってください': 'A notification will fire in 10 seconds. Go to the Home Screen and wait',
+  '注文票が出てから {0} 秒以内に {1} 件出荷する': 'Ship {1} orders within {0} s of their card appearing',
+  '注文票の右上の秒数（出てからの時間）で数えます。この秒数を過ぎた注文は数えません': 'Uses the seconds shown at the top right of the order card (time since it appeared). Orders past this time do not count',
+  '信用は取引先ごとの付き合いの深さです（上の星の「評判」とは別）。依頼を達成すると増え、倉庫を作り直しても残ります。レベルが上がるとその取引先の依頼の報酬が増えます': 'Trust is how well you know each client (separate from the star Reputation at the top). It grows as you complete jobs and stays even if you start a new warehouse. Higher levels raise the rewards of that client\'s jobs',
+  '「共有」は共有シート（ファイルに保存・AirDrop）。シートが出ないときはクリップボード経由で、メモなどに貼り付けて保管できます': '"Share" opens the share sheet (Save to Files, AirDrop). If the sheet does not appear, go through the clipboard and paste into Notes or similar',
+  '通知の許可を待っています。ダイアログが出ないときは、iPhone の「設定 → 通知 → 箱庭！DS」で許可してから、もう一度オンにしてください': 'Waiting for notification permission. If no dialog appears, allow notifications in iPhone Settings → Notifications → Hakoniwa! DS, then turn this on again',
 };

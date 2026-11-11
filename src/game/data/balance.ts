@@ -638,7 +638,7 @@ export const CONTRACTS = {
   /** 出荷ペースの下限: ランクの基本の需要（評判 50・抑制なし）のこの割合 */
   paceFloorFactor: 0.5,
   /** 量: ペース × この分数（毎週は × weeklyScale） */
-  paceMinutes: { volume: 12, category: 12, fast: 6, clean: 5, bulk: 3 },
+  paceMinutes: { volume: 12, category: 12, fast: 6, clean: 5, bulk: 5 },
   weeklyScale: 8,
   minTarget: { volume: 8, category: 20, fast: 5, clean: 8, bulk: 4 },
   /** 報酬のコイン: 収入ペース × この分数（下限はランクごと。毎週は weekly 分）。メガDC で毎日 3 件 ≒ 1 時間ぶんの収入 */
@@ -653,7 +653,7 @@ export const CONTRACTS = {
   /** 種類の出やすさ（毎日）。特注は 1 日 1 件まで */
   kindWeights: { volume: 2, category: 3, fast: 2, clean: 2, bulk: 3 },
   /** 入れ替えの値段: 報酬コイン × 倍率（下限あり） */
-  rerollCostFactor: 0.6,
+  rerollCostFactor: 0.3,
   rerollMinCost: 100,
 } as const;
 

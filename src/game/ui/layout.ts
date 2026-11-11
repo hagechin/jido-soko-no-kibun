@@ -63,11 +63,23 @@ function placeToasts(host: HTMLElement): void {
     host.style.bottom = 'auto';
     host.style.top = overOrders ? `${Math.round(orR.top - vr.top + 6)}px` : '8px';
     // オーダー列に収まるのは 1 つだけ（2 つ目はシートの見出しにかかる）
-    while (host.children.length > 1) host.firstElementChild?.remove();
+    trimToasts(host, 1);
     return;
   }
   // シートが開いている間は 2 つまで（ボタンを覆わない）
-  while (host.children.length > 2) host.firstElementChild?.remove();
+  trimToasts(host, 2);
+}
+
+/**
+ * 多すぎるトーストを古い順に消す。「残す」印（keep）のトーストは後回し: 依頼の達成など見逃すと困るお知らせが、
+ * 続けて出る「出荷！」に押し出されないようにする（シートを開いたスマホは 1 つしか出せない。第 41 回）
+ */
+function trimToasts(host: HTMLElement, max: number): void {
+  while (host.children.length > max) {
+    const victim = Array.from(host.children).find((c) => !(c as HTMLElement).dataset.keep) ?? host.firstElementChild;
+    if (!victim) break;
+    victim.remove();
+  }
 }
 
 let toastsSuppressed = false;
@@ -77,7 +89,7 @@ export function setToastsSuppressed(on: boolean): void {
   if (on) document.getElementById('toasts')?.replaceChildren();
 }
 
-export function showToast(text: string, ms = 2200, iconName?: IconName, force = false): void {
+export function showToast(text: string, ms = 2200, iconName?: IconName, force = false, keep = false): void {
   const host = document.getElementById('toasts');
   if (!host) return;
   if (toastsSuppressed && !force) return;
@@ -85,8 +97,9 @@ export function showToast(text: string, ms = 2200, iconName?: IconName, force = 
   for (const c of Array.from(host.children)) if ((c as HTMLElement).dataset.text === text) return;
   const t = el('div', { class: 'toast' }, iconName ? icon(iconName, 16) : null, el('span', { text }));
   t.dataset.text = text;
+  if (keep) t.dataset.keep = '1';
   host.append(t);
   placeToasts(host);
-  while (host.children.length > 4) host.firstElementChild?.remove();
+  trimToasts(host, 4);
   setTimeout(() => t.remove(), ms);
 }

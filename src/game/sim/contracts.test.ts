@@ -192,6 +192,7 @@ describe('1.2 取引先の依頼', () => {
     expect(r.ok && r.trust).toBe(10);
     expect(r.ok && r.client).toBe('marufuku');
     expect(w.coins).toBe(coins0 + 1440);
+    expect(c.claimedCoins).toBe(1440); // 受け取った額は覚えておく（あとでレベルが上がっても表示が変わらない）
     expect(claimContract(w, c.id, 3).ok).toBe(false);
     expect(contractBadge(w)).toBe(0);
     // 信用 → レベル

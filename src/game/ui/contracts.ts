@@ -45,7 +45,7 @@ export function contractTitle(c: Contract): string {
     case 'category':
       return tr('{0}を {1} 個出荷する', client?.desc ?? '', num(c.target));
     case 'fast':
-      return tr('表示から {0} 秒以内の出荷を {1} 件', c.limitSec ?? 0, num(c.target));
+      return tr('注文票が出てから {0} 秒以内に {1} 件出荷する', c.limitSec ?? 0, num(c.target));
     case 'clean':
       return tr('遅延なしで {0} 件続けて出荷する', num(c.target));
     case 'bulk':
@@ -61,7 +61,7 @@ function contractNote(c: Contract): string {
     case 'category':
       return tr('注文に入っている個数ぶん進みます。お留守番の出荷も数えます');
     case 'fast':
-      return tr('注文票の時計（表示されてからの秒数）で数えます');
+      return tr('注文票の右上の秒数（出てからの時間）で数えます。この秒数を過ぎた注文は数えません');
     case 'clean':
       return tr('遅延した注文を出荷すると 0 に戻ります');
     case 'bulk':
@@ -95,7 +95,7 @@ function progressText(c: Contract): string {
 function contractCard(c: Contract, ctx: ContractsContext): HTMLElement {
   const client = CLIENT_BY_ID[c.client];
   const level = clientLevel(ctx.trust[c.client] ?? 0);
-  const coins = contractCoins(ctx.world, c, level);
+  const coins = c.state === 'claimed' && c.claimedCoins !== undefined ? c.claimedCoins : contractCoins(ctx.world, c, level);
   const head = el(
     'div',
     { class: 'contract-head' },
@@ -193,7 +193,7 @@ export function renderContracts(body: HTMLElement, ctx: ContractsContext): void 
     for (const c of weekly) body.append(contractCard(c, ctx));
   }
   body.append(el('h4', { text: tr('取引先') }));
-  body.append(el('p', { class: 'muted small', text: tr('信用は依頼を達成すると増え、倉庫を作り直しても残ります。レベルが上がるとその取引先の依頼の報酬が増えます') }));
+  body.append(el('p', { class: 'muted small', text: tr('信用は取引先ごとの付き合いの深さです（上の星の「評判」とは別）。依頼を達成すると増え、倉庫を作り直しても残ります。レベルが上がるとその取引先の依頼の報酬が増えます') }));
   const ok = new Set(availableClients(w).map((c) => c.id as string));
   for (const c of CLIENTS) body.append(clientRow(c.id, ctx.trust[c.id] ?? 0, ok.has(c.id)));
 }

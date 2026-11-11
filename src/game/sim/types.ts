@@ -272,6 +272,8 @@ export interface Contract {
   state: ContractState;
   /** 基本の報酬（受け取るときに取引先のレベルと渉外部の倍率が掛かる） */
   reward: { coins: number; trust: number };
+  /** 実際に受け取ったコイン（受け取り済みの表示用。あとでレベルが上がっても変わらない） */
+  claimedCoins?: number;
   /** bulk: これから入る特注の注文（行のリスト）と、次の 1 件が入る tick */
   pending?: { item: string; qty: number }[][];
   nextOrderTick?: number;
