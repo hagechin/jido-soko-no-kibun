@@ -5,6 +5,7 @@
  */
 import { SAVE } from '../data/balance';
 import { buildPreset } from '../sim/presets';
+import { initAchievementsSilently } from '../sim/achievements';
 import { serialize } from '../sim/save';
 import { addRobot } from '../sim/world';
 import { setLimitsExpanded } from '../sim/limits';
@@ -39,6 +40,12 @@ export function installDemoSave(): void {
     r.speedLevel = 2;
     n++;
   }
+  // デモの倉庫はふつうのセーブとして扱う: 実績の一覧に「サンドボックスのプリセット倉庫では…」の注記を出さず（ストア用の画像に写っていた。第 40 回）、
+  // 1.2 の取引先の依頼も届く。すでに達している実績は、起動時にトーストが並ばないよう静かに記録しておく
+  w.sandbox = false;
+  const a = w.automation;
+  if (a.dispatch >= 3 && a.restock && a.relocate) w.stats.fullAutomationTick = w.tick; // 最初の計測で「完全自動化」のトーストが出ないように
+  initAchievementsSilently(w);
   const text = serialize(w);
   try {
     localStorage.setItem(SAVE.key, text);
